@@ -79,6 +79,23 @@
         opacity: 0;
         transition: opacity 0.2s ease, transform 0.2s ease;
       }
+      .tab-dropdown {
+        display: none;
+      }
+      @media (max-width: 599px) {
+        .tab-button-group {
+          display: none;
+        }
+        .tab-dropdown {
+          display: block;
+        }
+      }
+      body .text-slate-500 {
+        color: rgb(148 163 184 / var(--tw-text-opacity, 1));
+      }
+      body .text-slate-400 {
+        color: rgb(203 213 225 / var(--tw-text-opacity, 1));
+      }
     </style>
   </head>
   <body class="min-h-screen text-slate-100">
@@ -87,13 +104,19 @@
       <div class="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-aura-secondary/25 blur-3xl"></div>
     </div>
 
-    <div id="toastStack" class="fixed top-4 right-4 z-[100] flex flex-col gap-3 w-72 pointer-events-none" role="status" aria-live="assertive"></div>
+    <div
+      id="toastStack"
+      class="fixed top-4 right-4 z-[100] flex flex-col gap-3 w-72 pointer-events-none"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
 
     <main class="relative z-10">
-      <section id="loginView" class="min-h-screen flex items-center justify-center px-6 py-12">
+      <section id="loginView" class="min-h-screen flex items-center justify-center px-4 py-10 sm:px-6 sm:py-12">
         <div class="login-card relative isolate bg-slate-950/70 backdrop-blur-xl border border-white/10 rounded-3xl shadow-brand max-w-xl w-full">
           <div class="absolute inset-x-0 -top-20 mx-auto w-40 h-40 rounded-full bg-gradient-to-br from-aura-primary to-aura-secondary blur-3xl opacity-40"></div>
-          <div class="p-10 space-y-10">
+          <div class="p-8 space-y-8 sm:p-10 sm:space-y-10">
 
             <div>
               <p class="text-sm uppercase tracking-[0.3em] text-slate-400 mb-2">Welcome to</p>
@@ -114,6 +137,7 @@
                   placeholder="you@rareaura.co"
                   required
                   autocomplete="email"
+                  aria-label="Work email address"
                   class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
 
                 />
@@ -127,6 +151,7 @@
                   placeholder="••••••••"
                   required
                   autocomplete="current-password"
+                  aria-label="Account password"
                   class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
 
                 />
@@ -134,6 +159,7 @@
               <button
                 id="loginButton"
                 type="submit"
+                aria-label="Sign in to Aura Flow"
                 class="group relative w-full inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-3 text-base font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
               >
                 <span data-role="spinner" class="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin hidden"></span>
@@ -156,7 +182,7 @@
 
       <section id="appView" class="hidden min-h-screen pb-16">
         <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur border-b border-white/5">
-          <div class="max-w-7xl mx-auto px-6 py-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-4 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p class="text-xs uppercase tracking-[0.35em] text-slate-500">Workspace</p>
               <h2 class="text-2xl font-semibold text-white">
@@ -170,6 +196,7 @@
               </div>
               <button
                 id="logoutButton"
+                aria-label="Sign out of Aura Flow"
                 class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
               >
                 Logout
@@ -178,17 +205,31 @@
           </div>
           <nav class="border-t border-white/5 bg-slate-950/70">
             <div class="max-w-7xl mx-auto px-4 overflow-x-auto">
-              <div class="flex items-center gap-2 py-3" role="tablist">
-                <button data-tab-button="dashboard" class="tab-button">Dashboard</button>
-                <button data-tab-button="kanban" class="tab-button">Kanban</button>
-                <button data-tab-button="analytics" class="tab-button">Analytics</button>
-                <button data-tab-button="focus" class="tab-button">Focus</button>
-                <button data-tab-button="admin" class="tab-button">Admin</button>
+              <div class="tab-button-group flex items-center gap-2 py-3" role="tablist">
+                <button data-tab-button="dashboard" class="tab-button" aria-label="Open Dashboard panel">Dashboard</button>
+                <button data-tab-button="kanban" class="tab-button" aria-label="Open Kanban panel">Kanban</button>
+                <button data-tab-button="analytics" class="tab-button" aria-label="Open Analytics panel">Analytics</button>
+                <button data-tab-button="focus" class="tab-button" aria-label="Open Focus panel">Focus</button>
+                <button data-tab-button="admin" class="tab-button" aria-label="Open Admin panel">Admin</button>
+              </div>
+              <div class="tab-dropdown py-3">
+                <label for="tabDropdown" class="sr-only">Select workspace section</label>
+                <select
+                  id="tabDropdown"
+                  class="w-full rounded-full border border-white/10 bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                  aria-label="Workspace section selector"
+                >
+                  <option value="dashboard">Dashboard</option>
+                  <option value="kanban">Kanban</option>
+                  <option value="analytics">Analytics</option>
+                  <option value="focus">Focus</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
             </div>
           </nav>
         </header>
-        <div class="max-w-7xl mx-auto px-6 py-12 space-y-12">
+        <div class="max-w-7xl mx-auto px-4 py-10 space-y-12 sm:px-6 sm:py-12">
           <section data-tab-panel="dashboard" class="tab-panel">
             <div class="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
               <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
@@ -212,7 +253,7 @@
                 <p class="mt-4 text-xs text-slate-500">Due date intelligence with nudges ships later.</p>
               </div>
             </div>
-            <div class="mt-10 rounded-3xl bg-slate-900/80 border border-white/5 p-8">
+            <div class="mt-10 rounded-3xl bg-slate-900/80 border border-white/5 p-6 sm:p-8">
               <h3 class="text-xl font-semibold text-white">Workspace Activity Snapshot</h3>
               <p class="mt-3 text-sm text-slate-400">
                 The unified activity feed, sprint burndowns, and mood overlays will be activated as the backend endpoints land in Phase 3.
@@ -267,7 +308,7 @@
               </div>
               <div
                 id="kanbanEmpty"
-                class="hidden rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-10 text-center"
+                class="hidden rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-8 text-center sm:p-10"
               >
                 <div class="mx-auto flex max-w-md flex-col gap-3">
                   <h4 class="text-lg font-semibold text-white">No tasks yet</h4>
@@ -368,6 +409,7 @@
                   <button
                     id="analyticsRefreshButton"
                     type="button"
+                    aria-label="Refresh analytics"
                     class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
                   >
                     <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-transparent"></span>
@@ -442,7 +484,7 @@
 
           <section data-tab-panel="focus" class="tab-panel hidden">
             <div class="grid gap-8 xl:grid-cols-[2fr,1fr]">
-              <div class="space-y-8 rounded-3xl border border-white/5 bg-slate-900/70 p-8">
+              <div class="space-y-8 rounded-3xl border border-white/5 bg-slate-900/70 p-6 sm:p-8">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 class="text-2xl font-semibold text-white">Focus Mode</h3>
@@ -457,7 +499,7 @@
                   </span>
                 </div>
 
-                <div class="rounded-2xl border border-white/5 bg-slate-950/60 p-8 text-center">
+                <div class="rounded-2xl border border-white/5 bg-slate-950/60 p-6 text-center sm:p-8">
                   <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Current Session</p>
                   <p id="focusTimerDisplay" class="mt-4 text-6xl font-semibold tracking-tight text-white tabular-nums">25:00</p>
                   <p id="focusTimerSubtitle" class="mt-2 text-sm text-slate-400">Default Pomodoro — 25 minutes</p>
@@ -465,6 +507,7 @@
                     <button
                       id="focusStartButton"
                       type="button"
+                      aria-label="Start focus session"
                       class="inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
                     >
                       Start
@@ -472,6 +515,7 @@
                     <button
                       id="focusPauseButton"
                       type="button"
+                      aria-label="Pause focus session"
                       class="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
                     >
                       Pause
@@ -479,6 +523,7 @@
                     <button
                       id="focusResetButton"
                       type="button"
+                      aria-label="Reset focus session"
                       class="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
                     >
                       Reset
@@ -496,6 +541,7 @@
                       max="90"
                       step="5"
                       value="25"
+                      aria-label="Session length in minutes"
                       class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
                     />
                     <span class="text-xs text-slate-500">Default Pomodoro cadence. Adjust before you start.</span>
@@ -504,6 +550,7 @@
                     <span class="text-sm font-medium text-slate-200">Anchor Task</span>
                     <select
                       id="focusTaskSelect"
+                      aria-label="Anchor task selection"
                       class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
                     >
                       <option value="">Select a task</option>
@@ -514,6 +561,7 @@
                     <span class="text-sm font-medium text-slate-200">How are you arriving to this session?</span>
                     <select
                       id="focusMoodSelect"
+                      aria-label="Mood selection"
                       class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
                     >
                       <option value="focused">Focused</option>
@@ -530,7 +578,7 @@
                 <div>
                   <div class="flex items-center justify-between gap-2">
                     <h4 class="text-sm font-semibold text-white">Recent Sessions</h4>
-                    <button id="focusClearHistoryButton" type="button" class="text-xs text-slate-500 transition hover:text-slate-300">
+                    <button id="focusClearHistoryButton" type="button" aria-label="Clear focus session history" class="text-xs text-slate-500 transition hover:text-slate-300">
                       Clear
                     </button>
                   </div>
@@ -544,7 +592,7 @@
                 </div>
               </div>
 
-              <aside class="space-y-6 rounded-3xl border border-white/5 bg-slate-900/50 p-8">
+              <aside class="space-y-6 rounded-3xl border border-white/5 bg-slate-900/50 p-6 sm:p-8">
                 <div>
                   <h4 class="text-lg font-semibold text-white">Flow Tips</h4>
                   <p class="mt-2 text-sm text-slate-400">Prime your environment, celebrate each win, and recharge between cycles.</p>
@@ -568,7 +616,7 @@
           </section>
 
           <section data-tab-panel="admin" class="tab-panel hidden">
-            <div class="rounded-3xl bg-slate-900/70 border border-white/5 p-8">
+            <div class="rounded-3xl bg-slate-900/70 border border-white/5 p-6 sm:p-8">
               <h3 class="text-2xl font-semibold text-white">Admin Control Center</h3>
               <p class="mt-4 text-sm text-slate-400">
                 User provisioning, hierarchy management, and bulk operations will surface here in Phase 5 once backend services solidify.
@@ -742,6 +790,7 @@
           elements.logoutButton = document.getElementById('logoutButton');
           elements.tabButtons = document.querySelectorAll('[data-tab-button]');
           elements.tabPanels = document.querySelectorAll('[data-tab-panel]');
+          elements.tabDropdown = document.getElementById('tabDropdown');
           elements.analytics.refreshButton = document.getElementById('analyticsRefreshButton');
           elements.analytics.refreshTime = document.getElementById('analyticsRefreshTime');
           elements.analytics.velocityCanvas = document.getElementById('completionVelocityChart');
@@ -829,6 +878,12 @@
               setActiveTab(targetTab);
             });
           });
+          if (elements.tabDropdown) {
+            elements.tabDropdown.addEventListener('change', (event) => {
+              const targetTab = event.target && event.target.value ? String(event.target.value) : '';
+              setActiveTab(targetTab);
+            });
+          }
           if (elements.analytics.refreshButton) {
             elements.analytics.refreshButton.addEventListener('click', () => refreshWorkspaceData({ silent: false }));
           }
@@ -924,6 +979,9 @@
             panel.classList.toggle('hidden', !isActive);
             panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
           });
+          if (elements.tabDropdown && elements.tabDropdown.value !== tabId) {
+            elements.tabDropdown.value = tabId;
+          }
           if (tabId === 'analytics') {
             renderAnalyticsCharts();
             requestAnimationFrame(() => {
@@ -1747,7 +1805,6 @@
         const toast = document.createElement('div');
         const baseClasses = [
           'pointer-events-auto',
-
           'rounded-2xl',
           'border',
           'border-white/10',
@@ -1760,35 +1817,66 @@
           'items-start',
           'gap-3',
           'transition',
+          'w-full',
+          'min-w-0',
         ];
         const palette = {
           success: 'bg-emerald-500/20 text-emerald-100',
           error: 'bg-rose-500/20 text-rose-100',
           info: 'bg-slate-800/80 text-slate-100',
         };
+        const safeMessage = String(message ?? '');
         toast.className = baseClasses.join(' ');
         toast.classList.add('toast-enter');
-        toast.innerHTML = `
-          <span class="mt-0.5 text-lg">${type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️'}</span>
-          <div class="leading-snug">
-            <p class="font-medium">${message}</p>
-          </div>
-        `;
         toast.classList.add(...(palette[type] || palette.info).split(' '));
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.setAttribute('aria-label', `${type} notification: ${safeMessage}`);
 
+        const icon = document.createElement('span');
+        icon.className = 'mt-0.5 text-lg shrink-0';
+        icon.textContent = type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️';
+
+        const content = document.createElement('div');
+        content.className = 'flex-1 leading-snug text-left';
+        const text = document.createElement('p');
+        text.className = 'font-medium';
+        text.textContent = safeMessage;
+        content.appendChild(text);
+
+        const dismissButton = document.createElement('button');
+        dismissButton.type = 'button';
+        dismissButton.className = 'ml-auto inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/5 text-xs font-semibold text-white/80 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60';
+        dismissButton.setAttribute('aria-label', 'Dismiss notification');
+        dismissButton.textContent = '×';
+
+        toast.append(icon, content, dismissButton);
         container.appendChild(toast);
+
         requestAnimationFrame(() => {
           toast.classList.remove('toast-enter');
           toast.classList.add('toast-enter-active');
         });
-        setTimeout(() => {
+
+        let isClosing = false;
+        const removeToast = () => {
+          if (isClosing) return;
+          isClosing = true;
           toast.classList.remove('toast-enter-active');
           toast.classList.add('toast-leave-active');
-          setTimeout(() => {
-            toast.remove();
+          window.setTimeout(() => {
+            if (toast.parentElement) {
+              toast.remove();
+            }
           }, 220);
-        }, 3600);
+        };
 
+        const timeoutId = window.setTimeout(removeToast, 3600);
+        dismissButton.addEventListener('click', () => {
+          window.clearTimeout(timeoutId);
+          removeToast();
+        });
       }
     </script>
   </body>
