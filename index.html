@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aura Flow V2 — by Rare Aura Media Group</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -40,14 +46,33 @@
       };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
       :root {
         color-scheme: dark;
       }
       body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
         background: radial-gradient(circle at top left, rgba(127, 90, 240, 0.3), transparent 40%),
           radial-gradient(circle at bottom right, rgba(44, 177, 188, 0.25), transparent 45%),
           #0f172a;
+        font-family: 'Manrope', 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #e2e8f0;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        letter-spacing: 0.01em;
+      }
+      main {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+      }
+      footer {
+        backdrop-filter: blur(14px);
       }
       .login-card::before {
         content: '';
@@ -79,21 +104,111 @@
         opacity: 0;
         transition: opacity 0.2s ease, transform 0.2s ease;
       }
+      .tab-dropdown {
+        display: none;
+      }
+      @media (max-width: 599px) {
+        .tab-button-group {
+          display: none;
+        }
+        .tab-dropdown {
+          display: block;
+        }
+      }
+      body .text-slate-500 {
+        color: rgb(148 163 184 / var(--tw-text-opacity, 1));
+      }
+      body .text-slate-400 {
+        color: rgb(203 213 225 / var(--tw-text-opacity, 1));
+      }
     </style>
   </head>
-  <body class="min-h-screen text-slate-100">
+  <body class="min-h-screen text-slate-100 font-sans">
     <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
       <div class="absolute -top-32 -right-32 h-72 w-72 rounded-full bg-aura-primary/30 blur-3xl"></div>
       <div class="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-aura-secondary/25 blur-3xl"></div>
     </div>
 
-    <div id="toastStack" class="fixed top-4 right-4 z-[100] flex flex-col gap-3 w-72 pointer-events-none" role="status" aria-live="assertive"></div>
+    <div
+      id="toastStack"
+      class="fixed top-4 right-4 z-[100] flex flex-col gap-3 w-72 pointer-events-none"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
+
+    <div
+      id="tutorialOverlay"
+      class="fixed inset-0 z-[150] hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+    >
+      <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
+      <div
+        id="tutorialHighlight"
+        class="pointer-events-none fixed z-10 rounded-3xl border-2 border-aura-primary/80 bg-aura-primary/10 shadow-[0_0_0_9999px_rgba(15,23,42,0.65)] opacity-0 transition-all duration-300 ease-out"
+      ></div>
+      <div
+        id="tutorialTooltip"
+        class="fixed z-20 max-w-xs rounded-3xl border border-white/10 bg-slate-950/90 p-6 text-slate-100 shadow-xl transition-opacity duration-200 ease-out"
+        tabindex="-1"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p id="tutorialStepLabel" class="text-xs uppercase tracking-[0.3em] text-slate-400">Step 1 of 5</p>
+            <h3 id="tutorialTitle" class="mt-2 text-xl font-semibold text-white">Welcome</h3>
+          </div>
+          <button
+            id="tutorialSkipButton"
+            type="button"
+            class="text-xs font-medium text-slate-400 transition hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+          >
+            Skip
+          </button>
+        </div>
+        <p id="tutorialDescription" class="mt-4 text-sm text-slate-300">
+          Use Aura Flow to orchestrate projects across your team.
+        </p>
+        <div class="mt-6">
+          <div
+            id="tutorialProgressTrack"
+            class="h-1.5 w-full overflow-hidden rounded-full bg-white/10"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <div
+              id="tutorialProgress"
+              class="h-full w-0 rounded-full bg-aura-primary transition-all duration-300 ease-out"
+            ></div>
+          </div>
+        </div>
+        <div class="mt-6 flex items-center justify-between gap-4">
+          <button
+            id="tutorialPrevButton"
+            type="button"
+            class="text-sm font-medium text-slate-400 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+          >
+            Back
+          </button>
+          <button
+            id="tutorialNextButton"
+            type="button"
+            class="inline-flex items-center justify-center rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
 
     <main class="relative z-10">
-      <section id="loginView" class="min-h-screen flex items-center justify-center px-6 py-12">
+      <section id="loginView" class="min-h-screen flex items-center justify-center px-4 py-10 sm:px-6 sm:py-12">
         <div class="login-card relative isolate bg-slate-950/70 backdrop-blur-xl border border-white/10 rounded-3xl shadow-brand max-w-xl w-full">
           <div class="absolute inset-x-0 -top-20 mx-auto w-40 h-40 rounded-full bg-gradient-to-br from-aura-primary to-aura-secondary blur-3xl opacity-40"></div>
-          <div class="p-10 space-y-10">
+          <div class="p-8 space-y-8 sm:p-10 sm:space-y-10">
 
             <div>
               <p class="text-sm uppercase tracking-[0.3em] text-slate-400 mb-2">Welcome to</p>
@@ -114,6 +229,7 @@
                   placeholder="you@rareaura.co"
                   required
                   autocomplete="email"
+                  aria-label="Work email address"
                   class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
 
                 />
@@ -127,6 +243,7 @@
                   placeholder="••••••••"
                   required
                   autocomplete="current-password"
+                  aria-label="Account password"
                   class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
 
                 />
@@ -134,6 +251,7 @@
               <button
                 id="loginButton"
                 type="submit"
+                aria-label="Sign in to Aura Flow"
                 class="group relative w-full inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-3 text-base font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
               >
                 <span data-role="spinner" class="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin hidden"></span>
@@ -154,9 +272,9 @@
         </div>
       </section>
 
-      <section id="appView" class="hidden min-h-screen pb-16">
+      <section id="appView" class="hidden min-h-[calc(100vh-5rem)] pb-16">
         <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur border-b border-white/5">
-          <div class="max-w-7xl mx-auto px-6 py-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-4 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p class="text-xs uppercase tracking-[0.35em] text-slate-500">Workspace</p>
               <h2 class="text-2xl font-semibold text-white">
@@ -168,8 +286,36 @@
                 <p id="userBadge" class="text-sm font-medium text-white">Authenticated</p>
                 <p class="text-xs text-slate-500" id="roleBadge">Role</p>
               </div>
+              <div class="relative">
+                <button
+                  id="helpMenuButton"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+                  aria-haspopup="true"
+                  aria-expanded="false"
+                  aria-controls="helpMenuPanel"
+                >
+                  Help
+                </button>
+                <div
+                  id="helpMenuPanel"
+                  class="absolute right-0 mt-2 hidden w-48 rounded-2xl border border-white/10 bg-slate-950/90 p-2 text-sm text-slate-200 shadow-xl"
+                  role="menu"
+                  aria-labelledby="helpMenuButton"
+                >
+                  <button
+                    id="restartTutorialButton"
+                    type="button"
+                    class="w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+                    role="menuitem"
+                  >
+                    Start tutorial
+                  </button>
+                </div>
+              </div>
               <button
                 id="logoutButton"
+                aria-label="Sign out of Aura Flow"
                 class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
               >
                 Logout
@@ -178,38 +324,151 @@
           </div>
           <nav class="border-t border-white/5 bg-slate-950/70">
             <div class="max-w-7xl mx-auto px-4 overflow-x-auto">
-              <div class="flex items-center gap-2 py-3" role="tablist">
-                <button data-tab-button="dashboard" class="tab-button">Dashboard</button>
-                <button data-tab-button="kanban" class="tab-button">Kanban</button>
-                <button data-tab-button="analytics" class="tab-button">Analytics</button>
-                <button data-tab-button="focus" class="tab-button">Focus</button>
-                <button data-tab-button="admin" class="tab-button">Admin</button>
+              <div class="tab-button-group flex items-center gap-2 py-3" role="tablist">
+                <button data-tab-button="dashboard" class="tab-button" aria-label="Open Dashboard panel">Dashboard</button>
+                <button data-tab-button="kanban" class="tab-button" aria-label="Open Kanban panel">Kanban</button>
+                <button data-tab-button="analytics" class="tab-button" aria-label="Open Analytics panel">Analytics</button>
+                <button data-tab-button="focus" class="tab-button" aria-label="Open Focus panel">Focus</button>
+                <button data-tab-button="admin" class="tab-button" aria-label="Open Admin panel">Admin</button>
+              </div>
+              <div class="tab-dropdown py-3">
+                <label for="tabDropdown" class="sr-only">Select workspace section</label>
+                <select
+                  id="tabDropdown"
+                  class="w-full rounded-full border border-white/10 bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                  aria-label="Workspace section selector"
+                >
+                  <option value="dashboard">Dashboard</option>
+                  <option value="kanban">Kanban</option>
+                  <option value="analytics">Analytics</option>
+                  <option value="focus">Focus</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
             </div>
           </nav>
         </header>
+
         <div class="max-w-7xl mx-auto px-6 py-12 space-y-12">
-          <section data-tab-panel="dashboard" class="tab-panel">
-            <div class="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
+          <section data-tab-panel="dashboard" class="tab-panel" aria-busy="false">
+            <div
+              id="dashboardSkeleton"
+              class="hidden grid gap-6 animate-pulse lg:grid-cols-2 xl:grid-cols-4"
+              aria-hidden="true"
+            >
+              <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-6">
+                <div class="h-3 w-24 rounded-full bg-white/10"></div>
+                <div class="mt-4 h-10 w-20 rounded-full bg-white/10"></div>
+                <div class="mt-6 space-y-2">
+                  <div class="h-2.5 w-32 rounded-full bg-white/10"></div>
+                  <div class="h-2.5 w-28 rounded-full bg-white/5"></div>
+                </div>
+              </div>
+              <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-6">
+                <div class="h-3 w-20 rounded-full bg-white/10"></div>
+                <div class="mt-4 h-10 w-24 rounded-full bg-white/10"></div>
+                <div class="mt-6 space-y-2">
+                  <div class="h-2.5 w-28 rounded-full bg-white/10"></div>
+                  <div class="h-2.5 w-24 rounded-full bg-white/5"></div>
+                </div>
+              </div>
+              <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-6">
+                <div class="h-3 w-24 rounded-full bg-white/10"></div>
+                <div class="mt-4 h-10 w-24 rounded-full bg-white/10"></div>
+                <div class="mt-6 space-y-2">
+                  <div class="h-2.5 w-32 rounded-full bg-white/10"></div>
+                  <div class="h-2.5 w-24 rounded-full bg-white/5"></div>
+                </div>
+              </div>
+              <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-6">
+                <div class="h-3 w-16 rounded-full bg-white/10"></div>
+                <div class="mt-4 h-10 w-20 rounded-full bg-white/10"></div>
+                <div class="mt-6 space-y-2">
+                  <div class="h-2.5 w-28 rounded-full bg-white/10"></div>
+                  <div class="h-2.5 w-24 rounded-full bg-white/5"></div>
+                </div>
+              </div>
+            </div>
+            <div id="dashboardMetrics" class="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
               <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
                 <p class="text-sm text-slate-400">Tasks Today</p>
-                <p class="mt-3 text-3xl font-semibold text-white" id="metric-today">—</p>
+                <p class="mt-3 text-3xl font-semibold text-white" id="metric-today">0</p>
                 <p class="mt-4 text-xs text-slate-500">Coming soon: surfaced from real-time assignments.</p>
               </div>
               <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
                 <p class="text-sm text-slate-400">Completed</p>
-                <p class="mt-3 text-3xl font-semibold text-white" id="metric-complete">—</p>
+                <p class="mt-3 text-3xl font-semibold text-white" id="metric-complete">0</p>
                 <p class="mt-4 text-xs text-slate-500">Completion streaks and throughput analytics arrive in Phase 4.</p>
               </div>
               <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
                 <p class="text-sm text-slate-400">Time Tracked</p>
-                <p class="mt-3 text-3xl font-semibold text-white" id="metric-time">—</p>
+                <p class="mt-3 text-3xl font-semibold text-white" id="metric-time">0m</p>
                 <p class="mt-4 text-xs text-slate-500">Focus mode sessions will sync minutes here.</p>
               </div>
               <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
                 <p class="text-sm text-slate-400">Overdue</p>
-                <p class="mt-3 text-3xl font-semibold text-white" id="metric-overdue">—</p>
+                <p class="mt-3 text-3xl font-semibold text-white" id="metric-overdue">0</p>
                 <p class="mt-4 text-xs text-slate-500">Due date intelligence with nudges ships later.</p>
+              </div>
+            </div>
+
+            <div
+              id="dashboardQuoteCard"
+              class="mt-8 grid gap-6 rounded-3xl border border-white/5 bg-slate-900/70 p-6 lg:grid-cols-[1.6fr,1fr]"
+            >
+              <div class="space-y-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">Team Inspiration</p>
+                <blockquote class="space-y-3">
+                  <p id="dashboardQuoteText" class="text-lg font-medium text-white leading-relaxed">
+                    Sign in to load today's featured quote.
+                  </p>
+                  <footer id="dashboardQuoteAuthor" class="text-sm text-slate-400">&mdash;</footer>
+                </blockquote>
+              </div>
+              <form id="dashboardQuoteForm" class="grid gap-3">
+                <label class="grid gap-2">
+                  <span class="text-sm font-medium text-slate-200">Share a quote</span>
+                  <textarea
+                    id="dashboardQuoteInput"
+                    rows="3"
+                    class="min-h-[120px] rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                    placeholder="What words are inspiring the team?"
+                    required
+                  ></textarea>
+                </label>
+                <label class="grid gap-2">
+                  <span class="text-sm font-medium text-slate-200">Author <span class="text-xs text-slate-500">(optional)</span></span>
+                  <input
+                    id="dashboardQuoteAuthorInput"
+                    type="text"
+                    class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                    placeholder="Attributed to"
+                  />
+                </label>
+                <button
+                  id="dashboardQuoteSubmit"
+                  type="submit"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                >
+                  <span data-role="spinner" class="hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                  <span data-role="label">Submit Quote</span>
+                </button>
+                <p class="text-xs text-slate-500">
+                  Approved quotes rotate across the workspace dashboard for the entire team.
+                </p>
+              </form>
+
+            </div>
+
+            <div
+              id="dashboardEmpty"
+              class="mt-8 hidden flex flex-col items-center gap-4 rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-8 text-center"
+            >
+              <div class="mx-auto flex max-w-lg flex-col items-center gap-3">
+                <h4 class="text-lg font-semibold text-white">No tasks to show yet</h4>
+                <p class="text-sm text-slate-400">
+                  Spin up a task from the workspace to populate your dashboard metrics and unlock velocity insights.
+                </p>
               </div>
             </div>
             <div class="mt-10 rounded-3xl bg-slate-900/80 border border-white/5 p-8">
@@ -255,21 +514,77 @@
                 </div>
               </div>
               <div
+                id="kanbanBulkActions"
+                class="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-300 sm:flex-row sm:items-center sm:justify-between hidden"
+              >
+                <div id="kanbanBulkSelectionCount" class="font-semibold text-slate-100">No tasks selected</div>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2">
+                  <label for="kanbanBulkSelect" class="sr-only">Select bulk action</label>
+                  <select
+                    id="kanbanBulkSelect"
+                    class="w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary sm:w-44"
+                  >
+                    <option value="">Bulk actions</option>
+                    <option value="complete">Mark Complete</option>
+                    <option value="assign">Assign&hellip;</option>
+                    <option value="delete">Delete</option>
+                  </select>
+                  <div class="flex items-center gap-2">
+                    <button
+                      id="kanbanBulkApplyButton"
+                      type="button"
+                      class="inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                    >
+                      <span data-role="spinner" class="hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                      <span data-role="label">Apply</span>
+                    </button>
+                    <button
+                      id="kanbanBulkClearButton"
+                      type="button"
+                      class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div
                 id="kanbanLoading"
-                class="hidden items-center gap-3 text-sm text-slate-400 sm:flex"
+                class="hidden"
                 role="status"
                 aria-live="polite"
               >
-                <span class="flex h-2.5 w-2.5 items-center justify-center">
-                  <span class="h-2.5 w-2.5 animate-ping rounded-full bg-aura-primary/70"></span>
-                </span>
-                <span>Syncing tasks&hellip;</span>
+                <span class="sr-only">Loading kanban board&hellip;</span>
+                <div class="flex gap-4 overflow-x-auto pb-6 animate-pulse">
+                  <div class="min-w-[230px] rounded-3xl border border-white/10 bg-slate-950/40 p-5">
+                    <div class="h-3 w-20 rounded-full bg-white/10"></div>
+                    <div class="mt-6 space-y-3">
+                      <div class="h-16 rounded-2xl border border-white/10 bg-slate-900/60"></div>
+                      <div class="h-16 rounded-2xl border border-white/10 bg-slate-900/60"></div>
+                    </div>
+                  </div>
+                  <div class="min-w-[230px] rounded-3xl border border-white/10 bg-slate-950/40 p-5">
+                    <div class="h-3 w-24 rounded-full bg-white/10"></div>
+                    <div class="mt-6 space-y-3">
+                      <div class="h-16 rounded-2xl border border-white/10 bg-slate-900/60"></div>
+                      <div class="h-16 rounded-2xl border border-white/10 bg-slate-900/60"></div>
+                    </div>
+                  </div>
+                  <div class="min-w-[230px] rounded-3xl border border-white/10 bg-slate-950/40 p-5">
+                    <div class="h-3 w-16 rounded-full bg-white/10"></div>
+                    <div class="mt-6 space-y-3">
+                      <div class="h-16 rounded-2xl border border-white/10 bg-slate-900/60"></div>
+                      <div class="h-16 rounded-2xl border border-white/10 bg-slate-900/60"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div
                 id="kanbanEmpty"
-                class="hidden rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-10 text-center"
+                class="hidden rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-8 text-center sm:p-10"
+
               >
-                <div class="mx-auto flex max-w-md flex-col gap-3">
+                <div class="mx-auto flex max-w-md flex-col items-center gap-3">
                   <h4 class="text-lg font-semibold text-white">No tasks yet</h4>
                   <p class="text-sm text-slate-400">
                     When tasks are created they will appear here, ready to be triaged across the workflow.
@@ -368,6 +683,7 @@
                   <button
                     id="analyticsRefreshButton"
                     type="button"
+                    aria-label="Refresh analytics"
                     class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
                   >
                     <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-transparent"></span>
@@ -393,7 +709,12 @@
                     id="velocityChartEmpty"
                     class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-slate-950/75 px-8 text-center text-sm font-medium text-slate-400 backdrop-blur-sm"
                   >
-                    No completed tasks yet — close work to unlock velocity insights.
+                    <div class="flex flex-col items-center gap-2">
+                      <p class="text-base font-semibold text-white">No data yet</p>
+                      <p class="text-xs font-normal text-slate-400">
+                        Close tasks to unlock completion velocity trends.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -413,7 +734,12 @@
                     id="categoryChartEmpty"
                     class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-slate-950/75 px-8 text-center text-sm font-medium text-slate-400 backdrop-blur-sm"
                   >
-                    Add duration estimates to your tasks to visualize category distribution.
+                    <div class="flex flex-col items-center gap-2">
+                      <p class="text-base font-semibold text-white">No data yet</p>
+                      <p class="text-xs font-normal text-slate-400">
+                        Add duration estimates to surface category distribution.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -434,15 +760,51 @@
                   id="moodChartEmpty"
                   class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-slate-950/75 px-8 text-center text-sm font-medium text-slate-400 backdrop-blur-sm"
                 >
-                  Log a focus session to begin charting team sentiment.
+                  <div class="flex flex-col items-center gap-2">
+                    <p class="text-base font-semibold text-white">No data yet</p>
+                    <p class="text-xs font-normal text-slate-400">
+                      Log focus sessions to chart evolving mood trends.
+                    </p>
+                  </div>
                 </div>
+              </div>
+
+              <div class="rounded-3xl border border-white/5 bg-slate-900/70 p-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Reports</p>
+                    <h4 class="mt-1 text-lg font-semibold text-white">Exports</h4>
+                    <p class="mt-3 text-sm text-slate-400">
+                      Download your filtered task grid or a leadership-ready PDF snapshot.
+                    </p>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <button
+                      id="reportExportCsv"
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                    >
+                      <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-transparent"></span>
+                      <span data-role="label">Export CSV</span>
+                    </button>
+                    <button
+                      id="reportExportPdf"
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-xl bg-aura-primary/90 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                    >
+                      <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-transparent"></span>
+                      <span data-role="label">Export PDF</span>
+                    </button>
+                  </div>
+                </div>
+                <p class="mt-4 text-xs text-slate-500">Reports respect task visibility and any filters in play.</p>
               </div>
             </div>
           </section>
 
           <section data-tab-panel="focus" class="tab-panel hidden">
             <div class="grid gap-8 xl:grid-cols-[2fr,1fr]">
-              <div class="space-y-8 rounded-3xl border border-white/5 bg-slate-900/70 p-8">
+              <div class="space-y-8 rounded-3xl border border-white/5 bg-slate-900/70 p-6 sm:p-8">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 class="text-2xl font-semibold text-white">Focus Mode</h3>
@@ -457,7 +819,7 @@
                   </span>
                 </div>
 
-                <div class="rounded-2xl border border-white/5 bg-slate-950/60 p-8 text-center">
+                <div class="rounded-2xl border border-white/5 bg-slate-950/60 p-6 text-center sm:p-8">
                   <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Current Session</p>
                   <p id="focusTimerDisplay" class="mt-4 text-6xl font-semibold tracking-tight text-white tabular-nums">25:00</p>
                   <p id="focusTimerSubtitle" class="mt-2 text-sm text-slate-400">Default Pomodoro — 25 minutes</p>
@@ -465,6 +827,7 @@
                     <button
                       id="focusStartButton"
                       type="button"
+                      aria-label="Start focus session"
                       class="inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
                     >
                       Start
@@ -472,6 +835,7 @@
                     <button
                       id="focusPauseButton"
                       type="button"
+                      aria-label="Pause focus session"
                       class="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
                     >
                       Pause
@@ -479,6 +843,7 @@
                     <button
                       id="focusResetButton"
                       type="button"
+                      aria-label="Reset focus session"
                       class="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
                     >
                       Reset
@@ -496,24 +861,37 @@
                       max="90"
                       step="5"
                       value="25"
+                      aria-label="Session length in minutes"
                       class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
                     />
                     <span class="text-xs text-slate-500">Default Pomodoro cadence. Adjust before you start.</span>
                   </label>
                   <label class="grid gap-2">
                     <span class="text-sm font-medium text-slate-200">Anchor Task</span>
-                    <select
-                      id="focusTaskSelect"
-                      class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
-                    >
-                      <option value="">Select a task</option>
-                    </select>
+<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+  <select
+    id="focusTaskSelect"
+    aria-label="Anchor task selection"
+    class="grow rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+  >
+    <option value="">Select a task</option>
+  </select>
+  <button
+    id="focusTaskToolsButton"
+    type="button"
+    class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+  >
+    Task Tools
+  </button>
+</div>
+
                     <span class="text-xs text-slate-500">Link your focus block to a task for logging.</span>
                   </label>
                   <label class="grid gap-2 md:col-span-2">
                     <span class="text-sm font-medium text-slate-200">How are you arriving to this session?</span>
                     <select
                       id="focusMoodSelect"
+                      aria-label="Mood selection"
                       class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
                     >
                       <option value="focused">Focused</option>
@@ -530,7 +908,7 @@
                 <div>
                   <div class="flex items-center justify-between gap-2">
                     <h4 class="text-sm font-semibold text-white">Recent Sessions</h4>
-                    <button id="focusClearHistoryButton" type="button" class="text-xs text-slate-500 transition hover:text-slate-300">
+                    <button id="focusClearHistoryButton" type="button" aria-label="Clear focus session history" class="text-xs text-slate-500 transition hover:text-slate-300">
                       Clear
                     </button>
                   </div>
@@ -544,7 +922,7 @@
                 </div>
               </div>
 
-              <aside class="space-y-6 rounded-3xl border border-white/5 bg-slate-900/50 p-8">
+              <aside class="space-y-6 rounded-3xl border border-white/5 bg-slate-900/50 p-6 sm:p-8">
                 <div>
                   <h4 class="text-lg font-semibold text-white">Flow Tips</h4>
                   <p class="mt-2 text-sm text-slate-400">Prime your environment, celebrate each win, and recharge between cycles.</p>
@@ -568,23 +946,212 @@
           </section>
 
           <section data-tab-panel="admin" class="tab-panel hidden">
-            <div class="rounded-3xl bg-slate-900/70 border border-white/5 p-8">
-              <h3 class="text-2xl font-semibold text-white">Admin Control Center</h3>
-              <p class="mt-4 text-sm text-slate-400">
-                User provisioning, hierarchy management, and bulk operations will surface here in Phase 5 once backend services solidify.
-              </p>
-              <div class="mt-8 grid gap-6 md:grid-cols-2">
-                <div class="rounded-2xl border border-dashed border-white/10 p-6">
-                  <p class="font-medium text-slate-300">Team Directory</p>
-                  <p class="mt-3 text-sm text-slate-500">View and manage role-based access across the org.</p>
-                </div>
-                <div class="rounded-2xl border border-dashed border-white/10 p-6">
-                  <p class="font-medium text-slate-300">Bulk Ops</p>
-                  <p class="mt-3 text-sm text-slate-500">Upload CSVs/XLSX to seed large workstreams in a flash.</p>
+<div class="rounded-3xl border border-white/5 bg-slate-900/70 p-8">
+  <div class="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+    <div class="space-y-2">
+      <p class="text-xs uppercase tracking-[0.35em] text-slate-500">Administration</p>
+      <h3 class="text-2xl font-semibold text-white">Team Directory</h3>
+      <p class="text-sm text-slate-400">
+        Manage user access, assign roles, and keep accounts audit-ready.
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3" id="adminActionBar">
+      <button
+        id="adminRefreshButton"
+        type="button"
+        class="inline-flex items-center justify-center rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+      >
+        Refresh
+      </button>
+      <button
+        id="adminAddUserButton"
+        type="button"
+        class="inline-flex items-center justify-center rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+      >
+        Add user
+      </button>
+    </div>
+  </div>
+
+  <div
+    id="adminPermissionNotice"
+    class="mt-8 hidden rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-6 text-sm text-slate-400"
+  >
+    <p class="font-medium text-slate-200">Restricted access</p>
+    <p class="mt-1 text-slate-500">
+      You do not have permission to view the team directory. Contact an administrator for assistance.
+    </p>
+  </div>
+
+  <!-- Team Directory Table -->
+  <div id="adminUsersTableWrapper" class="mt-8 overflow-hidden rounded-2xl border border-white/5 bg-slate-950/40">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-white/5 text-sm">
+        <thead class="bg-white/5 text-left text-xs uppercase tracking-[0.25em] text-slate-400">
+          <tr>
+            <th scope="col" class="px-6 py-3 font-medium">Email</th>
+            <th scope="col" class="px-6 py-3 font-medium">Role</th>
+            <th scope="col" class="px-6 py-3 font-medium">Status</th>
+            <th scope="col" class="px-6 py-3 text-right font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="adminUsersTableBody" class="divide-y divide-white/5"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Bulk Upload Card -->
+  <div id="adminBulkCard" class="mt-8 rounded-2xl border border-white/10 bg-slate-950/40 p-6">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p class="font-medium text-slate-300">Bulk Ops</p>
+        <p class="mt-1 text-sm text-slate-500">
+          Upload CSV or XLSX files with Task, Duration, Category, Priority, Assignee, and Date columns.
+        </p>
+      </div>
+      <button
+        id="bulkUploadTrigger"
+        type="button"
+        class="inline-flex items-center justify-center rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        Launch Bulk Upload
+      </button>
+    </div>
+    <ul class="mt-4 space-y-2 text-xs text-slate-400">
+      <li class="flex items-start gap-2">
+        <span class="mt-0.5 text-aura-primary">•</span>
+        <span>
+          Required columns:
+          <span class="font-medium text-slate-200">Task, Duration, Category, Priority, Assignee, Date</span>.
+        </span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="mt-0.5 text-aura-primary">•</span>
+        <span>Optional: Labels, Notes, Resources, Status.</span>
+      </li>
+    </ul>
+    <p id="bulkUploadRestrictionNotice" class="mt-4 text-xs text-slate-500">
+      Bulk upload is available for Admin, Sub-Admin, or Manager roles.
+    </p>
+  </div>
+</div>
+
                 </div>
               </div>
             </div>
           </section>
+        </div>
+        <div
+          id="adminUserModal"
+          class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-8"
+          role="dialog"
+          aria-modal="true"
+          aria-hidden="true"
+        >
+          <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" data-action="close-admin-modal"></div>
+          <div class="relative w-full max-w-xl rounded-3xl border border-white/10 bg-slate-900/90 p-8 shadow-2xl">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h3 id="adminUserModalTitle" class="text-xl font-semibold text-white">Add user</h3>
+                <p id="adminUserModalSubtitle" class="mt-1 text-sm text-slate-400">
+                  Provision a new teammate with the correct role.
+                </p>
+              </div>
+              <button
+                type="button"
+                class="rounded-full border border-white/10 p-2 text-slate-400 transition hover:text-white"
+                data-action="close-admin-modal"
+                aria-label="Close modal"
+              >
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <form id="adminUserForm" class="mt-6 space-y-5">
+              <div>
+                <label for="adminUserEmail" class="text-sm font-medium text-slate-200">Email</label>
+                <input
+                  id="adminUserEmail"
+                  name="email"
+                  type="email"
+                  required
+                  autocomplete="email"
+                  placeholder="teammate@company.com"
+                  class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                />
+              </div>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label for="adminUserRole" class="text-sm font-medium text-slate-200">Role</label>
+                  <select
+                    id="adminUserRole"
+                    name="role"
+                    class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                  >
+                    <option value="Admin">Admin</option>
+                    <option value="Sub-Admin">Sub-Admin</option>
+                    <option value="Manager">Manager</option>
+                    <option value="Intern" selected>Intern</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="adminUserManager" class="text-sm font-medium text-slate-200"
+                    >Manager Email <span class="text-xs text-slate-500">(optional)</span></label
+                  >
+                  <input
+                    id="adminUserManager"
+                    name="managerEmail"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="manager@company.com"
+                    class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label for="adminUserPassword" class="text-sm font-medium text-slate-200">Password</label>
+                <input
+                  id="adminUserPassword"
+                  name="password"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="Minimum 8 characters"
+                  class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                  required
+                />
+                <p id="adminUserPasswordHint" class="mt-2 text-xs text-slate-500">Minimum 8 characters.</p>
+              </div>
+              <div class="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                <input
+                  id="adminUserIsActive"
+                  name="isActive"
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-white/20 bg-slate-900 text-aura-primary focus:ring-aura-primary"
+                  checked
+                />
+                <div>
+                  <label for="adminUserIsActive" class="text-sm font-medium text-slate-200">Active account</label>
+                  <p class="text-xs text-slate-500">Disabled accounts cannot sign in.</p>
+                </div>
+              </div>
+              <div class="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+                  data-action="close-admin-modal"
+                >
+                  Cancel
+                </button>
+                <button
+                  id="adminUserSubmitButton"
+                  type="submit"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                >
+                  <span data-role="spinner" class="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin hidden"></span>
+                  <span data-role="label">Save user</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </section>
       <div
@@ -700,10 +1267,104 @@
                 </div>
               </form>
             </section>
+
           </div>
         </div>
       </div>
     </main>
+    <footer class="relative z-10 border-t border-white/10 bg-slate-950/70">
+      <div class="mx-auto max-w-7xl px-6 py-6 text-center text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">
+        Aura Flow V2 — Rare Aura Media Group
+      </div>
+    </footer>
+
+    <div
+      id="bulkUploadModal"
+      class="fixed inset-0 z-50 hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+    >
+      <div id="bulkUploadModalOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
+      <div class="relative z-10 flex min-h-full items-center justify-center px-4 py-10">
+        <div class="w-full max-w-4xl rounded-3xl border border-white/10 bg-slate-900/90 p-8 shadow-2xl">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h4 class="text-xl font-semibold text-white">Bulk Upload Tasks</h4>
+              <p class="mt-2 text-sm text-slate-400">
+                Preview parsed rows before importing. Required headers: Task, Duration, Category, Priority, Assignee, Date.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+              data-role="bulk-upload-close"
+              aria-label="Close bulk upload modal"
+            >
+              ✕
+            </button>
+          </div>
+          <div class="mt-6 space-y-6">
+            <div>
+              <label class="block text-sm font-medium text-slate-300">
+                Upload file
+                <input
+                  id="bulkUploadFileInput"
+                  type="file"
+                  accept=".csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  class="mt-2 block w-full cursor-pointer rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-aura-primary file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-aura-primary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary/60"
+                />
+              </label>
+              <p id="bulkUploadFileName" class="mt-2 text-xs text-slate-500">No file selected.</p>
+            </div>
+            <div>
+              <div
+                id="bulkUploadPreviewEmpty"
+                class="rounded-2xl border border-dashed border-white/10 bg-slate-950/50 p-6 text-sm text-slate-400"
+              >
+                Select a CSV or XLSX file to preview tasks.
+              </div>
+              <div
+                id="bulkUploadPreviewWrapper"
+                class="hidden max-h-80 overflow-auto rounded-2xl border border-white/10 bg-slate-950/30"
+              >
+                <table id="bulkUploadPreviewTable" class="min-w-full divide-y divide-white/10 text-sm text-slate-200">
+                  <thead id="bulkUploadPreviewHead" class="bg-white/5 text-xs uppercase tracking-wide text-slate-400"></thead>
+                  <tbody id="bulkUploadPreviewBody" class="divide-y divide-white/10"></tbody>
+                </table>
+              </div>
+              <p id="bulkUploadPreviewSummary" class="mt-3 text-xs text-slate-500"></p>
+              <div
+                id="bulkUploadErrorsContainer"
+                class="mt-4 hidden rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-rose-100"
+              >
+                <p class="text-sm font-medium">Rows skipped</p>
+                <ul id="bulkUploadErrorsList" class="mt-3 space-y-2 text-xs leading-relaxed"></ul>
+              </div>
+            </div>
+          </div>
+          <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              id="bulkUploadCancelButton"
+              type="button"
+              data-role="bulk-upload-close"
+              class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+            >
+              Cancel
+            </button>
+            <button
+              id="bulkUploadConfirmButton"
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-500/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled
+            >
+              <span data-role="spinner" class="hidden h-5 w-5 rounded-full border-2 border-white/40 border-t-white animate-spin"></span>
+              <span data-role="label">Import Tasks</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script>
       const server = new Proxy(
@@ -753,6 +1414,8 @@
 
       (function () {
         const STORAGE_KEY = 'aura-flow-v2.session';
+        const TUTORIAL_STORAGE_KEY = 'aura-flow-v2.tutorialCompleted';
+
         const KANBAN_STATUSES = [
           { id: 'Planned', label: 'Planned' },
           { id: 'In-Progress', label: 'In-Progress' },
@@ -766,6 +1429,49 @@
           'ring-offset-2',
           'ring-offset-slate-950'
         ];
+        const tutorialSteps = [
+          {
+            id: 'login',
+            target: '.login-card',
+            title: 'Secure workspace login',
+            description:
+              'Enter your Aura Flow credentials to unlock the workspace. After signing in we will walk through each major area.',
+            autoAdvanceOnMissing: true,
+          },
+          {
+            id: 'dashboard',
+            target: '[data-tab-button="dashboard"]',
+            title: 'Dashboard pulse',
+            description: 'Review key metrics and activity snapshots from the dashboard tab.',
+            requiresAuth: true,
+            onBeforeShow: () => setActiveTab('dashboard'),
+          },
+          {
+            id: 'kanban',
+            target: '[data-tab-button="kanban"]',
+            title: 'Kanban workflow',
+            description: 'Drag tasks across swimlanes to reflect delivery progress in real time.',
+            requiresAuth: true,
+            onBeforeShow: () => setActiveTab('kanban'),
+          },
+          {
+            id: 'focus',
+            target: '[data-tab-button="focus"]',
+            title: 'Focus mode',
+            description: 'Launch Pomodoro-style sessions, capture mood, and auto-log progress.',
+            requiresAuth: true,
+            onBeforeShow: () => setActiveTab('focus'),
+          },
+          {
+            id: 'admin',
+            target: '[data-tab-button="admin"]',
+            title: 'Admin controls',
+            description: 'Manage workspace roles, provisioning, and future bulk operations.',
+            requiresAuth: true,
+            onBeforeShow: () => setActiveTab('admin'),
+          },
+        ];
+n
         const state = {
           token: null,
           user: null,
@@ -773,12 +1479,47 @@
           data: {
             tasks: [],
             moods: [],
+            templates: [],
+            quotes: [],
           },
           charts: {
             velocity: null,
             category: null,
             mood: null,
           },
+          admin: {
+            users: [],
+            isLoading: false,
+            loaded: false,
+            modalMode: 'create',
+            editingUserEmail: '',
+            formSubmitting: false,
+          },
+          bulkUpload: {
+            fileName: '',
+            headers: [],
+            previewRows: [],
+            records: [],
+            errors: [],
+            isParsing: false,
+          },
+          isWorkspaceLoading: false,
+          selectedTaskIds: new Set(),
+          quotes: {
+            items: [],
+            current: null,
+            isLoading: false,
+          },
+
+        };
+        const tutorialState = {
+          steps: tutorialSteps,
+          activeSteps: tutorialSteps.slice(),
+          isActive: false,
+          currentIndex: 0,
+          describedTarget: null,
+          previousDescription: null,
+          hasAutoLaunched: false,
         };
         const focusState = {
           durationMinutes: 25,
@@ -788,6 +1529,10 @@
           selectedTaskId: '',
           selectedMood: 'neutral',
           history: [],
+        };
+        const taskModalState = {
+          isOpen: false,
+          taskId: '',
         };
         const analyticsState = {
           isLoading: false,
@@ -801,6 +1546,7 @@
           comments: [],
           commentsLoading: false,
           commentsError: '',
+
         };
         const elements = {
           analytics: {},
@@ -812,6 +1558,7 @@
           kanbanLists: {},
           kanbanCounts: {},
           taskDetail: {},
+
         };
 
         const tabs = ['dashboard', 'kanban', 'analytics', 'focus', 'admin'];
@@ -849,6 +1596,8 @@
           burntout: 1,
         };
         let isInitialized = false;
+        let helpMenuOpen = false;
+
 
         document.addEventListener('DOMContentLoaded', init);
 
@@ -856,12 +1605,19 @@
           if (isInitialized) return;
           isInitialized = true;
           cacheElements();
+          updateDashboardQuote();
+          resetBulkUploadState();
           enhanceTabButtons();
           setupKanbanBoard();
           bindEvents();
+          bindKanbanSelectionEvents();
+          bindDashboardQuoteEvents();
+          bindTaskDuplicateEvent();
           initializeFocusMode();
           updateShell();
-          restoreSession();
+          restoreSession().finally(() => {
+            maybeStartTutorial();
+          });
         }
 
         function cacheElements() {
@@ -942,6 +1698,7 @@
           elements.taskDetail.commentForm = document.getElementById('taskCommentForm');
           elements.taskDetail.commentInput = document.getElementById('taskCommentInput');
           elements.taskDetail.commentSubmit = document.getElementById('taskCommentSubmit');
+
         }
 
         function enhanceTabButtons() {
@@ -1001,8 +1758,20 @@
               setActiveTab(targetTab);
             });
           });
+          if (elements.tabDropdown) {
+            elements.tabDropdown.addEventListener('change', (event) => {
+              const targetTab = event.target && event.target.value ? String(event.target.value) : '';
+              setActiveTab(targetTab);
+            });
+          }
           if (elements.analytics.refreshButton) {
             elements.analytics.refreshButton.addEventListener('click', () => refreshWorkspaceData({ silent: false }));
+          }
+          if (elements.analytics.exportCsvButton) {
+            elements.analytics.exportCsvButton.addEventListener('click', handleExportCsvClick);
+          }
+          if (elements.analytics.exportPdfButton) {
+            elements.analytics.exportPdfButton.addEventListener('click', handleExportPdfClick);
           }
           if (elements.focus.startButton) {
             elements.focus.startButton.addEventListener('click', startFocusTimer);
@@ -1038,6 +1807,981 @@
             elements.taskDetail.dependencySelect.addEventListener('change', handleTaskDependencyChange);
           }
           document.addEventListener('keydown', handleTaskDetailKeydown);
+
+        }
+
+        function toggleHelpMenu() {
+          if (helpMenuOpen) {
+            closeHelpMenu();
+          } else {
+            openHelpMenu();
+          }
+        }
+
+        function openHelpMenu() {
+          if (!elements.help.button || !elements.help.menu) return;
+          elements.help.menu.classList.remove('hidden');
+          elements.help.button.setAttribute('aria-expanded', 'true');
+          helpMenuOpen = true;
+        }
+
+        function closeHelpMenu() {
+          if (!elements.help.button || !elements.help.menu) return;
+          elements.help.menu.classList.add('hidden');
+          elements.help.button.setAttribute('aria-expanded', 'false');
+          helpMenuOpen = false;
+        }
+
+        function handleDocumentClickForHelpMenu(event) {
+          if (!helpMenuOpen) {
+            return;
+          }
+          if (!elements.help.menu || !elements.help.button) {
+            return;
+          }
+          const target = event.target;
+          if (elements.help.menu.contains(target) || elements.help.button.contains(target)) {
+            return;
+          }
+          closeHelpMenu();
+        }
+
+        function handleGlobalKeydown(event) {
+          if (event.key === 'Escape') {
+            if (helpMenuOpen) {
+              closeHelpMenu();
+              event.preventDefault();
+              return;
+            }
+            if (tutorialState.isActive) {
+              event.preventDefault();
+              handleTutorialSkip();
+              return;
+            }
+          }
+        }
+
+        function maybeStartTutorial() {
+          if (tutorialState.hasAutoLaunched) {
+            return;
+          }
+          tutorialState.hasAutoLaunched = true;
+          if (hasCompletedTutorial()) {
+            return;
+          }
+          startTutorial({ includeLogin: !state.token });
+        }
+
+        function startTutorial(options = {}) {
+          const { force = false, includeLogin = !state.token } = options;
+          if (!force && hasCompletedTutorial()) {
+            return;
+          }
+          if (!elements.tutorial.overlay || !elements.tutorial.tooltip) {
+            return;
+          }
+          closeHelpMenu();
+          const stepsToUse = includeLogin
+            ? tutorialState.steps.slice()
+            : tutorialState.steps.filter((step) => step.id !== 'login');
+          if (!stepsToUse.length) {
+            markTutorialCompleted();
+            return;
+          }
+          tutorialState.activeSteps = stepsToUse;
+          tutorialState.isActive = true;
+          tutorialState.currentIndex = 0;
+          detachTutorialDescription();
+          const overlay = elements.tutorial.overlay;
+          overlay.classList.remove('hidden');
+          overlay.setAttribute('aria-hidden', 'false');
+          if (elements.tutorial.tooltip) {
+            elements.tutorial.tooltip.style.opacity = '0';
+            elements.tutorial.tooltip.style.pointerEvents = 'none';
+          }
+          showTutorialStep(0);
+        }
+
+        function hasCompletedTutorial() {
+          try {
+            return localStorage.getItem(TUTORIAL_STORAGE_KEY) === 'true';
+          } catch (err) {
+            console.warn('Unable to read tutorial preference', err);
+            return false;
+          }
+        }
+
+        function markTutorialCompleted() {
+          try {
+            localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
+          } catch (err) {
+            console.warn('Unable to persist tutorial preference', err);
+          }
+        }
+
+        function showTutorialStep(index) {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          const steps = tutorialState.activeSteps;
+          if (!Array.isArray(steps) || !steps.length) {
+            completeTutorial();
+            return;
+          }
+          const boundedIndex = Math.max(0, Math.min(index, steps.length - 1));
+          const step = steps[boundedIndex];
+          if (!step) {
+            completeTutorial();
+            return;
+          }
+          tutorialState.currentIndex = boundedIndex;
+          detachTutorialDescription();
+          if (typeof step.onBeforeShow === 'function') {
+            step.onBeforeShow();
+          }
+          const overlay = elements.tutorial.overlay;
+          if (overlay) {
+            overlay.classList.remove('hidden');
+            overlay.setAttribute('aria-hidden', 'false');
+          }
+          if (elements.tutorial.tooltip) {
+            elements.tutorial.tooltip.style.opacity = '0';
+            elements.tutorial.tooltip.style.pointerEvents = 'none';
+          }
+          updateTutorialContent(step, boundedIndex, steps.length);
+          if (elements.tutorial.tooltip) {
+            elements.tutorial.tooltip.focus();
+          }
+          requestAnimationFrame(() => {
+            if (!tutorialState.isActive) {
+              return;
+            }
+            const activeSteps = tutorialState.activeSteps;
+            const activeStep = activeSteps ? activeSteps[tutorialState.currentIndex] : null;
+            if (activeStep !== step) {
+              positionCurrentTutorialStep();
+              return;
+            }
+            const targetElement = document.querySelector(step.target);
+            if (targetElement && typeof targetElement.scrollIntoView === 'function') {
+              targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            }
+            positionCurrentTutorialStep();
+          });
+        }
+
+        function updateTutorialContent(step, index, total) {
+          if (elements.tutorial.stepLabel) {
+            elements.tutorial.stepLabel.textContent = `Step ${index + 1} of ${total}`;
+          }
+          if (elements.tutorial.title) {
+            elements.tutorial.title.textContent = step.title;
+          }
+          if (elements.tutorial.description) {
+            elements.tutorial.description.textContent = step.description;
+          }
+          if (elements.tutorial.progress) {
+            const percent = Math.round(((index + 1) / total) * 100);
+            elements.tutorial.progress.style.width = `${percent}%`;
+            if (elements.tutorial.progressTrack) {
+              elements.tutorial.progressTrack.setAttribute('aria-valuenow', String(percent));
+            }
+          }
+          if (elements.tutorial.prevButton) {
+            const disabled = index === 0;
+            elements.tutorial.prevButton.disabled = disabled;
+            elements.tutorial.prevButton.classList.toggle('opacity-40', disabled);
+            elements.tutorial.prevButton.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+          }
+          if (elements.tutorial.nextButton) {
+            elements.tutorial.nextButton.textContent = index === total - 1 ? 'Finish' : 'Next';
+          }
+        }
+
+        function goToTutorialStep(index) {
+          const steps = tutorialState.activeSteps;
+          if (!Array.isArray(steps) || !steps.length) {
+            completeTutorial();
+            return;
+          }
+          if (index < 0) {
+            showTutorialStep(0);
+            return;
+          }
+          if (index >= steps.length) {
+            completeTutorial();
+            return;
+          }
+          showTutorialStep(index);
+        }
+
+        function handleTutorialNext() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          const steps = tutorialState.activeSteps;
+          const currentStep = steps ? steps[tutorialState.currentIndex] : null;
+          if (currentStep && currentStep.id === 'login' && !state.token) {
+            showToast('Sign in to continue the workspace tour.', 'info');
+            return;
+          }
+          goToTutorialStep(tutorialState.currentIndex + 1);
+        }
+
+        function handleTutorialPrev() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          if (tutorialState.currentIndex === 0) {
+            return;
+          }
+          goToTutorialStep(tutorialState.currentIndex - 1);
+        }
+
+        function handleTutorialSkip() {
+          completeTutorial();
+        }
+
+        function positionCurrentTutorialStep() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          const steps = tutorialState.activeSteps;
+          const step = steps ? steps[tutorialState.currentIndex] : null;
+          if (!step) {
+            completeTutorial();
+            return;
+          }
+          const target = document.querySelector(step.target);
+          if (!target || !isElementVisible(target)) {
+            detachTutorialDescription();
+            if (step.requiresAuth && !state.token) {
+              completeTutorial();
+              return;
+            }
+            if (step.autoAdvanceOnMissing) {
+              goToTutorialStep(tutorialState.currentIndex + 1);
+              return;
+            }
+            hideTutorialHighlight();
+            return;
+          }
+          requestAnimationFrame(() => {
+            if (!tutorialState.isActive) {
+              return;
+            }
+            const activeSteps = tutorialState.activeSteps;
+            const activeStep = activeSteps ? activeSteps[tutorialState.currentIndex] : null;
+            if (!activeStep) {
+              return;
+            }
+            const activeTarget = document.querySelector(activeStep.target);
+            if (!activeTarget || !isElementVisible(activeTarget)) {
+              if (activeStep.autoAdvanceOnMissing) {
+                goToTutorialStep(tutorialState.currentIndex + 1);
+              } else if (activeStep.requiresAuth && !state.token) {
+                completeTutorial();
+              }
+              return;
+            }
+            attachTutorialDescription(activeTarget);
+            drawTutorialHighlight(activeTarget);
+          });
+        }
+
+        function drawTutorialHighlight(target) {
+          if (!elements.tutorial.highlight || !elements.tutorial.tooltip) {
+            return;
+          }
+          const rect = target.getBoundingClientRect();
+          const padding = 12;
+          const highlight = elements.tutorial.highlight;
+          const tooltip = elements.tutorial.tooltip;
+          const left = Math.max(rect.left - padding, 0);
+          const top = Math.max(rect.top - padding, 0);
+          const width = rect.width + padding * 2;
+          const height = rect.height + padding * 2;
+          highlight.style.left = `${left}px`;
+          highlight.style.top = `${top}px`;
+          highlight.style.width = `${width}px`;
+          highlight.style.height = `${height}px`;
+          highlight.style.opacity = '1';
+
+          const tooltipWidth = tooltip.offsetWidth || 0;
+          const tooltipHeight = tooltip.offsetHeight || 0;
+          let tooltipTop = rect.bottom + 16;
+          if (tooltipTop + tooltipHeight > window.innerHeight - 24) {
+            tooltipTop = rect.top - tooltipHeight - 16;
+          }
+          tooltipTop = Math.max(24, Math.min(tooltipTop, window.innerHeight - tooltipHeight - 24));
+          let tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+          tooltipLeft = Math.max(24, Math.min(tooltipLeft, window.innerWidth - tooltipWidth - 24));
+          tooltip.style.top = `${tooltipTop}px`;
+          tooltip.style.left = `${tooltipLeft}px`;
+          tooltip.style.opacity = '1';
+          tooltip.style.pointerEvents = 'auto';
+        }
+
+        function attachTutorialDescription(target) {
+          if (!elements.tutorial.description) {
+            return;
+          }
+          const descriptionId = elements.tutorial.description.id;
+          if (!descriptionId) {
+            return;
+          }
+          detachTutorialDescription();
+          tutorialState.describedTarget = target;
+          tutorialState.previousDescription = target.getAttribute('aria-describedby');
+          target.setAttribute('aria-describedby', descriptionId);
+        }
+
+        function detachTutorialDescription() {
+          if (!tutorialState.describedTarget) {
+            return;
+          }
+          if (tutorialState.previousDescription) {
+            tutorialState.describedTarget.setAttribute('aria-describedby', tutorialState.previousDescription);
+          } else {
+            tutorialState.describedTarget.removeAttribute('aria-describedby');
+          }
+          tutorialState.describedTarget = null;
+          tutorialState.previousDescription = null;
+        }
+
+        function hideTutorialHighlight() {
+          if (elements.tutorial.highlight) {
+            elements.tutorial.highlight.style.opacity = '0';
+          }
+          if (elements.tutorial.tooltip) {
+            elements.tutorial.tooltip.style.opacity = '0';
+            elements.tutorial.tooltip.style.pointerEvents = 'none';
+          }
+        }
+
+        function hideTutorialOverlay() {
+          if (elements.tutorial.overlay) {
+            elements.tutorial.overlay.classList.add('hidden');
+            elements.tutorial.overlay.setAttribute('aria-hidden', 'true');
+          }
+          hideTutorialHighlight();
+        }
+
+        function completeTutorial() {
+          markTutorialCompleted();
+          tutorialState.isActive = false;
+          tutorialState.currentIndex = 0;
+          tutorialState.activeSteps = tutorialState.steps.slice();
+          hideTutorialOverlay();
+          detachTutorialDescription();
+        }
+
+        function handleTutorialRelayout() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          positionCurrentTutorialStep();
+        }
+
+        function handleTutorialPostLogin() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          const steps = tutorialState.activeSteps;
+          const step = steps ? steps[tutorialState.currentIndex] : null;
+          if (!step) {
+            return;
+          }
+          if (step.id === 'login') {
+            goToTutorialStep(tutorialState.currentIndex + 1);
+            return;
+          }
+          positionCurrentTutorialStep();
+        }
+
+        function isElementVisible(element) {
+          if (!element) {
+            return false;
+          }
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        }
+
+        function bindKanbanSelectionEvents() {
+          if (elements.kanban.bulkApply) {
+            elements.kanban.bulkApply.addEventListener('click', handleKanbanBulkApply);
+          }
+          if (elements.kanban.bulkClear) {
+            elements.kanban.bulkClear.addEventListener('click', handleKanbanBulkClear);
+          }
+          if (elements.kanban.bulkSelect) {
+            elements.kanban.bulkSelect.addEventListener('change', updateBulkSelectionUi);
+          }
+          syncKanbanSelectionWithDom();
+          updateBulkSelectionUi();
+        }
+
+        function bindDashboardQuoteEvents() {
+          if (elements.dashboard.quoteForm) {
+            elements.dashboard.quoteForm.addEventListener('submit', handleQuoteSubmit);
+          }
+        }
+
+        function bindTaskDuplicateEvent() {
+          if (elements.task.duplicateButton) {
+            elements.task.duplicateButton.addEventListener('click', handleTaskDuplicate);
+          }
+        }
+
+// =========================
+// Event Bindings
+// =========================
+
+// Admin Panel
+if (elements.admin.addButton) {
+  elements.admin.addButton.addEventListener('click', () => openAdminUserModal('create'));
+}
+if (elements.admin.refreshButton) {
+  elements.admin.refreshButton.addEventListener('click', () => refreshAdminUsers({ force: true }));
+}
+if (elements.admin.tableBody) {
+  elements.admin.tableBody.addEventListener('click', handleAdminTableClick);
+}
+if (elements.admin.form) {
+  elements.admin.form.addEventListener('submit', handleAdminUserFormSubmit);
+}
+if (elements.admin.modalCloseButtons) {
+  elements.admin.modalCloseButtons.forEach((btn) => {
+    btn.addEventListener('click', (event) => {
+      event.preventDefault();
+      closeAdminUserModal();
+    });
+  });
+}
+
+// Dashboard quote interactions
+if (elements.dashboard.quoteForm) {
+  elements.dashboard.quoteForm.addEventListener('submit', handleQuoteSubmit);
+}
+if (elements.dashboard.quoteRefreshButton) {
+  elements.dashboard.quoteRefreshButton.addEventListener('click', async () => {
+    if (!state.token) {
+      showToast('Sign in to refresh inspiration.', 'error');
+      return;
+    }
+    setButtonLoading(elements.dashboard.quoteRefreshButton, true);
+    try {
+      await refreshDashboardQuote({ silent: true, force: true });
+    } finally {
+      setButtonLoading(elements.dashboard.quoteRefreshButton, false);
+    }
+  });
+}
+
+// Task modal / templates / reminders
+if (elements.focus.taskToolsButton) {
+  elements.focus.taskToolsButton.addEventListener('click', handleTaskToolsButtonClick);
+}
+if (elements.task.closeButton) {
+  elements.task.closeButton.addEventListener('click', closeTaskModal);
+}
+if (elements.task.modal) {
+  elements.task.modal.addEventListener('click', handleTaskModalBackdropClick);
+}
+if (elements.task.templateSelect) {
+  elements.task.templateSelect.addEventListener('change', handleTemplateSelectChange);
+}
+if (elements.task.applyTemplateButton) {
+  elements.task.applyTemplateButton.addEventListener('click', handleTemplateApply);
+}
+if (elements.task.saveTemplateButton) {
+  elements.task.saveTemplateButton.addEventListener('click', handleTemplateSave);
+}
+if (elements.task.logTimeButton) {
+  elements.task.logTimeButton.addEventListener('click', handleTaskLogTime);
+}
+if (elements.task.reminderButton) {
+  elements.task.reminderButton.addEventListener('click', handleTaskScheduleReminder);
+}
+
+// Bulk upload modal
+if (elements.bulk.trigger) {
+  elements.bulk.trigger.addEventListener('click', openBulkUploadModal);
+}
+if (elements.bulk.fileInput) {
+  elements.bulk.fileInput.addEventListener('change', handleBulkFileChange);
+}
+if (elements.bulk.closeButtons && elements.bulk.closeButtons.length) {
+  elements.bulk.closeButtons.forEach((btn) => {
+    btn.addEventListener('click', closeBulkUploadModal);
+  });
+}
+if (elements.bulk.overlay) {
+  elements.bulk.overlay.addEventListener('click', closeBulkUploadModal);
+}
+if (elements.bulk.confirmButton) {
+  elements.bulk.confirmButton.addEventListener('click', handleBulkUploadConfirm);
+}
+
+// =========================
+// Global Keydown
+// =========================
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    if (isAdminModalOpen()) {
+      event.preventDefault();
+      closeAdminUserModal();
+    } else if (taskModalState.isOpen) {
+      closeTaskModal();
+    }
+  }
+});
+
+// =========================
+// Admin Panel Functions
+// =========================
+function canViewUsers() { /* keep Codex logic */ }
+function canManageUsers() { /* keep Codex logic */ }
+function normalizeEmailLocal(email) { /* keep Codex logic */ }
+function isCurrentUser(email) { /* keep Codex logic */ }
+function isAdminModalOpen() { /* keep Codex logic */ }
+function resetAdminState() { /* keep Codex logic */ }
+function resetAdminFormState() { /* keep Codex logic */ }
+function renderAdminPanel() { /* keep Codex logic */ }
+function renderAdminUsers() { /* keep Codex logic */ }
+function createAdminActionButton(label, action, email, options = {}) { /* keep Codex logic */ }
+async function refreshAdminUsers(options = {}) { /* keep Codex logic */ }
+function openAdminUserModal(mode, user) { /* keep Codex logic */ }
+function closeAdminUserModal(skipReset) { /* keep Codex logic */ }
+function setAdminFormSubmitting(isSubmitting) { /* keep Codex logic */ }
+async function handleAdminUserFormSubmit(event) { /* keep Codex logic */ }
+function handleAdminTableClick(event) { /* keep Codex logic */ }
+async function handleAdminDisableUser(email, trigger) { /* keep Codex logic */ }
+async function handleAdminResetPassword(email, trigger) { /* keep Codex logic */ }
+function setAdminActionLoading(button, isLoading) { /* keep Codex logic */ }
+
+// =========================
+// Task Modal Handlers
+// =========================
+async function handleTaskToolsButtonClick() { /* keep Main logic */ }
+function handleTemplateSelectChange() { /* keep Main logic */ }
+async function handleTemplateApply() { /* keep Main logic */ }
+async function handleTemplateSave() { /* keep Main logic */ }
+async function handleTaskLogTime() { /* keep Main logic */ }
+async function handleTaskScheduleReminder() { /* keep Main logic */ }
+function handleTaskModalBackdropClick(event) { /* keep Main logic */ }
+
+// =========================
+// Dashboard & Kanban
+// =========================
+function setWorkspaceLoading(isLoading) { /* keep Main logic */ }
+function updateDashboardMetrics() { /* keep Main logic */ }
+function renderKanbanBoard() { /* keep Main logic */ }
+function createKanbanCard(task, statusId) { /* keep Main logic */ }
+function createKanbanPlaceholderCard() { /* keep Main logic */ }
+function handleKanbanDragStart(event, taskId, statusId) { /* keep Main logic */ }
+function handleKanbanDragEnd(event) { /* keep Main logic */ }
+function handleKanbanDragEnter(event, statusId) { /* keep Main logic */ }
+function handleKanbanDragOver(event, statusId) { /* keep Main logic */ }
+function handleKanbanDragLeave(event, statusId) { /* keep Main logic */ }
+async function handleKanbanDrop(event, statusId) { /* keep Main logic */ }
+async function moveTaskToStatus(taskId, nextStatus) { /* keep Main logic */ }
+function highlightKanbanColumn(statusId, shouldHighlight) { /* keep Main logic */ }
+function clearKanbanHighlights() { /* keep Main logic */ }
+function resetKanbanState() { /* keep Main logic */ }
+
+        const originalRenderKanbanBoard = typeof renderKanbanBoard === 'function' ? renderKanbanBoard : null;
+        const originalCreateKanbanCard = typeof createKanbanCard === 'function' ? createKanbanCard : null;
+        const originalResetKanbanState = typeof resetKanbanState === 'function' ? resetKanbanState : null;
+
+        renderKanbanBoard = function (...args) {
+          const result = originalRenderKanbanBoard ? originalRenderKanbanBoard.apply(this, args) : undefined;
+          requestAnimationFrame(() => {
+            syncKanbanSelectionWithDom();
+            updateBulkSelectionUi();
+          });
+          return result;
+        };
+
+        createKanbanCard = function (task, statusId) {
+          const card = originalCreateKanbanCard
+            ? originalCreateKanbanCard.call(this, task, statusId)
+            : document.createElement('article');
+          return decorateKanbanCardSelection(card, task);
+        };
+
+        resetKanbanState = function (...args) {
+          if (originalResetKanbanState) {
+            originalResetKanbanState.apply(this, args);
+          }
+          clearTaskSelection();
+        };
+
+        function ensureSelectionSet() {
+          if (!(state.selectedTaskIds instanceof Set)) {
+            state.selectedTaskIds = new Set();
+          }
+        }
+
+        function getSelectedTaskIds() {
+          ensureSelectionSet();
+          return Array.from(state.selectedTaskIds);
+        }
+
+        function setTaskSelected(taskId, isSelected) {
+          if (!taskId) {
+            return;
+          }
+          ensureSelectionSet();
+          if (isSelected) {
+            state.selectedTaskIds.add(taskId);
+          } else {
+            state.selectedTaskIds.delete(taskId);
+          }
+          updateBulkSelectionUi();
+        }
+
+        function clearTaskSelection() {
+          ensureSelectionSet();
+          if (state.selectedTaskIds.size) {
+            state.selectedTaskIds.clear();
+          }
+          if (elements.kanban.board) {
+            elements.kanban.board
+              .querySelectorAll('input[data-role="task-select"]')
+              .forEach((checkbox) => {
+                checkbox.checked = false;
+              });
+          }
+          updateBulkSelectionUi();
+        }
+
+        function decorateKanbanCardSelection(card, task) {
+          if (!card || !task || !task.TaskID) {
+            return card;
+          }
+          const taskId = task.TaskID;
+          card.setAttribute('data-kanban-task-id', taskId);
+          let toolbar = card.querySelector('[data-role="kanban-select-toolbar"]');
+          if (!toolbar) {
+            toolbar = document.createElement('div');
+            toolbar.setAttribute('data-role', 'kanban-select-toolbar');
+            toolbar.className = 'mb-3 flex items-center justify-between gap-2 text-xs text-slate-400';
+            const labelEl = document.createElement('label');
+            labelEl.setAttribute('data-role', 'kanban-select-control');
+            labelEl.className =
+              'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-200';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'h-4 w-4 rounded border-white/30 bg-slate-900 text-aura-primary focus:ring-aura-primary';
+            checkbox.setAttribute('data-role', 'task-select');
+            checkbox.addEventListener('click', (event) => {
+              event.stopPropagation();
+            });
+            checkbox.addEventListener('change', (event) => {
+              setTaskSelected(taskId, event.target.checked);
+            });
+            const srOnly = document.createElement('span');
+            srOnly.className = 'sr-only';
+            srOnly.textContent = 'Select task';
+            const labelText = document.createElement('span');
+            labelText.className = 'text-slate-200';
+            labelText.textContent = 'Select';
+            labelEl.append(checkbox, srOnly, labelText);
+            labelEl.addEventListener('click', (event) => {
+              event.stopPropagation();
+            });
+            toolbar.appendChild(labelEl);
+            card.insertBefore(toolbar, card.firstChild);
+          }
+          const checkboxEl = card.querySelector('input[data-role="task-select"]');
+          if (checkboxEl) {
+            ensureSelectionSet();
+            checkboxEl.checked = state.selectedTaskIds.has(taskId);
+          }
+          return card;
+        }
+
+        function syncKanbanSelectionWithDom() {
+          ensureSelectionSet();
+          if (!elements.kanban.board) {
+            updateBulkSelectionUi();
+            return;
+          }
+          const cards = elements.kanban.board.querySelectorAll('[data-kanban-task-id]');
+          const visibleIds = new Set();
+          cards.forEach((cardEl) => {
+            const taskId = cardEl.getAttribute('data-kanban-task-id');
+            if (!taskId) {
+              return;
+            }
+            visibleIds.add(taskId);
+            const checkbox = cardEl.querySelector('input[data-role="task-select"]');
+            if (checkbox) {
+              checkbox.checked = state.selectedTaskIds.has(taskId);
+            }
+          });
+          const staleIds = [];
+          state.selectedTaskIds.forEach((id) => {
+            if (!visibleIds.has(id)) {
+              staleIds.push(id);
+            }
+          });
+          if (staleIds.length) {
+            staleIds.forEach((id) => state.selectedTaskIds.delete(id));
+          }
+          updateBulkSelectionUi();
+        }
+
+        function updateBulkSelectionUi() {
+          ensureSelectionSet();
+          const count = state.selectedTaskIds.size;
+          const bar = elements.kanban.bulkBar;
+          const counter = elements.kanban.bulkCount;
+          const actionSelect = elements.kanban.bulkSelect;
+          const applyButton = elements.kanban.bulkApply;
+          if (counter) {
+            counter.textContent = count ? `${count} selected` : 'No tasks selected';
+          }
+          if (bar) {
+            if (count) {
+              bar.classList.remove('hidden');
+            } else {
+              bar.classList.add('hidden');
+            }
+          }
+          if (applyButton) {
+            const hasAction = Boolean(actionSelect && actionSelect.value);
+            const disabled = !count || !hasAction;
+            applyButton.disabled = disabled;
+            applyButton.classList.toggle('opacity-60', disabled);
+          }
+        }
+
+        function handleKanbanBulkClear() {
+          if (elements.kanban.bulkSelect) {
+            elements.kanban.bulkSelect.value = '';
+          }
+          clearTaskSelection();
+        }
+
+        async function handleKanbanBulkApply() {
+          ensureSelectionSet();
+          if (!state.token) {
+            showToast('Sign in to manage tasks.', 'error');
+            return;
+          }
+          const taskIds = getSelectedTaskIds();
+          if (!taskIds.length) {
+            showToast('Select tasks before running a bulk action.', 'error');
+            return;
+          }
+          const actionSelect = elements.kanban.bulkSelect;
+          const actionValue = actionSelect ? actionSelect.value : '';
+          if (!actionValue) {
+            showToast('Choose a bulk action first.', 'error');
+            return;
+          }
+          let actionPayload = actionValue;
+          let options = {};
+          if (actionValue === 'assign') {
+            const suggestion = state.user && state.user.Email ? state.user.Email : '';
+            const input = window.prompt('Assign selected tasks to which email?', suggestion);
+            if (!input) {
+              showToast('Bulk assignment cancelled.', 'info');
+              return;
+            }
+            const assignee = input.trim();
+            if (!assignee) {
+              showToast('Bulk assignment cancelled.', 'info');
+              return;
+            }
+            options = { assignee };
+            actionPayload = { type: 'assign', assignee };
+          } else if (actionValue === 'complete') {
+            actionPayload = 'complete';
+          } else if (actionValue === 'delete') {
+            actionPayload = 'delete';
+          } else {
+            showToast('Unsupported bulk action.', 'error');
+            return;
+          }
+          const button = elements.kanban.bulkApply;
+          if (button) {
+            setButtonLoading(button, true);
+          }
+          try {
+            await server.bulkUpdateTasks(state.token, taskIds, actionPayload, options);
+            const message =
+              actionValue === 'assign'
+                ? `Assigned ${taskIds.length} task${taskIds.length === 1 ? '' : 's'}.`
+                : actionValue === 'complete'
+                ? `Completed ${taskIds.length} task${taskIds.length === 1 ? '' : 's'}.`
+                : `Deleted ${taskIds.length} task${taskIds.length === 1 ? '' : 's'}.`;
+            showToast(message, 'success');
+            handleKanbanBulkClear();
+            await refreshWorkspaceData({ silent: true });
+          } catch (err) {
+            console.error('Bulk update failed:', err);
+            showToast(err && err.message ? err.message : 'Bulk action failed.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+            updateBulkSelectionUi();
+          }
+        }
+
+        async function handleTaskDuplicate() {
+          if (!state.token) {
+            showToast('Sign in to duplicate tasks.', 'error');
+            return;
+          }
+          const taskId = taskModalState.taskId;
+          if (!taskId) {
+            showToast('Select a task first.', 'error');
+            return;
+          }
+          const button = elements.task.duplicateButton;
+          if (button) {
+            setButtonLoading(button, true);
+          }
+          try {
+            const duplicated = await server.duplicateTask(state.token, taskId);
+            if (!duplicated || !duplicated.TaskID) {
+              throw new Error('Duplicate task response missing ID.');
+            }
+            mergeTaskIntoState(duplicated);
+            showToast('Task duplicated.', 'success');
+            await refreshWorkspaceData({ silent: true });
+            taskModalState.taskId = duplicated.TaskID;
+            updateTaskModalContent();
+            syncKanbanSelectionWithDom();
+          } catch (err) {
+            console.error('Duplicate task failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to duplicate task.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+          }
+        }
+
+        function resetQuoteState() {
+          if (!state.quotes) {
+            state.quotes = { items: [], current: null, isLoading: false };
+          }
+          state.quotes.items = [];
+          state.quotes.current = null;
+          state.quotes.isLoading = false;
+          renderDashboardQuote();
+        }
+
+        function renderDashboardQuote() {
+          const card = elements.dashboard.quoteCard;
+          const textEl = elements.dashboard.quoteText;
+          const authorEl = elements.dashboard.quoteAuthor;
+          const current = state.quotes && state.quotes.current;
+          const hasQuote = current && current.Text;
+          const isAuthenticated = Boolean(state.token);
+          if (card) {
+            card.classList.toggle('opacity-60', Boolean(state.quotes && state.quotes.isLoading));
+          }
+          if (textEl) {
+            const defaultMessage = isAuthenticated
+              ? 'No approved quotes yet. Share something inspiring with the team.'
+              : "Sign in to load today's featured quote.";
+            textEl.textContent = hasQuote ? String(current.Text) : defaultMessage;
+          }
+          if (authorEl) {
+            const author = hasQuote && current.Author ? String(current.Author).trim() : '';
+            authorEl.textContent = author ? `— ${author}` : '—';
+          }
+        }
+
+        function pickRandomQuote() {
+          if (!state.quotes) {
+            state.quotes = { items: [], current: null, isLoading: false };
+          }
+          const list = Array.isArray(state.quotes.items) ? state.quotes.items : [];
+          if (!list.length) {
+            state.quotes.current = null;
+            renderDashboardQuote();
+            return;
+          }
+          const index = Math.floor(Math.random() * list.length);
+          state.quotes.current = list[index];
+          renderDashboardQuote();
+        }
+
+        async function refreshDashboardQuote(options = {}) {
+          const { force = false } = options;
+          if (!state.token) {
+            resetQuoteState();
+            return;
+          }
+          if (!state.quotes) {
+            state.quotes = { items: [], current: null, isLoading: false };
+          }
+          if (state.quotes.isLoading) {
+            return;
+          }
+          if (!force && state.quotes.items && state.quotes.items.length) {
+            pickRandomQuote();
+            return;
+          }
+          state.quotes.isLoading = true;
+          renderDashboardQuote();
+          try {
+            const quotes = await server.listQuotes(state.token, { approvedOnly: true });
+            state.quotes.items = Array.isArray(quotes) ? quotes : [];
+            pickRandomQuote();
+          } catch (err) {
+            console.error('Failed to load quotes:', err);
+            state.quotes.items = [];
+            state.quotes.current = null;
+            showToast(err && err.message ? err.message : 'Unable to load quotes.', 'error');
+            renderDashboardQuote();
+          } finally {
+            state.quotes.isLoading = false;
+            renderDashboardQuote();
+          }
+        }
+
+        async function handleQuoteSubmit(event) {
+          event.preventDefault();
+          if (!state.token) {
+            showToast('Sign in to share a quote.', 'error');
+            return;
+          }
+          if (!elements.dashboard.quoteInput || !elements.dashboard.quoteSubmit) {
+            return;
+          }
+          const text = elements.dashboard.quoteInput.value.trim();
+          const author = elements.dashboard.quoteAuthorInput
+            ? elements.dashboard.quoteAuthorInput.value.trim()
+            : '';
+          if (!text) {
+            showToast('Quote text is required.', 'error');
+            return;
+          }
+          const button = elements.dashboard.quoteSubmit;
+          setButtonLoading(button, true);
+          try {
+            await server.addQuote(state.token, { text, author });
+            showToast('Quote submitted for review.', 'success');
+            if (elements.dashboard.quoteForm) {
+              elements.dashboard.quoteForm.reset();
+            }
+            await refreshDashboardQuote({ force: true });
+          } catch (err) {
+            console.error('Quote submission failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to submit quote.', 'error');
+          } finally {
+            setButtonLoading(button, false);
+          }
+        }
+
         }
 
         async function handleLoginSubmit(event) {
@@ -1080,6 +2824,66 @@
           showToast('You are signed out.', 'success');
         }
 
+        function buildReportFilters() {
+          return {};
+        }
+
+        async function handleExportCsvClick() {
+          if (!state.token) {
+            showToast('Sign in to export reports.', 'error');
+            return;
+          }
+          const button = elements.analytics.exportCsvButton;
+          setButtonLoading(button, true);
+          try {
+            const filters = buildReportFilters();
+            const result = await server.exportTasksCsv(state.token, filters);
+            const content = result && typeof result === 'object' && 'content' in result ? result.content : result;
+            if (!content) {
+              throw new Error('No CSV data was generated.');
+            }
+            const filename = (result && result.filename) || `aura-flow-tasks-${Date.now()}.csv`;
+            const mimeType = (result && result.mimeType) || 'text/csv';
+            const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+            downloadBlob(blob, filename);
+            showToast('Tasks CSV export ready.', 'success');
+          } catch (err) {
+            console.error('CSV export failed:', err);
+            showToast(err && err.message ? err.message : 'Failed to export CSV.', 'error');
+          } finally {
+            setButtonLoading(button, false);
+          }
+        }
+
+        async function handleExportPdfClick() {
+          if (!state.token) {
+            showToast('Sign in to export reports.', 'error');
+            return;
+          }
+          const button = elements.analytics.exportPdfButton;
+          setButtonLoading(button, true);
+          try {
+            const filters = buildReportFilters();
+            const result = await server.generatePdfReport(state.token, filters);
+            if (!result || !result.base64) {
+              throw new Error('No PDF data was generated.');
+            }
+            const filename = result.filename || `aura-flow-report-${Date.now()}.pdf`;
+            const mimeType = result.mimeType || 'application/pdf';
+            const blob = base64ToBlob(result.base64, mimeType);
+            if (!blob || !blob.size) {
+              throw new Error('Unable to prepare PDF download.');
+            }
+            downloadBlob(blob, filename);
+            showToast('PDF report generated.', 'success');
+          } catch (err) {
+            console.error('PDF export failed:', err);
+            showToast(err && err.message ? err.message : 'Failed to export PDF.', 'error');
+          } finally {
+            setButtonLoading(button, false);
+          }
+        }
+
         function setButtonLoading(button, isLoading) {
           if (!button) return;
           button.disabled = isLoading;
@@ -1089,6 +2893,700 @@
           const label = button.querySelector('[data-role="label"]');
           if (spinner) spinner.classList.toggle('hidden', !isLoading);
           if (label) label.classList.toggle('opacity-0', isLoading);
+        }
+
+        function selectQuoteForDisplay(quotes, previousId) {
+          if (!Array.isArray(quotes) || !quotes.length) {
+            return null;
+          }
+          if (quotes.length === 1) {
+            return quotes[0];
+          }
+          const withIds = quotes.filter((quote) => quote && quote.QuoteID);
+          if (!withIds.length) {
+            return null;
+          }
+          const pool = withIds.filter((quote) => quote.QuoteID !== previousId);
+          const candidates = pool.length ? pool : withIds;
+          const index = Math.floor(Math.random() * candidates.length);
+          return candidates[index];
+        }
+
+        async function refreshDashboardQuote(options = {}) {
+          const { silent = false, force = false } = options;
+          if (!elements.dashboard.quoteCard) {
+            return [];
+          }
+          if (!state.token) {
+            if (force) {
+              state.data.quotes = [];
+              state.quote.currentQuoteId = '';
+            }
+            updateDashboardQuote();
+            return [];
+          }
+          if (!force && state.data.quotes.length) {
+            updateDashboardQuote();
+            return state.data.quotes.slice();
+          }
+          try {
+            const quotes = await server.listQuotes(state.token, { approvedOnly: true });
+            state.data.quotes = Array.isArray(quotes) ? quotes.filter((quote) => quote && quote.Text) : [];
+            if (!state.data.quotes.length) {
+              state.quote.currentQuoteId = '';
+            }
+            updateDashboardQuote();
+            return state.data.quotes;
+          } catch (err) {
+            console.error('Quote refresh failed:', err);
+            if (!silent) {
+              showToast(err && err.message ? err.message : 'Unable to load quotes.', 'error');
+            }
+            updateDashboardQuote();
+            return [];
+          }
+        }
+
+        function updateDashboardQuote() {
+          const card = elements.dashboard.quoteCard;
+          if (!card) {
+            return;
+          }
+          const textEl = elements.dashboard.quoteText;
+          const authorEl = elements.dashboard.quoteAuthor;
+          const isAuthenticated = Boolean(state.token && state.user);
+          const quotes = Array.isArray(state.data.quotes) ? state.data.quotes.filter((quote) => quote && quote.Text) : [];
+          const quote = isAuthenticated ? selectQuoteForDisplay(quotes, state.quote.currentQuoteId) : null;
+          state.quote.currentQuoteId = quote && quote.QuoteID ? quote.QuoteID : '';
+
+          if (textEl) {
+            if (!isAuthenticated) {
+              textEl.textContent = 'Sign in to unlock inspiration curated by your team.';
+            } else if (!quote) {
+              textEl.textContent = 'No approved quotes yet. Share your first insight below.';
+            } else {
+              textEl.textContent = quote.Text;
+            }
+          }
+
+          if (authorEl) {
+            if (quote && quote.Author) {
+              authorEl.textContent = `— ${quote.Author}`;
+              authorEl.classList.remove('hidden');
+            } else if (quote) {
+              authorEl.textContent = '— Anonymous';
+              authorEl.classList.remove('hidden');
+            } else {
+              authorEl.textContent = '';
+              authorEl.classList.add('hidden');
+            }
+          }
+
+          const refreshButton = elements.dashboard.quoteRefreshButton;
+          if (refreshButton) {
+            refreshButton.disabled = !isAuthenticated;
+            refreshButton.classList.toggle('opacity-60', !isAuthenticated);
+          }
+
+          const textInput = elements.dashboard.quoteTextInput;
+          const authorInput = elements.dashboard.quoteAuthorInput;
+          const submitButton = elements.dashboard.quoteSubmitButton;
+          const inputs = [textInput, authorInput];
+          inputs.forEach((input) => {
+            if (!input) return;
+            input.disabled = !isAuthenticated;
+            input.classList.toggle('opacity-60', !isAuthenticated);
+          });
+          if (submitButton) {
+            submitButton.disabled = !isAuthenticated;
+            submitButton.classList.toggle('opacity-60', !isAuthenticated);
+          }
+        }
+
+        async function handleQuoteSubmit(event) {
+          event.preventDefault();
+          if (!state.token) {
+            showToast('Sign in to share a quote.', 'error');
+            return;
+          }
+          const textInput = elements.dashboard.quoteTextInput;
+          const authorInput = elements.dashboard.quoteAuthorInput;
+          const submitButton = elements.dashboard.quoteSubmitButton;
+          const textValue = textInput ? String(textInput.value || '').trim() : '';
+          const authorValue = authorInput ? String(authorInput.value || '').trim() : '';
+          if (!textValue) {
+            showToast('Add a quote before submitting.', 'error');
+            return;
+          }
+          setButtonLoading(submitButton, true);
+          try {
+            const result = await server.addQuote(state.token, textValue, authorValue || undefined);
+            if (textInput) {
+              textInput.value = '';
+            }
+            if (authorInput) {
+              authorInput.value = '';
+            }
+            const approvedMessage =
+              result && result.Approved
+                ? 'Quote published to the dashboard.'
+                : 'Quote submitted for approval.';
+            showToast(approvedMessage, 'success');
+            await refreshDashboardQuote({ silent: true, force: true });
+            return result;
+          } catch (err) {
+            console.error('Quote submission failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to submit quote.', 'error');
+          } finally {
+            setButtonLoading(submitButton, false);
+          }
+        }
+
+        async function handleBulkTaskAction(actionType, taskIds, actionOptions = {}, requestOptions = {}) {
+          if (!state.token) {
+            showToast('Sign in to manage tasks in bulk.', 'error');
+            return null;
+          }
+          const source = Array.isArray(taskIds) ? taskIds : [taskIds];
+          const normalizedIds = source
+            .map((value) => String(value || '').trim())
+            .filter((value, index, array) => value && array.indexOf(value) === index);
+          if (!normalizedIds.length) {
+            showToast('Select at least one task before running a bulk action.', 'error');
+            return null;
+          }
+          let actionPayload = actionOptions;
+          if (typeof actionPayload === 'string') {
+            actionPayload = actionPayload || actionType;
+          } else if (actionPayload && typeof actionPayload === 'object' && !Array.isArray(actionPayload)) {
+            actionPayload = Object.assign({}, actionPayload);
+            if (!actionPayload.type) {
+              actionPayload.type = actionType;
+            }
+          } else {
+            actionPayload = { type: actionType };
+          }
+          try {
+            const result = await server.bulkUpdateTasks(state.token, normalizedIds, actionPayload, requestOptions);
+            const updatedCount = Array.isArray(result && result.updated) ? result.updated.length : 0;
+            const deletedCount = Array.isArray(result && result.deleted) ? result.deleted.length : 0;
+            const successCount = updatedCount + deletedCount;
+            const errorCount = Array.isArray(result && result.errors) ? result.errors.length : 0;
+            const actionKey = typeof actionType === 'string' ? actionType.toLowerCase() : '';
+            const actionLabels = { complete: 'completed', assign: 'assigned', delete: 'deleted' };
+            if (successCount) {
+              const label = actionLabels[actionKey] || 'updated';
+              showToast(
+                `Bulk action ${label} ${successCount} task${successCount === 1 ? '' : 's'}.`,
+                'success'
+              );
+            } else if (!errorCount) {
+              showToast('No tasks were updated.', 'info');
+            }
+            if (errorCount) {
+              const firstError = result.errors[0];
+              const message =
+                errorCount === 1 && firstError && firstError.message
+                  ? firstError.message
+                  : `${errorCount} tasks failed. ${
+                      firstError && firstError.message ? firstError.message : 'Check permissions.'
+                    }`;
+              showToast(message, 'error');
+            }
+            if (Array.isArray(result && result.updated)) {
+              result.updated.forEach((task) => mergeTaskIntoState(task));
+            }
+            await refreshWorkspaceData({ silent: true });
+            return result;
+          } catch (err) {
+            console.error('Bulk action failed:', err);
+            showToast(err && err.message ? err.message : 'Bulk action failed.', 'error');
+            throw err;
+          }
+        }
+
+        async function handleTaskDuplicate(taskId) {
+          if (!state.token) {
+            showToast('Sign in to duplicate tasks.', 'error');
+            return null;
+          }
+          const normalizedId = String(taskId || '').trim();
+          if (!normalizedId) {
+            showToast('Select a task to duplicate.', 'error');
+            return null;
+          }
+          try {
+            const duplicated = await server.duplicateTask(state.token, normalizedId);
+            if (duplicated) {
+              mergeTaskIntoState(duplicated);
+              showToast('Task duplicated.', 'success');
+            }
+            await refreshWorkspaceData({ silent: true });
+            return duplicated;
+          } catch (err) {
+            console.error('Duplicate task failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to duplicate task.', 'error');
+            throw err;
+          }
+        }
+
+        function openBulkUploadModal() {
+          if (!state.token) {
+            showToast('Sign in to use bulk upload.', 'error');
+            return;
+          }
+          if (!canCurrentUserBulkUpload()) {
+            showToast('Bulk upload is available for Admin, Sub-Admin, or Manager roles.', 'error');
+            return;
+          }
+          resetBulkUploadState();
+          if (elements.bulk.modal) {
+            elements.bulk.modal.classList.remove('hidden');
+            elements.bulk.modal.setAttribute('aria-hidden', 'false');
+          }
+          if (elements.bulk.fileInput) {
+            elements.bulk.fileInput.focus();
+          }
+          document.addEventListener('keydown', handleBulkUploadKeydown);
+        }
+
+        function closeBulkUploadModal() {
+          if (elements.bulk.confirmButton && elements.bulk.confirmButton.getAttribute('aria-busy') === 'true') {
+            return;
+          }
+          if (elements.bulk.modal) {
+            elements.bulk.modal.classList.add('hidden');
+            elements.bulk.modal.setAttribute('aria-hidden', 'true');
+          }
+          document.removeEventListener('keydown', handleBulkUploadKeydown);
+          resetBulkUploadState();
+        }
+
+        function resetBulkUploadState() {
+          state.bulkUpload.fileName = '';
+          state.bulkUpload.headers = [];
+          state.bulkUpload.previewRows = [];
+          state.bulkUpload.records = [];
+          state.bulkUpload.errors = [];
+          state.bulkUpload.isParsing = false;
+          if (elements.bulk.fileInput) {
+            elements.bulk.fileInput.value = '';
+          }
+          if (elements.bulk.fileName) {
+            elements.bulk.fileName.textContent = 'No file selected.';
+          }
+          renderBulkUploadPreview();
+          renderBulkUploadErrors();
+          updateBulkUploadActions();
+        }
+
+        async function handleBulkFileChange(event) {
+          const input = event && event.target;
+          const files = input && input.files;
+          const file = files && files[0];
+          state.bulkUpload.errors = [];
+          renderBulkUploadErrors();
+          if (!file) {
+            state.bulkUpload.fileName = '';
+            state.bulkUpload.headers = [];
+            state.bulkUpload.previewRows = [];
+            state.bulkUpload.records = [];
+            state.bulkUpload.isParsing = false;
+            if (elements.bulk.fileName) {
+              elements.bulk.fileName.textContent = 'No file selected.';
+            }
+            renderBulkUploadPreview();
+            updateBulkUploadActions();
+            return;
+          }
+          state.bulkUpload.isParsing = true;
+          state.bulkUpload.fileName = file.name || '';
+          if (elements.bulk.fileName) {
+            elements.bulk.fileName.textContent = file.name || 'Parsing…';
+          }
+          renderBulkUploadPreview();
+          updateBulkUploadActions();
+          try {
+            const parsed = await parseBulkUploadFile(file);
+            state.bulkUpload.headers = parsed.headers;
+            state.bulkUpload.previewRows = parsed.previewRows;
+            state.bulkUpload.records = parsed.records;
+            state.bulkUpload.isParsing = false;
+            renderBulkUploadPreview();
+            updateBulkUploadActions();
+            if (!parsed.records.length) {
+              showToast('No rows detected. Check the header row.', 'error');
+            }
+          } catch (err) {
+            console.error('Bulk upload parse error:', err);
+            state.bulkUpload.headers = [];
+            state.bulkUpload.previewRows = [];
+            state.bulkUpload.records = [];
+            state.bulkUpload.isParsing = false;
+            if (elements.bulk.fileName) {
+              elements.bulk.fileName.textContent = 'No file selected.';
+            }
+            renderBulkUploadPreview();
+            updateBulkUploadActions();
+            showToast(err && err.message ? err.message : 'Unable to parse file.', 'error');
+          }
+        }
+
+        async function parseBulkUploadFile(file) {
+          if (!file) {
+            return { headers: [], previewRows: [], records: [] };
+          }
+          if (typeof XLSX === 'undefined' || !XLSX || typeof XLSX.read !== 'function') {
+            throw new Error('Bulk upload parser is unavailable.');
+          }
+          const arrayBuffer = await file.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const sheetName = workbook.SheetNames && workbook.SheetNames[0];
+          if (!sheetName) {
+            throw new Error('File has no sheets.');
+          }
+          const worksheet = workbook.Sheets[sheetName];
+          const raw = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+          if (!raw.length) {
+            throw new Error('File is empty.');
+          }
+          const headerRow = raw[0].map((cell, index) => {
+            const label = cell !== undefined && cell !== null ? String(cell).trim() : '';
+            return label || `Column ${index + 1}`;
+          });
+          const canonicalKeys = headerRow.map((header) => determineBulkCanonicalKey(header));
+          const previewRows = [];
+          const records = [];
+          for (let rowIndex = 1; rowIndex < raw.length; rowIndex++) {
+            const row = raw[rowIndex];
+            if (!row || !Array.isArray(row)) {
+              continue;
+            }
+            let hasValue = false;
+            const previewRow = [];
+            const record = {};
+            for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
+              const value = row[colIndex];
+              if (value !== undefined && value !== null && value !== '') {
+                hasValue = true;
+              }
+              previewRow.push(value);
+              const canonicalKey = canonicalKeys[colIndex];
+              if (canonicalKey) {
+                if (record[canonicalKey] === undefined) {
+                  record[canonicalKey] = value;
+                }
+              } else {
+                const originalHeader = headerRow[colIndex];
+                if (originalHeader && record[originalHeader] === undefined) {
+                  record[originalHeader] = value;
+                }
+              }
+            }
+            if (hasValue) {
+              previewRows.push(previewRow);
+              records.push(record);
+            }
+          }
+          return { headers: headerRow, previewRows, records };
+        }
+
+        function determineBulkCanonicalKey(header) {
+          if (header === undefined || header === null) {
+            return '';
+          }
+          const normalized = String(header).trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+          if (!normalized) {
+            return '';
+          }
+          const map = {
+            task: 'Task',
+            taskname: 'Task',
+            name: 'Task',
+            title: 'Task',
+            workitem: 'Task',
+            duration: 'Duration',
+            durationmins: 'Duration',
+            durationminutes: 'Duration',
+            minutes: 'Duration',
+            mins: 'Duration',
+            category: 'Category',
+            type: 'Category',
+            stream: 'Category',
+            priority: 'Priority',
+            assignee: 'Assignee',
+            assigneeemail: 'Assignee',
+            owner: 'Assignee',
+            assignedto: 'Assignee',
+            collaborator: 'Assignee',
+            date: 'Date',
+            duedate: 'Date',
+            due: 'Date',
+            dueat: 'Date',
+            deadline: 'Date',
+            labels: 'Labels',
+            label: 'Labels',
+            tags: 'Labels',
+            tag: 'Labels',
+            notes: 'Notes',
+            note: 'Notes',
+            description: 'Notes',
+            summary: 'Notes',
+            resources: 'Resources',
+            resource: 'Resources',
+            links: 'Resources',
+            link: 'Resources',
+            url: 'Resources',
+            urls: 'Resources',
+            status: 'Status',
+          };
+          return map[normalized] || '';
+        }
+
+        function renderBulkUploadPreview() {
+          const emptyState = elements.bulk.previewEmpty;
+          const wrapper = elements.bulk.previewWrapper;
+          const head = elements.bulk.previewHead;
+          const body = elements.bulk.previewBody;
+          const summary = elements.bulk.previewSummary;
+          if (!head || !body) {
+            if (emptyState) {
+              emptyState.textContent = state.bulkUpload.isParsing
+                ? 'Parsing file…'
+                : 'Select a CSV or XLSX file to preview tasks.';
+            }
+            if (summary && !state.bulkUpload.records.length) {
+              summary.textContent = '';
+            }
+            return;
+          }
+          head.innerHTML = '';
+          body.innerHTML = '';
+          if (!state.bulkUpload.records.length) {
+            if (emptyState) {
+              emptyState.classList.remove('hidden');
+              emptyState.textContent = state.bulkUpload.isParsing
+                ? 'Parsing file…'
+                : 'Select a CSV or XLSX file to preview tasks.';
+            }
+            if (wrapper) {
+              wrapper.classList.add('hidden');
+            }
+            if (summary) {
+              summary.textContent = state.bulkUpload.isParsing
+                ? ''
+                : `Accepted columns: ${BULK_REQUIRED_COLUMNS.join(', ')}.`;
+            }
+            return;
+          }
+          if (emptyState) {
+            emptyState.classList.add('hidden');
+          }
+          if (wrapper) {
+            wrapper.classList.remove('hidden');
+          }
+          const headerRow = document.createElement('tr');
+          state.bulkUpload.headers.forEach((header) => {
+            const th = document.createElement('th');
+            th.scope = 'col';
+            th.className = 'px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400';
+            th.textContent = header;
+            headerRow.appendChild(th);
+          });
+          head.appendChild(headerRow);
+          const previewRows = state.bulkUpload.previewRows.slice(0, BULK_PREVIEW_LIMIT);
+          previewRows.forEach((row) => {
+            const tr = document.createElement('tr');
+            row.forEach((value) => {
+              const td = document.createElement('td');
+              td.className = 'px-4 py-2 text-sm text-slate-200/90';
+              td.textContent = formatBulkPreviewValue(value);
+              tr.appendChild(td);
+            });
+            body.appendChild(tr);
+          });
+          if (summary) {
+            const total = state.bulkUpload.previewRows.length;
+            const shown = previewRows.length;
+            const remaining = total - shown;
+            summary.textContent = remaining > 0
+              ? `Prepared ${total} row${total === 1 ? '' : 's'}. Showing first ${shown}. ${remaining} more row${remaining === 1 ? '' : 's'} off-screen.`
+              : `Prepared ${total} row${total === 1 ? '' : 's'} for import.`;
+          }
+        }
+
+        function formatBulkPreviewValue(value) {
+          if (value === null || value === undefined) {
+            return '';
+          }
+          if (Object.prototype.toString.call(value) === '[object Date]') {
+            return Number.isNaN(value.getTime()) ? '' : value.toISOString().slice(0, 10);
+          }
+          if (typeof value === 'number') {
+            if (!Number.isFinite(value)) {
+              return '';
+            }
+            return String(value);
+          }
+          return String(value);
+        }
+
+        function renderBulkUploadErrors() {
+          const container = elements.bulk.errorsContainer;
+          const list = elements.bulk.errorsList;
+          if (!container || !list) {
+            return;
+          }
+          list.innerHTML = '';
+          if (!state.bulkUpload.errors.length) {
+            container.classList.add('hidden');
+            return;
+          }
+          container.classList.remove('hidden');
+          const limit = 10;
+          state.bulkUpload.errors.slice(0, limit).forEach((error) => {
+            const li = document.createElement('li');
+            const rowNumber =
+              typeof error.index === 'number' && !Number.isNaN(error.index)
+                ? error.index + 1
+                : null;
+            li.textContent = rowNumber ? `Row ${rowNumber}: ${error.message}` : error.message || 'Row failed.';
+            list.appendChild(li);
+          });
+          if (state.bulkUpload.errors.length > limit) {
+            const extra = document.createElement('li');
+            extra.className = 'opacity-80';
+            extra.textContent = `+${state.bulkUpload.errors.length - limit} more issue(s) not shown.`;
+            list.appendChild(extra);
+          }
+        }
+
+        function updateBulkUploadActions() {
+          const confirmButton = elements.bulk.confirmButton;
+          if (!confirmButton) {
+            return;
+          }
+          const isLoading = confirmButton.getAttribute('aria-busy') === 'true';
+          if (isLoading) {
+            confirmButton.classList.remove('opacity-60');
+            return;
+          }
+          const ready = state.bulkUpload.records.length > 0 && !state.bulkUpload.isParsing;
+          confirmButton.disabled = !ready;
+          confirmButton.classList.toggle('opacity-60', !ready);
+        }
+
+        async function handleBulkUploadConfirm(event) {
+          if (event) {
+            event.preventDefault();
+          }
+          if (!state.token) {
+            showToast('Sign in to use bulk upload.', 'error');
+            return;
+          }
+          if (!canCurrentUserBulkUpload()) {
+            showToast('Bulk upload is available for Admin, Sub-Admin, or Manager roles.', 'error');
+            return;
+          }
+          if (!state.bulkUpload.records.length) {
+            showToast('Select a CSV or XLSX file before importing.', 'error');
+            return;
+          }
+          const confirmButton = elements.bulk.confirmButton;
+          const cancelButton = elements.bulk.cancelButton;
+          try {
+            setButtonLoading(confirmButton, true);
+            if (cancelButton) {
+              cancelButton.disabled = true;
+              cancelButton.classList.add('opacity-60');
+            }
+            const result = await server.bulkUploadTasks(state.token, state.bulkUpload.records);
+            const inserted = result && typeof result.inserted === 'number' ? result.inserted : 0;
+            const errors = Array.isArray(result && result.errors) ? result.errors : [];
+            state.bulkUpload.errors = errors;
+            renderBulkUploadErrors();
+            if (errors.length) {
+              const failedIndices = new Set(
+                errors
+                  .map((error) => error.index)
+                  .filter((index) => typeof index === 'number' && !Number.isNaN(index))
+              );
+              if (failedIndices.size) {
+                state.bulkUpload.records = state.bulkUpload.records.filter((_, index) => failedIndices.has(index));
+                state.bulkUpload.previewRows = state.bulkUpload.previewRows.filter((_, index) => failedIndices.has(index));
+              } else {
+                state.bulkUpload.records = [];
+                state.bulkUpload.previewRows = [];
+              }
+            } else {
+              state.bulkUpload.records = [];
+              state.bulkUpload.previewRows = [];
+            }
+            renderBulkUploadPreview();
+            updateBulkUploadActions();
+            if (inserted > 0) {
+              if (errors.length) {
+                showToast(`Imported ${inserted} task${inserted === 1 ? '' : 's'}. ${errors.length} row(s) need attention.`, 'info');
+              } else {
+                showToast(`Imported ${inserted} task${inserted === 1 ? '' : 's'} successfully.`, 'success');
+              }
+              await refreshWorkspaceData({ silent: true });
+              if (!errors.length) {
+                closeBulkUploadModal();
+              }
+            } else if (errors.length) {
+              showToast(`No tasks imported. ${errors.length} row(s) need fixes.`, 'error');
+            } else {
+              showToast('No tasks were imported.', 'error');
+            }
+          } catch (err) {
+            console.error('Bulk upload failed:', err);
+            showToast(err && err.message ? err.message : 'Bulk upload failed.', 'error');
+          } finally {
+            setButtonLoading(confirmButton, false);
+            if (cancelButton) {
+              cancelButton.disabled = false;
+              cancelButton.classList.remove('opacity-60');
+            }
+            updateBulkUploadActions();
+          }
+        }
+
+        function handleBulkUploadKeydown(event) {
+          if (event.key === 'Escape') {
+            if (elements.bulk.modal && elements.bulk.modal.classList.contains('hidden')) {
+              return;
+            }
+            event.preventDefault();
+            closeBulkUploadModal();
+          }
+        }
+
+        function canCurrentUserBulkUpload() {
+          const role = state.user && state.user.Role ? String(state.user.Role) : '';
+          return role === 'Admin' || role === 'Sub-Admin' || role === 'Manager';
+        }
+
+        function updateBulkUploadAvailability() {
+          const trigger = elements.bulk.trigger;
+          const notice = elements.bulk.restrictionNotice;
+          const isAuthenticated = Boolean(state.token && state.user);
+          const allowed = isAuthenticated && canCurrentUserBulkUpload();
+          if (trigger) {
+            trigger.disabled = !allowed;
+            trigger.classList.toggle('opacity-60', !allowed);
+            trigger.classList.toggle('cursor-not-allowed', !allowed);
+            trigger.setAttribute('aria-disabled', !allowed ? 'true' : 'false');
+          }
+          if (notice) {
+            if (!isAuthenticated) {
+              notice.textContent = 'Sign in with an Admin, Sub-Admin, or Manager account to enable bulk upload.';
+            } else if (allowed) {
+              notice.textContent = `Signed in as ${state.user.Role}. Include ${BULK_REQUIRED_COLUMNS.join(', ')} in your header row.`;
+            } else {
+              notice.textContent = 'Bulk upload is available for Admin, Sub-Admin, or Manager roles.';
+            }
+          }
         }
 
         function setActiveTab(tabId) {
@@ -1109,6 +3607,9 @@
             panel.classList.toggle('hidden', !isActive);
             panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
           });
+          if (elements.tabDropdown && elements.tabDropdown.value !== tabId) {
+            elements.tabDropdown.value = tabId;
+          }
           if (tabId === 'analytics') {
             renderAnalyticsCharts();
             requestAnimationFrame(() => {
@@ -1123,15 +3624,22 @@
             updateFocusControls();
 
           }
+          if (tabId === 'admin') {
+            renderAdminPanel();
+            if (canViewUsers()) {
+              refreshAdminUsers({ force: !state.admin.loaded });
+            }
+          }
         }
 
         function applySession(token, user) {
           state.token = token;
           state.user = user || null;
           updateShell();
+          handleTutorialPostLogin();
           refreshWorkspaceData({ silent: true });
 
-        }
+          }
 
         function updateShell() {
           const isAuthenticated = Boolean(state.token && state.user);
@@ -1150,8 +3658,18 @@
           if (elements.roleBadge) {
             elements.roleBadge.textContent = isAuthenticated && state.user.Role ? state.user.Role : '';
           }
+  renderAdminPanel();
+  updateBulkUploadAvailability();
+  updateIdentityBadges(isAuthenticated);
+
+
           renderKanbanBoard();
+          updateDashboardMetrics();
           setActiveTab(state.activeTab);
+          if (tutorialState.isActive) {
+            positionCurrentTutorialStep();
+          }
+
         }
 
         function persistSession(token, user) {
@@ -1163,15 +3681,26 @@
           }
         }
 
-        function clearSession() {
-          state.token = null;
-          state.user = null;
-          resetWorkspaceData();
-          try {
-            localStorage.removeItem(STORAGE_KEY);
-          } catch (err) {
-            console.warn('Failed to clear session storage', err);
+          function clearSession() {
+            stopSessionRefresh();
+            state.token = null;
+            state.user = null;
+            resetWorkspaceData();
+            resetBulkUploadState();
+            updateBulkUploadAvailability();
+            resetQuoteState();
+            try {
+              localStorage.removeItem(STORAGE_KEY);
+            } catch (err) {
+              console.warn('Failed to clear session storage', err);
+            }
+          if (isAdminModalOpen()) {
+            closeAdminUserModal();
           }
+          resetAdminFormState();
+          resetAdminState();
+          renderAdminUsers();
+          renderAdminPanel();
           resetKanbanState();
         }
 
@@ -1215,6 +3744,7 @@
             return;
           }
           analyticsState.isLoading = true;
+          setWorkspaceLoading(true);
           if (elements.analytics.refreshButton && !silent) {
             setButtonLoading(elements.analytics.refreshButton, true);
           }
@@ -1231,9 +3761,11 @@
             ]);
             state.data.tasks = Array.isArray(tasks) ? tasks : [];
             state.data.moods = Array.isArray(moods) ? moods : [];
+            updateTaskModalContent();
             analyticsState.lastUpdated = new Date();
             updateAnalyticsTimestamp();
             populateFocusTaskSelect();
+            renderKanbanBoard();
             renderAnalyticsCharts();
             renderKanbanBoard();
           } catch (err) {
@@ -1241,6 +3773,7 @@
             showToast(err && err.message ? err.message : 'Unable to refresh analytics.', 'error');
             renderAnalyticsCharts();
             renderKanbanBoard();
+
           } finally {
             analyticsState.isLoading = false;
             if (elements.analytics.refreshButton && !silent) {
@@ -1249,6 +3782,7 @@
             if (elements.kanbanLoading) {
               elements.kanbanLoading.classList.add('hidden');
             }
+
           }
         }
 
@@ -1265,6 +3799,132 @@
             day: 'numeric',
           });
           elements.analytics.refreshTime.textContent = `Updated ${formatted}`;
+        }
+
+        function startSessionRefresh() {
+          stopSessionRefresh();
+          if (!state.token) {
+            return;
+          }
+          sessionRefreshFailureNotified = false;
+          sessionRefreshTimerId = setInterval(() => {
+            handleSessionRefresh().catch((err) => {
+              console.warn('Session refresh error:', err);
+            });
+          }, SESSION_REFRESH_INTERVAL_MS);
+        }
+
+        async function handleSessionRefresh() {
+          if (!state.token) {
+            return;
+          }
+          try {
+            const refreshed = await server.refreshSession(state.token);
+            if (!refreshed || !refreshed.token) {
+              return;
+            }
+            state.token = refreshed.token;
+            if (refreshed.user) {
+              state.user = refreshed.user;
+            }
+            persistSession(state.token, state.user);
+            updateIdentityBadges();
+          } catch (err) {
+            const message = err && err.message ? err.message : String(err || '');
+            if (message.toLowerCase().includes('unauthorized')) {
+              stopSessionRefresh();
+              const hadToken = Boolean(state.token);
+              clearSession();
+              updateShell();
+              if (!sessionRefreshFailureNotified && hadToken) {
+                sessionRefreshFailureNotified = true;
+                showToast('Your session expired. Please sign in again.', 'error');
+              }
+            } else {
+              console.warn('Session refresh failed:', err);
+            }
+          }
+        }
+
+        function stopSessionRefresh() {
+          if (sessionRefreshTimerId) {
+            clearInterval(sessionRefreshTimerId);
+            sessionRefreshTimerId = null;
+          }
+        }
+
+        function updateIdentityBadges(isAuthenticated = Boolean(state.token && state.user)) {
+          if (elements.userBadge) {
+            elements.userBadge.textContent = isAuthenticated && state.user && state.user.Email
+              ? state.user.Email
+              : 'Not authenticated';
+          }
+          if (elements.roleBadge) {
+            elements.roleBadge.textContent =
+              isAuthenticated && state.user && state.user.Role ? state.user.Role : '';
+          }
+        }
+
+        function hydrateTasksFromCache() {
+          let hydrated = false;
+          try {
+            const raw = localStorage.getItem(TASK_CACHE_KEY);
+            if (!raw) {
+              return hydrated;
+            }
+            const payload = JSON.parse(raw);
+            if (!payload || !Array.isArray(payload.tasks) || !payload.tasks.length) {
+              return hydrated;
+            }
+            state.data.tasks = payload.tasks;
+            if (payload.savedAt) {
+              const savedAt = new Date(payload.savedAt);
+              if (!Number.isNaN(savedAt.getTime())) {
+                analyticsState.lastUpdated = savedAt;
+                updateAnalyticsTimestamp();
+              }
+            }
+            populateFocusTaskSelect();
+            renderKanbanBoard();
+            renderAnalyticsCharts();
+            hydrated = true;
+          } catch (err) {
+            console.warn('Failed to hydrate cached tasks', err);
+          }
+          return hydrated;
+        }
+
+        function cacheTasksSnapshot(tasks) {
+          if (!Array.isArray(tasks)) {
+            return;
+          }
+          try {
+            const snapshot = sortTasksByRecency(tasks).slice(0, TASK_CACHE_LIMIT);
+            const payload = JSON.stringify({ savedAt: Date.now(), tasks: snapshot });
+            localStorage.setItem(TASK_CACHE_KEY, payload);
+          } catch (err) {
+            console.warn('Failed to cache tasks for offline access', err);
+          }
+        }
+
+        function sortTasksByRecency(tasks) {
+          return tasks.slice().sort((a, b) => resolveTaskTimestamp(b) - resolveTaskTimestamp(a));
+        }
+
+        function resolveTaskTimestamp(task) {
+          if (!task) {
+            return 0;
+          }
+          const fields = [task.UpdatedAt, task.Timestamp, task.DueAt];
+          for (let i = 0; i < fields.length; i += 1) {
+            const value = fields[i];
+            if (!value) continue;
+            const date = new Date(value);
+            if (!Number.isNaN(date.getTime())) {
+              return date.getTime();
+            }
+          }
+          return 0;
         }
 
         function renderAnalyticsCharts() {
@@ -1759,6 +4419,10 @@
         function handleFocusTaskChange(event) {
           focusState.selectedTaskId = event.target.value || '';
           updateFocusControls();
+          if (taskModalState.isOpen) {
+            taskModalState.taskId = focusState.selectedTaskId;
+            updateTaskModalContent();
+          }
         }
 
         function handleFocusMoodChange(event) {
@@ -1816,6 +4480,7 @@
           const note = `Focus session (${duration} min) completed via Aura Flow Focus Mode.`;
           const logPromises = [
             server.logMood(state.token, taskId, mood, note),
+            server.logTime(state.token, taskId, duration),
           ];
           if (state.user && state.user.Email) {
             logPromises.push(
@@ -1827,12 +4492,16 @@
           }
 
           const results = await Promise.allSettled(logPromises);
+          const timeResult = results[1];
           const failed = results.find((result) => result.status === 'rejected');
           if (failed) {
             const reason = failed.reason && failed.reason.message ? failed.reason.message : String(failed.reason || 'Unable to record focus session.');
             showToast(reason, 'error');
           } else {
-            showToast('Focus session captured. Mood & activity logged.', 'success');
+            showToast('Focus session captured. Mood, time, and activity logged.', 'success');
+          }
+          if (timeResult && timeResult.status === 'fulfilled' && timeResult.value) {
+            mergeTaskIntoState(timeResult.value);
           }
           focusState.remainingSeconds = focusState.durationMinutes * 60;
           updateFocusTimerDisplay();
@@ -1872,6 +4541,238 @@
               </li>`;
             })
             .join('');
+        }
+
+        async function openTaskModal(taskId) {
+          if (!state.token) {
+            showToast('Sign in to manage tasks.', 'error');
+            return;
+          }
+          const task = getTaskFromState(taskId);
+          if (!task) {
+            showToast('Task not found. Refresh your workspace data.', 'error');
+            return;
+          }
+          taskModalState.taskId = taskId;
+          taskModalState.isOpen = true;
+          setReminderStatus(null);
+          if (elements.task.modal) {
+            elements.task.modal.classList.remove('hidden');
+            elements.task.modal.classList.add('flex');
+          }
+          document.body.classList.add('overflow-hidden');
+          updateTaskModalContent();
+          await loadTemplates(elements.task.templateSelect ? elements.task.templateSelect.value : '');
+        }
+
+        function closeTaskModal() {
+          if (elements.task.modal) {
+            elements.task.modal.classList.add('hidden');
+            elements.task.modal.classList.remove('flex');
+          }
+          document.body.classList.remove('overflow-hidden');
+          taskModalState.isOpen = false;
+          taskModalState.taskId = '';
+          setReminderStatus(null);
+          updateTaskModalContent();
+        }
+
+        async function loadTemplates(selectedId = '') {
+          if (!state.token) {
+            state.data.templates = [];
+            populateTemplateSelect();
+            return;
+          }
+          try {
+            const templates = await server.listTemplates(state.token);
+            state.data.templates = Array.isArray(templates) ? templates : [];
+            populateTemplateSelect(selectedId);
+          } catch (err) {
+            console.error('Failed to load templates:', err);
+            state.data.templates = [];
+            populateTemplateSelect();
+            showToast(err && err.message ? err.message : 'Unable to load templates.', 'error');
+          }
+        }
+
+        function populateTemplateSelect(selectedId) {
+          const select = elements.task.templateSelect;
+          if (!select) return;
+          const previousValue = typeof selectedId === 'string' ? selectedId : select.value;
+          while (select.options.length > 1) {
+            select.remove(1);
+          }
+          const templates = Array.isArray(state.data.templates) ? state.data.templates.slice() : [];
+          templates
+            .filter((template) => template && template.TemplateID)
+            .sort((a, b) => String(a.Name || '').localeCompare(String(b.Name || '')))
+            .forEach((template) => {
+              const option = document.createElement('option');
+              option.value = template.TemplateID;
+              option.textContent = template.Name || template.TemplateID;
+              select.appendChild(option);
+            });
+          if (previousValue && templates.some((tpl) => tpl && tpl.TemplateID === previousValue)) {
+            select.value = previousValue;
+          } else {
+            select.value = '';
+          }
+          updateTemplateApplyButtonState();
+        }
+
+        function updateTemplateApplyButtonState() {
+          const button = elements.task.applyTemplateButton;
+          const select = elements.task.templateSelect;
+          if (!button || !select) {
+            return;
+          }
+          const hasSelection = Boolean(select.value);
+          button.disabled = !hasSelection;
+          button.classList.toggle('opacity-60', !hasSelection);
+        }
+
+        function mergeTaskIntoState(updatedTask) {
+          if (!updatedTask || !updatedTask.TaskID) {
+            return;
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks.slice() : [];
+          const index = tasks.findIndex((task) => task.TaskID === updatedTask.TaskID);
+          if (index >= 0) {
+            tasks[index] = Object.assign({}, tasks[index], updatedTask);
+          } else {
+            tasks.push(updatedTask);
+          }
+          state.data.tasks = tasks;
+          populateFocusTaskSelect();
+          renderAnalyticsCharts();
+          updateTaskModalContent();
+        }
+
+        function getTaskFromState(taskId) {
+          if (!taskId) {
+            return null;
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          return tasks.find((task) => task.TaskID === taskId) || null;
+        }
+
+        function updateTaskModalContent() {
+          const titleEl = elements.task.title;
+          const subtitleEl = elements.task.subtitle;
+          const metaEl = elements.task.meta;
+          const summaryEl = elements.task.timeSummary;
+          const nameInput = elements.task.templateNameInput;
+          const timeInput = elements.task.timeInput;
+          const reminderInput = elements.task.reminderInput;
+          const task = getTaskFromState(taskModalState.taskId);
+          if (!task) {
+            if (titleEl) {
+              titleEl.textContent = 'Task Toolkit';
+            }
+            if (subtitleEl) {
+              subtitleEl.textContent = 'Select a task from Focus Mode to manage templates, time, and reminders.';
+            }
+            if (metaEl) {
+              metaEl.textContent = '';
+            }
+            if (summaryEl) {
+              summaryEl.textContent = 'Total logged: —';
+            }
+            if (nameInput && !taskModalState.isOpen) {
+              nameInput.value = '';
+            }
+            if (timeInput && !taskModalState.isOpen) {
+              timeInput.value = '';
+            }
+            if (reminderInput && !taskModalState.isOpen) {
+              reminderInput.value = '';
+            }
+            updateTemplateApplyButtonState();
+            return;
+          }
+          if (titleEl) {
+            titleEl.textContent = task.Name ? `Task Toolkit — ${task.Name}` : `Task Toolkit — ${task.TaskID}`;
+          }
+          if (subtitleEl) {
+            subtitleEl.textContent = task.Notes
+              ? task.Notes
+              : 'Manage reusable templates, time tracking, and reminders.';
+          }
+          if (metaEl) {
+            const status = task.Status || 'Planned';
+            const assignee = task.Assignee ? `Assigned to ${task.Assignee}` : 'Unassigned';
+            const dueLabel = task.DueAt ? ` • Due ${formatLocalDateTime(task.DueAt)}` : '';
+            metaEl.textContent = `${status} • ${assignee}${dueLabel}`;
+          }
+          if (summaryEl) {
+            summaryEl.textContent = `Total logged: ${formatMinutes(task.TimeSpentMins || 0)}`;
+          }
+          if (nameInput && (!nameInput.value || !taskModalState.isOpen)) {
+            nameInput.value = task.Name ? `${task.Name} Template` : '';
+          }
+          if (timeInput && (!timeInput.value || !taskModalState.isOpen)) {
+            const defaultMinutes = focusState.durationMinutes || Math.round(task.DurationMins || 0) || 25;
+            timeInput.value = Math.max(1, defaultMinutes);
+          }
+          if (reminderInput) {
+            reminderInput.value = task.DueAt ? toLocalInputValue(task.DueAt) : '';
+          }
+          updateTemplateApplyButtonState();
+        }
+
+        function setReminderStatus(eventInfo) {
+          const statusEl = elements.task.reminderStatus;
+          if (!statusEl) {
+            return;
+          }
+          statusEl.textContent = '';
+          if (!eventInfo) {
+            return;
+          }
+          const fragment = document.createDocumentFragment();
+          const startLabel = formatLocalDateTime(eventInfo.start || eventInfo.startTime || '');
+          const text = document.createElement('span');
+          text.textContent = startLabel ? `Reminder scheduled for ${startLabel}.` : 'Reminder scheduled.';
+          fragment.appendChild(text);
+          if (eventInfo.url) {
+            const link = document.createElement('a');
+            link.href = eventInfo.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = ' Open in Calendar';
+            link.className = 'text-aura-primary hover:underline';
+            fragment.appendChild(link);
+          }
+          statusEl.appendChild(fragment);
+        }
+
+        function toLocalInputValue(value) {
+          if (!value) {
+            return '';
+          }
+          const date = value instanceof Date ? value : new Date(value);
+          if (Number.isNaN(date.getTime())) {
+            return '';
+          }
+          const offsetMinutes = date.getTimezoneOffset();
+          const local = new Date(date.getTime() - offsetMinutes * 60000);
+          return local.toISOString().slice(0, 16);
+        }
+
+        function formatLocalDateTime(value) {
+          if (!value) {
+            return '';
+          }
+          const date = value instanceof Date ? value : new Date(value);
+          if (Number.isNaN(date.getTime())) {
+            return '';
+          }
+          return new Intl.DateTimeFormat(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }).format(date);
         }
 
         function updateFocusTimerDisplay() {
@@ -1926,6 +4827,7 @@
           const startButton = elements.focus.startButton;
           const pauseButton = elements.focus.pauseButton;
           const resetButton = elements.focus.resetButton;
+          const toolsButton = elements.focus.taskToolsButton;
           if (startButton) {
             const disabled = focusState.isRunning || !state.token || !focusState.selectedTaskId;
             startButton.disabled = disabled;
@@ -1939,11 +4841,19 @@
           if (resetButton) {
             resetButton.disabled = false;
           }
+          if (toolsButton) {
+            const disabledTools = !state.token || !focusState.selectedTaskId;
+            toolsButton.disabled = disabledTools;
+            toolsButton.classList.toggle('opacity-60', disabledTools);
+          }
         }
 
         function resetWorkspaceData() {
           state.data.tasks = [];
           state.data.moods = [];
+          state.data.templates = [];
+          resetQuoteState();
+
           analyticsState.lastUpdated = null;
           updateAnalyticsTimestamp();
           destroyChart('velocity');
@@ -2407,9 +5317,63 @@
 
 
         function toggleEmptyState(element, shouldShow) {
+
           if (!element) return;
           element.classList.toggle('hidden', !shouldShow);
-          element.classList.toggle('flex', shouldShow);
+          if (displayClass) {
+            element.classList.toggle(displayClass, shouldShow);
+          }
+        }
+
+        function normalizeStatus(status) {
+          const label = String(status || '').trim();
+          if (!label) {
+            return 'Planned';
+          }
+          if (KANBAN_STATUSES.some((entry) => entry.id === label)) {
+            return label;
+          }
+          const lower = label.toLowerCase();
+          const match = KANBAN_STATUSES.find((entry) => entry.id.toLowerCase() === lower);
+          return match ? match.id : 'Planned';
+        }
+
+        function parseDateValue(value) {
+          if (!value) {
+            return null;
+          }
+          if (value instanceof Date) {
+            return Number.isNaN(value.getTime()) ? null : value;
+          }
+          const parsed = new Date(value);
+          return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function isSameDay(a, b) {
+          if (!a || !b) {
+            return false;
+          }
+          return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+        }
+
+        function formatAssigneeLabel(value) {
+          if (!value) {
+            return '';
+          }
+          const normalized = String(value).trim();
+          if (!normalized) {
+            return '';
+          }
+          const [name] = normalized.split('@');
+          return name || normalized;
+        }
+
+        function formatDueLabel(value) {
+          const date = parseDateValue(value);
+          if (!date) {
+            return '';
+          }
+          return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
         }
 
         function formatDateKey(value) {
@@ -2437,6 +5401,39 @@
           if (hours && mins) return `${hours}h ${mins}m`;
           if (hours) return `${hours}h`;
           return `${mins}m`;
+        }
+
+        function downloadBlob(blob, filename) {
+          if (!blob) {
+            throw new Error('Nothing to download.');
+          }
+          if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+            throw new Error('Download not supported in this environment.');
+          }
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = url;
+          anchor.download = filename || 'download';
+          document.body.appendChild(anchor);
+          anchor.click();
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+            anchor.remove();
+          }, 0);
+        }
+
+        function base64ToBlob(base64, mimeType = 'application/octet-stream') {
+          const cleaned = typeof base64 === 'string' ? base64.replace(/\s/g, '') : '';
+          if (!cleaned) {
+            return new Blob([], { type: mimeType });
+          }
+          const byteCharacters = atob(cleaned);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i += 1) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          return new Blob([byteArray], { type: mimeType });
         }
 
         function resolveMoodScore(label) {
@@ -2473,6 +5470,14 @@
           return Math.min(Math.max(value, min), max);
 
         }
+
+        if (typeof window !== 'undefined') {
+          window.AuraFlow = Object.assign(window.AuraFlow || {}, {
+            bulkAction: handleBulkTaskAction,
+            duplicateTask: handleTaskDuplicate,
+            refreshQuote: refreshDashboardQuote,
+          });
+        }
       })();
 
       function showToast(message, type = 'info') {
@@ -2481,7 +5486,6 @@
         const toast = document.createElement('div');
         const baseClasses = [
           'pointer-events-auto',
-
           'rounded-2xl',
           'border',
           'border-white/10',
@@ -2494,35 +5498,66 @@
           'items-start',
           'gap-3',
           'transition',
+          'w-full',
+          'min-w-0',
         ];
         const palette = {
           success: 'bg-emerald-500/20 text-emerald-100',
           error: 'bg-rose-500/20 text-rose-100',
           info: 'bg-slate-800/80 text-slate-100',
         };
+        const safeMessage = String(message ?? '');
         toast.className = baseClasses.join(' ');
         toast.classList.add('toast-enter');
-        toast.innerHTML = `
-          <span class="mt-0.5 text-lg">${type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️'}</span>
-          <div class="leading-snug">
-            <p class="font-medium">${message}</p>
-          </div>
-        `;
         toast.classList.add(...(palette[type] || palette.info).split(' '));
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.setAttribute('aria-label', `${type} notification: ${safeMessage}`);
 
+        const icon = document.createElement('span');
+        icon.className = 'mt-0.5 text-lg shrink-0';
+        icon.textContent = type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️';
+
+        const content = document.createElement('div');
+        content.className = 'flex-1 leading-snug text-left';
+        const text = document.createElement('p');
+        text.className = 'font-medium';
+        text.textContent = safeMessage;
+        content.appendChild(text);
+
+        const dismissButton = document.createElement('button');
+        dismissButton.type = 'button';
+        dismissButton.className = 'ml-auto inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/5 text-xs font-semibold text-white/80 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60';
+        dismissButton.setAttribute('aria-label', 'Dismiss notification');
+        dismissButton.textContent = '×';
+
+        toast.append(icon, content, dismissButton);
         container.appendChild(toast);
+
         requestAnimationFrame(() => {
           toast.classList.remove('toast-enter');
           toast.classList.add('toast-enter-active');
         });
-        setTimeout(() => {
+
+        let isClosing = false;
+        const removeToast = () => {
+          if (isClosing) return;
+          isClosing = true;
           toast.classList.remove('toast-enter-active');
           toast.classList.add('toast-leave-active');
-          setTimeout(() => {
-            toast.remove();
+          window.setTimeout(() => {
+            if (toast.parentElement) {
+              toast.remove();
+            }
           }, 220);
-        }, 3600);
+        };
 
+        const timeoutId = window.setTimeout(removeToast, 3600);
+        dismissButton.addEventListener('click', () => {
+          window.clearTimeout(timeoutId);
+          removeToast();
+        });
       }
     </script>
   </body>
