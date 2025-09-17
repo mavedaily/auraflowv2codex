@@ -318,6 +318,122 @@
               </div>
             </div>
 
+            <div class="mt-10 grid gap-6 xl:grid-cols-[3fr,2fr]">
+              <div
+                id="taskTableSection"
+                class="rounded-3xl border border-white/5 bg-slate-900/70 p-6 sm:p-8"
+                aria-busy="false"
+              >
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 class="text-xl font-semibold text-white">Workspace Tasks</h3>
+                    <p class="mt-2 text-sm text-slate-400">Select tasks to run quick bulk updates.</p>
+                  </div>
+                  <div class="flex flex-col items-start gap-2 sm:items-end">
+                    <span id="taskSelectionSummary" class="text-xs text-slate-500">No tasks selected.</span>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <label for="taskBulkActionSelect" class="sr-only">Task bulk action</label>
+                      <select
+                        id="taskBulkActionSelect"
+                        class="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 transition focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                      >
+                        <option value="">Bulk actions</option>
+                        <option value="complete">Mark Complete</option>
+                        <option value="assign">Assign To…</option>
+                        <option value="delete">Delete</option>
+                      </select>
+                      <button
+                        id="taskBulkActionButton"
+                        type="button"
+                        class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+                        <span data-role="label">Apply</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div id="taskTableWrapper" class="mt-6 overflow-x-auto">
+                  <table id="taskTable" class="min-w-full divide-y divide-white/10 text-sm text-slate-200">
+                    <thead class="bg-white/5 text-xs uppercase tracking-[0.3em] text-slate-400">
+                      <tr>
+                        <th scope="col" class="w-12 px-3 py-3">
+                          <span class="sr-only">Select all tasks</span>
+                          <input
+                            id="taskSelectAll"
+                            type="checkbox"
+                            class="h-4 w-4 rounded border-white/10 bg-slate-900/60 text-aura-primary focus:ring-aura-primary"
+                          />
+                        </th>
+                        <th scope="col" class="px-3 py-3 text-left">Task</th>
+                        <th scope="col" class="px-3 py-3 text-left">Status</th>
+                        <th scope="col" class="px-3 py-3 text-left">Assignee</th>
+                        <th scope="col" class="px-3 py-3 text-left">Due</th>
+                        <th scope="col" class="px-3 py-3 text-left">Duration</th>
+                      </tr>
+                    </thead>
+                    <tbody id="taskTableBody" class="divide-y divide-white/10"></tbody>
+                  </table>
+                </div>
+                <div
+                  id="taskTableEmpty"
+                  class="mt-4 hidden rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-6 text-center text-sm text-slate-400"
+                >
+                  No tasks yet. They will appear here once created.
+                </div>
+              </div>
+
+              <div
+                id="dailyQuoteCard"
+                class="rounded-3xl border border-white/5 bg-slate-900/70 p-6 sm:p-8"
+                aria-busy="false"
+              >
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Daily Quote</p>
+                    <h3 class="text-xl font-semibold text-white">Inspiration Stream</h3>
+                    <p class="mt-2 text-sm text-slate-400">One approved quote each day to spark momentum.</p>
+                  </div>
+                  <button
+                    id="quoteRefreshButton"
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span data-role="spinner" class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+                    <span data-role="label">Shuffle</span>
+                  </button>
+                </div>
+                <div class="mt-6 space-y-3 rounded-2xl border border-white/10 bg-slate-950/40 p-5">
+                  <p id="dailyQuoteText" class="text-lg font-medium leading-relaxed text-white">
+                    Sign in to unlock the daily inspiration stream.
+                  </p>
+                  <p id="dailyQuoteAuthor" class="text-sm text-slate-400"></p>
+                  <p id="dailyQuoteMeta" class="text-xs text-slate-500 hidden"></p>
+                </div>
+                <form id="quoteSubmitForm" class="mt-6 space-y-3">
+                  <label for="quoteTextarea" class="text-sm font-medium text-slate-200">Submit a Quote</label>
+                  <textarea
+                    id="quoteTextarea"
+                    name="quote"
+                    rows="4"
+                    placeholder="Share a favorite quote to inspire the team."
+                    class="h-28 w-full resize-none rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 transition focus:outline-none focus:ring-2 focus:ring-aura-primary disabled:cursor-not-allowed disabled:opacity-60"
+                    required
+                  ></textarea>
+                  <div class="flex items-center justify-end">
+                    <button
+                      id="quoteSubmitButton"
+                      type="submit"
+                      class="inline-flex items-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                      <span data-role="label">Share Quote</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
             <div
               id="dashboardEmpty"
               class="mt-8 hidden flex flex-col items-center gap-4 rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-8 text-center"
@@ -815,6 +931,91 @@
     </footer>
 
     <div
+      id="taskModal"
+      class="fixed inset-0 z-50 hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+    >
+      <div id="taskModalOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
+      <div class="relative z-10 flex min-h-full items-center justify-center px-4 py-10">
+        <div class="w-full max-w-2xl rounded-3xl border border-white/10 bg-slate-900/90 p-8 shadow-2xl">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div class="space-y-3">
+              <span
+                id="taskModalCategory"
+                class="hidden rounded-full bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.25em] text-slate-300"
+              ></span>
+              <h4 id="taskModalTitle" class="text-2xl font-semibold text-white">Task Title</h4>
+              <div class="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <span
+                  id="taskModalStatus"
+                  class="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-slate-200"
+                >
+                  Status
+                </span>
+                <span
+                  id="taskModalPriority"
+                  class="hidden rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-slate-200"
+                ></span>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+              data-role="task-modal-close"
+              aria-label="Close task details"
+            >
+              ✕
+            </button>
+          </div>
+          <dl id="taskModalMeta" class="mt-6 grid gap-4 text-sm text-slate-300 sm:grid-cols-2">
+            <div>
+              <dt class="text-xs uppercase tracking-[0.3em] text-slate-500">Assignee</dt>
+              <dd id="taskModalAssignee" class="mt-1 font-medium text-slate-200">—</dd>
+            </div>
+            <div>
+              <dt class="text-xs uppercase tracking-[0.3em] text-slate-500">Due</dt>
+              <dd id="taskModalDue" class="mt-1 text-slate-300">—</dd>
+            </div>
+            <div>
+              <dt class="text-xs uppercase tracking-[0.3em] text-slate-500">Duration</dt>
+              <dd id="taskModalDuration" class="mt-1 text-slate-300">—</dd>
+            </div>
+            <div>
+              <dt class="text-xs uppercase tracking-[0.3em] text-slate-500">Last Updated</dt>
+              <dd id="taskModalUpdated" class="mt-1 text-slate-300">—</dd>
+            </div>
+          </dl>
+          <div class="mt-6 space-y-3">
+            <h5 class="text-sm font-semibold text-slate-200">Notes</h5>
+            <p id="taskModalNotes" class="text-sm leading-relaxed text-slate-400">No notes provided.</p>
+          </div>
+          <div id="taskModalLabels" class="mt-4 hidden text-xs text-slate-500"></div>
+          <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              data-role="task-modal-close"
+              class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+            >
+              Close
+            </button>
+            <div class="flex flex-wrap items-center gap-3">
+              <button
+                id="taskModalDuplicateButton"
+                type="button"
+                class="inline-flex items-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                <span data-role="label">Duplicate Task</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
       id="bulkUploadModal"
       class="fixed inset-0 z-50 hidden"
       role="dialog"
@@ -960,6 +1161,13 @@
           { id: 'Shifted', label: 'Shifted' },
           { id: 'Cancelled', label: 'Cancelled' },
         ];
+        const STATUS_BADGE_CLASSES = {
+          Planned: 'bg-slate-700/60 text-slate-200',
+          'In-Progress': 'bg-sky-500/20 text-sky-200',
+          Completed: 'bg-emerald-500/20 text-emerald-200',
+          Shifted: 'bg-purple-500/20 text-purple-200',
+          Cancelled: 'bg-rose-500/20 text-rose-200',
+        };
         const COLUMN_HIGHLIGHT_CLASSES = [
           'ring-2',
           'ring-aura-primary/60',
@@ -982,16 +1190,30 @@
             category: null,
             mood: null,
           },
-bulkUpload: {
-  fileName: '',
-  headers: [],
-  previewRows: [],
-  records: [],
-  errors: [],
-  isParsing: false,
-},
-isWorkspaceLoading: false,
-
+          bulkUpload: {
+            fileName: '',
+            headers: [],
+            previewRows: [],
+            records: [],
+            errors: [],
+            isParsing: false,
+          },
+          isWorkspaceLoading: false,
+          selection: {
+            taskIds: new Set(),
+          },
+          ui: {
+            tableTasks: [],
+          },
+          quotes: {
+            isLoading: false,
+            daily: null,
+          },
+          modals: {
+            task: {
+              taskId: null,
+            },
+          },
         };
         const focusState = {
           durationMinutes: 25,
@@ -1015,6 +1237,9 @@ isWorkspaceLoading: false,
           focus: {},
           bulk: {},
           dashboard: {},
+          tasks: {},
+          quotes: {},
+          taskModal: {},
           kanban: {
             columns: {},
             lists: {},
@@ -1066,6 +1291,10 @@ isWorkspaceLoading: false,
           if (isInitialized) return;
           isInitialized = true;
           cacheElements();
+          renderTaskTable();
+          updateTaskSelectionUi();
+          renderDailyQuote();
+          updateQuoteControls();
           resetBulkUploadState();
           enhanceTabButtons();
           setupKanbanBoard();
@@ -1120,15 +1349,33 @@ elements.dashboard.section = document.querySelector('[data-tab-panel="dashboard"
 elements.dashboard.skeleton = document.getElementById('dashboardSkeleton');
 elements.dashboard.metricsContainer = document.getElementById('dashboardMetrics');
 elements.dashboard.empty = document.getElementById('dashboardEmpty');
-elements.dashboard.metrics = {
-  today: document.getElementById('metric-today'),
-  complete: document.getElementById('metric-complete'),
-  time: document.getElementById('metric-time'),
-  overdue: document.getElementById('metric-overdue'),
-};
+          elements.dashboard.metrics = {
+            today: document.getElementById('metric-today'),
+            complete: document.getElementById('metric-complete'),
+            time: document.getElementById('metric-time'),
+            overdue: document.getElementById('metric-overdue'),
+          };
+          elements.dashboard.quoteCard = document.getElementById('dailyQuoteCard');
+          elements.dashboard.quoteText = document.getElementById('dailyQuoteText');
+          elements.dashboard.quoteAuthor = document.getElementById('dailyQuoteAuthor');
+          elements.dashboard.quoteMeta = document.getElementById('dailyQuoteMeta');
+          elements.dashboard.quoteForm = document.getElementById('quoteSubmitForm');
+          elements.dashboard.quoteTextarea = document.getElementById('quoteTextarea');
+          elements.dashboard.quoteSubmitButton = document.getElementById('quoteSubmitButton');
+          elements.dashboard.quoteRefreshButton = document.getElementById('quoteRefreshButton');
+
+          elements.tasks.section = document.getElementById('taskTableSection');
+          elements.tasks.wrapper = document.getElementById('taskTableWrapper');
+          elements.tasks.table = document.getElementById('taskTable');
+          elements.tasks.body = document.getElementById('taskTableBody');
+          elements.tasks.empty = document.getElementById('taskTableEmpty');
+          elements.tasks.selectAll = document.getElementById('taskSelectAll');
+          elements.tasks.bulkActionSelect = document.getElementById('taskBulkActionSelect');
+          elements.tasks.bulkActionButton = document.getElementById('taskBulkActionButton');
+          elements.tasks.selectionSummary = document.getElementById('taskSelectionSummary');
 
 // Kanban elements
-elements.kanban.board = document.getElementById('kanbanBoard');
+          elements.kanban.board = document.getElementById('kanbanBoard');
 elements.kanban.loading = document.getElementById('kanbanLoading');
 elements.kanban.empty = document.getElementById('kanbanEmpty');
 elements.kanban.columns = {};
@@ -1161,9 +1408,24 @@ elements.bulk.previewSummary = document.getElementById('bulkUploadPreviewSummary
 elements.bulk.confirmButton = document.getElementById('bulkUploadConfirmButton');
 elements.bulk.cancelButton = document.getElementById('bulkUploadCancelButton');
 elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-close"]');
-elements.bulk.errorsContainer = document.getElementById('bulkUploadErrorsContainer');
-elements.bulk.errorsList = document.getElementById('bulkUploadErrorsList');
-elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestrictionNotice');
+          elements.bulk.errorsContainer = document.getElementById('bulkUploadErrorsContainer');
+          elements.bulk.errorsList = document.getElementById('bulkUploadErrorsList');
+          elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestrictionNotice');
+
+          elements.taskModal.root = document.getElementById('taskModal');
+          elements.taskModal.overlay = document.getElementById('taskModalOverlay');
+          elements.taskModal.closeButtons = document.querySelectorAll('[data-role="task-modal-close"]');
+          elements.taskModal.title = document.getElementById('taskModalTitle');
+          elements.taskModal.category = document.getElementById('taskModalCategory');
+          elements.taskModal.status = document.getElementById('taskModalStatus');
+          elements.taskModal.priority = document.getElementById('taskModalPriority');
+          elements.taskModal.assignee = document.getElementById('taskModalAssignee');
+          elements.taskModal.due = document.getElementById('taskModalDue');
+          elements.taskModal.duration = document.getElementById('taskModalDuration');
+          elements.taskModal.updated = document.getElementById('taskModalUpdated');
+          elements.taskModal.notes = document.getElementById('taskModalNotes');
+          elements.taskModal.labels = document.getElementById('taskModalLabels');
+          elements.taskModal.duplicateButton = document.getElementById('taskModalDuplicateButton');
 
         }
 
@@ -1277,6 +1539,41 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
           if (elements.bulk.confirmButton) {
             elements.bulk.confirmButton.addEventListener('click', handleBulkUploadConfirm);
           }
+          if (elements.tasks.selectAll) {
+            elements.tasks.selectAll.addEventListener('change', handleTaskSelectAllChange);
+          }
+          if (elements.tasks.bulkActionSelect) {
+            elements.tasks.bulkActionSelect.addEventListener('change', updateTaskSelectionUi);
+          }
+          if (elements.tasks.bulkActionButton) {
+            elements.tasks.bulkActionButton.addEventListener('click', handleTaskBulkAction);
+          }
+          if (elements.tasks.body) {
+            elements.tasks.body.addEventListener('change', handleTaskRowCheckboxChange);
+            elements.tasks.body.addEventListener('click', handleTaskRowClick);
+          }
+          if (elements.dashboard.quoteForm) {
+            elements.dashboard.quoteForm.addEventListener('submit', handleQuoteSubmit);
+          }
+          if (elements.dashboard.quoteTextarea) {
+            elements.dashboard.quoteTextarea.addEventListener('input', updateQuoteControls);
+          }
+          if (elements.dashboard.quoteRefreshButton) {
+            elements.dashboard.quoteRefreshButton.addEventListener('click', () =>
+              fetchDailyQuote({ silent: false, showSpinner: true })
+            );
+          }
+          if (elements.taskModal.closeButtons && elements.taskModal.closeButtons.length) {
+            elements.taskModal.closeButtons.forEach((btn) => {
+              btn.addEventListener('click', () => closeTaskModal());
+            });
+          }
+          if (elements.taskModal.overlay) {
+            elements.taskModal.overlay.addEventListener('click', () => closeTaskModal());
+          }
+          if (elements.taskModal.duplicateButton) {
+            elements.taskModal.duplicateButton.addEventListener('click', handleDuplicateTask);
+          }
         }
 
         function setWorkspaceLoading(isLoading) {
@@ -1292,6 +1589,9 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
           }
           if (isLoading && elements.dashboard.empty) {
             elements.dashboard.empty.classList.add('hidden');
+          }
+          if (elements.tasks.section) {
+            elements.tasks.section.setAttribute('aria-busy', isLoading ? 'true' : 'false');
           }
           if (elements.kanban.loading) {
             elements.kanban.loading.classList.toggle('hidden', !isLoading);
@@ -2208,6 +2508,7 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
           hydrateTasksFromCache();
           startSessionRefresh();
           refreshWorkspaceData({ silent: true });
+          fetchDailyQuote({ silent: true });
 
         }
 
@@ -2227,8 +2528,12 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
           }
           updateBulkUploadAvailability();
           updateIdentityBadges(isAuthenticated);
+          renderTaskTable();
+          updateTaskSelectionUi();
           renderKanbanBoard();
           updateDashboardMetrics();
+          renderDailyQuote();
+          updateQuoteControls();
           setActiveTab(state.activeTab);
         }
 
@@ -2248,6 +2553,7 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
           resetWorkspaceData();
           resetBulkUploadState();
           updateBulkUploadAvailability();
+          closeTaskModal(true);
           try {
             localStorage.removeItem(STORAGE_KEY);
           } catch (err) {
@@ -2309,9 +2615,6 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
             state.data.moods = Array.isArray(moods) ? moods : [];
             analyticsState.lastUpdated = new Date();
             updateAnalyticsTimestamp();
-            populateFocusTaskSelect();
-            renderKanbanBoard();
-            renderAnalyticsCharts();
             cacheTasksSnapshot(state.data.tasks);
           } catch (err) {
             console.error('Failed to refresh workspace data:', err);
@@ -2321,10 +2624,8 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
               if (!hydrated) {
                 renderKanbanBoard();
                 renderAnalyticsCharts();
+                renderTaskTable();
               }
-            } else {
-              renderKanbanBoard();
-              renderAnalyticsCharts();
             }
           } finally {
             analyticsState.isLoading = false;
@@ -2332,8 +2633,12 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
               setButtonLoading(elements.analytics.refreshButton, false);
             }
             setWorkspaceLoading(false);
-            updateDashboardMetrics();
+            populateFocusTaskSelect();
             renderKanbanBoard();
+            renderAnalyticsCharts();
+            renderTaskTable();
+            updateDashboardMetrics();
+            fetchDailyQuote({ silent: true });
           }
         }
 
@@ -2438,6 +2743,8 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
             populateFocusTaskSelect();
             renderKanbanBoard();
             renderAnalyticsCharts();
+            renderTaskTable();
+            updateTaskSelectionUi();
             hydrated = true;
           } catch (err) {
             console.warn('Failed to hydrate cached tasks', err);
@@ -3030,6 +3337,7 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
         }
 
         function resetWorkspaceData() {
+          closeTaskModal(true);
           state.data.tasks = [];
           state.data.moods = [];
           analyticsState.lastUpdated = null;
@@ -3078,9 +3386,601 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
           updateFocusStatus('ready');
           updateFocusControls();
           updateFocusHistoryUi();
+          state.selection.taskIds.clear();
+          state.ui.tableTasks = [];
+          renderTaskTable();
+          updateTaskSelectionUi();
+          state.quotes.daily = null;
+          state.quotes.isLoading = false;
+          renderDailyQuote();
+          updateQuoteControls();
           updateDashboardMetrics();
           renderKanbanBoard();
           setWorkspaceLoading(false);
+        }
+
+        function renderTaskTable() {
+          const body = elements.tasks.body;
+          if (!body) {
+            return;
+          }
+          pruneTaskSelection();
+          const wrapper = elements.tasks.wrapper;
+          const emptyState = elements.tasks.empty;
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks.filter(Boolean) : [];
+          const tableTasks = sortTasksByRecency(tasks).slice(0, 50);
+          state.ui.tableTasks = tableTasks;
+          body.innerHTML = '';
+          if (wrapper) {
+            wrapper.classList.toggle('hidden', tableTasks.length === 0);
+          }
+          if (emptyState) {
+            emptyState.classList.toggle('hidden', tableTasks.length !== 0);
+          }
+          if (!tableTasks.length) {
+            updateTaskSelectionUi();
+            return;
+          }
+          const fragment = document.createDocumentFragment();
+          tableTasks.forEach((task) => {
+            const taskId = task && task.TaskID !== undefined && task.TaskID !== null ? String(task.TaskID) : '';
+            const name = task && task.Name ? task.Name : taskId || 'Untitled task';
+            const status = normalizeStatus(task && task.Status);
+            const statusClass = getStatusBadgeClass(status);
+            const dueLabel = formatDueLabel(task && (task.DueAt || task.DueDate || task.DueOn || task.Due));
+            const assigneeLabel = formatAssigneeLabel(task && task.Assignee);
+            const minutes = Number(task && (task.DurationMins ?? task.Duration ?? 0));
+            const durationLabel = minutes ? formatMinutes(minutes) : '—';
+            const badges = [];
+            if (task && task.Category) {
+              badges.push(
+                `<span class="rounded-full bg-white/5 px-2 py-0.5 text-[0.65rem] uppercase tracking-[0.2em] text-slate-300">${escapeHtml(
+                  String(task.Category)
+                )}</span>`
+              );
+            }
+            if (task && task.Priority) {
+              badges.push(
+                `<span class="rounded-full bg-white/5 px-2 py-0.5 text-[0.65rem] uppercase tracking-[0.2em] text-slate-300">${escapeHtml(
+                  String(task.Priority)
+                )}</span>`
+              );
+            }
+            const badgesHtml = badges.length
+              ? `<div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">${badges.join('')}</div>`
+              : '';
+            const labelsHtml = task && task.Labels
+              ? `<p class="mt-2 text-xs text-slate-500">${escapeHtml(String(task.Labels))}</p>`
+              : '';
+            const row = document.createElement('tr');
+            row.setAttribute('data-task-id', taskId);
+            row.setAttribute('data-role', 'task-row');
+            row.className = 'align-top transition hover:bg-white/5/30';
+            row.innerHTML = `
+              <td class="w-12 px-3 py-4 align-top">
+                <input type="checkbox" data-role="task-select" class="h-4 w-4 rounded border-white/10 bg-slate-900/60 text-aura-primary focus:ring-aura-primary" />
+              </td>
+              <td class="px-3 py-4 align-top">
+                <button type="button" data-role="task-open" class="font-semibold text-left text-white transition hover:text-aura-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary">
+                  ${escapeHtml(name)}
+                </button>
+                ${badgesHtml}
+                ${labelsHtml}
+              </td>
+              <td class="px-3 py-4 align-top">
+                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${statusClass}">
+                  ${escapeHtml(status)}
+                </span>
+              </td>
+              <td class="px-3 py-4 align-top text-slate-300">${assigneeLabel ? escapeHtml(assigneeLabel) : '—'}</td>
+              <td class="px-3 py-4 align-top text-slate-300">${dueLabel ? escapeHtml(dueLabel) : '—'}</td>
+              <td class="px-3 py-4 align-top text-slate-300">${durationLabel}</td>
+            `;
+            const checkbox = row.querySelector('[data-role="task-select"]');
+            if (checkbox) {
+              checkbox.setAttribute('data-task-id', taskId);
+              checkbox.checked = Boolean(taskId && state.selection.taskIds.has(taskId));
+            }
+            const openButton = row.querySelector('[data-role="task-open"]');
+            if (openButton) {
+              openButton.setAttribute('data-task-id', taskId);
+            }
+            fragment.appendChild(row);
+          });
+          body.appendChild(fragment);
+          updateTaskSelectionUi();
+        }
+
+        function updateTaskSelectionUi() {
+          const summary = elements.tasks.selectionSummary;
+          const tasks = state.ui.tableTasks || [];
+          const selectedCount = tasks.reduce((count, task) => {
+            if (!task || task.TaskID === undefined || task.TaskID === null) {
+              return count;
+            }
+            return state.selection.taskIds.has(String(task.TaskID)) ? count + 1 : count;
+          }, 0);
+          const totalCount = tasks.length;
+          if (summary) {
+            summary.textContent = selectedCount
+              ? `${selectedCount} task${selectedCount === 1 ? '' : 's'} selected`
+              : 'No tasks selected.';
+          }
+          const selectAll = elements.tasks.selectAll;
+          if (selectAll) {
+            selectAll.disabled = totalCount === 0;
+            if (totalCount === 0) {
+              selectAll.checked = false;
+              selectAll.indeterminate = false;
+            } else {
+              selectAll.checked = selectedCount > 0 && selectedCount === totalCount;
+              selectAll.indeterminate = selectedCount > 0 && selectedCount < totalCount;
+            }
+          }
+          const bulkSelect = elements.tasks.bulkActionSelect;
+          const bulkButton = elements.tasks.bulkActionButton;
+          const actionValue = bulkSelect ? String(bulkSelect.value || '') : '';
+          const isBusy = bulkButton && bulkButton.getAttribute('aria-busy') === 'true';
+          const ready = Boolean(state.token && selectedCount > 0 && actionValue);
+          if (bulkSelect) {
+            const disableSelect = totalCount === 0 || !state.token;
+            bulkSelect.disabled = disableSelect;
+            bulkSelect.classList.toggle('opacity-60', disableSelect);
+          }
+          if (bulkButton && !isBusy) {
+            bulkButton.disabled = !ready;
+            bulkButton.classList.toggle('opacity-60', !ready);
+          }
+          syncTaskCheckboxes();
+        }
+
+        function syncTaskCheckboxes() {
+          if (!elements.tasks.body) {
+            return;
+          }
+          const checkboxes = elements.tasks.body.querySelectorAll('[data-role="task-select"]');
+          checkboxes.forEach((checkbox) => {
+            const taskId = checkbox.getAttribute('data-task-id') || '';
+            checkbox.checked = Boolean(taskId && state.selection.taskIds.has(taskId));
+          });
+        }
+
+        function handleTaskRowCheckboxChange(event) {
+          const target = event.target;
+          if (!target || target.getAttribute('data-role') !== 'task-select') {
+            return;
+          }
+          const taskId = target.getAttribute('data-task-id');
+          const normalizedId = taskId ? String(taskId) : '';
+          if (!normalizedId) {
+            target.checked = false;
+            return;
+          }
+          if (target.checked) {
+            state.selection.taskIds.add(normalizedId);
+          } else {
+            state.selection.taskIds.delete(normalizedId);
+          }
+          updateTaskSelectionUi();
+        }
+
+        function handleTaskSelectAllChange(event) {
+          const target = event && event.target;
+          if (!target) {
+            return;
+          }
+          const checked = Boolean(target.checked);
+          const tasks = state.ui.tableTasks || [];
+          tasks.forEach((task) => {
+            if (!task || task.TaskID === undefined || task.TaskID === null) {
+              return;
+            }
+            const id = String(task.TaskID);
+            if (checked) {
+              state.selection.taskIds.add(id);
+            } else {
+              state.selection.taskIds.delete(id);
+            }
+          });
+          updateTaskSelectionUi();
+        }
+
+        function handleTaskRowClick(event) {
+          const openTrigger = event.target && event.target.closest('[data-role="task-open"]');
+          if (openTrigger) {
+            const taskId = openTrigger.getAttribute('data-task-id');
+            if (taskId) {
+              openTaskModal(taskId);
+            }
+            return;
+          }
+          if (event.target && event.target.closest('button, input, label, select, a, textarea')) {
+            return;
+          }
+          const row = event.target && event.target.closest('[data-role="task-row"]');
+          if (!row) {
+            return;
+          }
+          const checkbox = row.querySelector('[data-role="task-select"]');
+          if (checkbox) {
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+
+        async function handleTaskBulkAction(event) {
+          if (event) {
+            event.preventDefault();
+          }
+          if (!state.token) {
+            showToast('Sign in to manage tasks.', 'error');
+            return;
+          }
+          const bulkSelect = elements.tasks.bulkActionSelect;
+          const action = bulkSelect ? String(bulkSelect.value || '') : '';
+          const selectedIds = Array.from(state.selection.taskIds);
+          if (!selectedIds.length) {
+            showToast('Select at least one task.', 'error');
+            return;
+          }
+          if (!action) {
+            showToast('Choose a bulk action to run.', 'error');
+            return;
+          }
+          const payload = { action, taskIds: selectedIds };
+          if (action === 'assign') {
+            const assigneeInput = window.prompt('Assign selected tasks to (email):');
+            const assignee = assigneeInput ? String(assigneeInput).trim() : '';
+            if (!assignee) {
+              showToast('Assignment cancelled.', 'info');
+              updateTaskSelectionUi();
+              return;
+            }
+            payload.assignee = assignee;
+          }
+          if (action === 'delete') {
+            const confirmed = window.confirm(
+              `Delete ${selectedIds.length} task${selectedIds.length === 1 ? '' : 's'}?`
+            );
+            if (!confirmed) {
+              showToast('Deletion cancelled.', 'info');
+              return;
+            }
+          }
+          const button = elements.tasks.bulkActionButton;
+          try {
+            if (button) {
+              setButtonLoading(button, true);
+            }
+            await server.bulkUpdateTasks(state.token, payload);
+            showToast('Bulk action completed.', 'success');
+            state.selection.taskIds.clear();
+            if (bulkSelect) {
+              bulkSelect.value = '';
+            }
+            await refreshWorkspaceData({ silent: true });
+          } catch (err) {
+            console.error('Bulk task action failed:', err);
+            showToast(err && err.message ? err.message : 'Bulk action failed.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+            updateTaskSelectionUi();
+          }
+        }
+
+        function pruneTaskSelection() {
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          const validIds = new Set(
+            tasks
+              .filter((task) => task && task.TaskID !== undefined && task.TaskID !== null)
+              .map((task) => String(task.TaskID))
+          );
+          Array.from(state.selection.taskIds).forEach((taskId) => {
+            if (!validIds.has(String(taskId))) {
+              state.selection.taskIds.delete(taskId);
+            }
+          });
+        }
+
+        function openTaskModal(taskId) {
+          const modal = elements.taskModal.root;
+          if (!modal) {
+            return;
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          const match = tasks.find((task) => task && String(task.TaskID) === String(taskId));
+          if (!match) {
+            showToast('Task not found.', 'error');
+            return;
+          }
+          state.modals.task.taskId = String(taskId);
+          populateTaskModal(match);
+          modal.classList.remove('hidden');
+          modal.setAttribute('aria-hidden', 'false');
+          document.addEventListener('keydown', handleTaskModalKeydown);
+          if (elements.taskModal.duplicateButton) {
+            const disabled = !state.token;
+            elements.taskModal.duplicateButton.disabled = disabled;
+            elements.taskModal.duplicateButton.classList.toggle('opacity-60', disabled);
+          }
+        }
+
+        function closeTaskModal(force = false) {
+          const modal = elements.taskModal.root;
+          if (!modal) {
+            return;
+          }
+          const duplicateButton = elements.taskModal.duplicateButton;
+          if (!force && duplicateButton && duplicateButton.getAttribute('aria-busy') === 'true') {
+            return;
+          }
+          modal.classList.add('hidden');
+          modal.setAttribute('aria-hidden', 'true');
+          state.modals.task.taskId = null;
+          document.removeEventListener('keydown', handleTaskModalKeydown);
+          if (duplicateButton) {
+            setButtonLoading(duplicateButton, false);
+          }
+        }
+
+        function populateTaskModal(task) {
+          if (!task || !elements.taskModal) {
+            return;
+          }
+          if (elements.taskModal.title) {
+            elements.taskModal.title.textContent = task.Name || task.TaskID || 'Untitled task';
+          }
+          if (elements.taskModal.category) {
+            if (task.Category) {
+              elements.taskModal.category.textContent = String(task.Category);
+              elements.taskModal.category.classList.remove('hidden');
+            } else {
+              elements.taskModal.category.textContent = '';
+              elements.taskModal.category.classList.add('hidden');
+            }
+          }
+          if (elements.taskModal.status) {
+            const status = normalizeStatus(task.Status);
+            elements.taskModal.status.textContent = status;
+            elements.taskModal.status.className = `rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(status)}`;
+          }
+          if (elements.taskModal.priority) {
+            if (task.Priority) {
+              elements.taskModal.priority.textContent = `Priority ${task.Priority}`;
+              elements.taskModal.priority.classList.remove('hidden');
+            } else {
+              elements.taskModal.priority.textContent = '';
+              elements.taskModal.priority.classList.add('hidden');
+            }
+          }
+          if (elements.taskModal.assignee) {
+            const assignee = formatAssigneeLabel(task.Assignee) || 'Unassigned';
+            elements.taskModal.assignee.textContent = assignee;
+          }
+          if (elements.taskModal.due) {
+            const dueLabel = formatDueLabel(task.DueAt || task.DueDate || task.DueOn || task.Due);
+            elements.taskModal.due.textContent = dueLabel ? `Due ${dueLabel}` : 'Not set';
+          }
+          if (elements.taskModal.duration) {
+            const minutes = Number(task.DurationMins ?? task.Duration ?? 0);
+            elements.taskModal.duration.textContent = minutes ? formatMinutes(minutes) : '—';
+          }
+          if (elements.taskModal.updated) {
+            elements.taskModal.updated.textContent = formatDetailedTimestamp(task.UpdatedAt || task.Timestamp);
+          }
+          if (elements.taskModal.notes) {
+            const note = task.Notes || task.Description || '';
+            elements.taskModal.notes.textContent = note ? note : 'No notes provided.';
+          }
+          if (elements.taskModal.labels) {
+            const labels = task.Labels || task.Tags || '';
+            if (labels) {
+              elements.taskModal.labels.textContent = `Labels: ${labels}`;
+              elements.taskModal.labels.classList.remove('hidden');
+            } else {
+              elements.taskModal.labels.textContent = '';
+              elements.taskModal.labels.classList.add('hidden');
+            }
+          }
+        }
+
+        function handleTaskModalKeydown(event) {
+          if (event.key === 'Escape') {
+            if (elements.taskModal.root && elements.taskModal.root.classList.contains('hidden')) {
+              return;
+            }
+            event.preventDefault();
+            closeTaskModal();
+          }
+        }
+
+        async function handleDuplicateTask(event) {
+          if (event) {
+            event.preventDefault();
+          }
+          if (!state.token) {
+            showToast('Sign in to duplicate tasks.', 'error');
+            return;
+          }
+          const taskId = state.modals.task.taskId;
+          if (!taskId) {
+            showToast('Open a task before duplicating.', 'error');
+            return;
+          }
+          const button = elements.taskModal.duplicateButton;
+          try {
+            if (button) {
+              setButtonLoading(button, true);
+            }
+            await server.duplicateTask(state.token, taskId);
+            showToast('Task duplicated.', 'success');
+            closeTaskModal(true);
+            await refreshWorkspaceData({ silent: true });
+          } catch (err) {
+            console.error('Duplicate task failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to duplicate task.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+            updateTaskSelectionUi();
+          }
+        }
+
+        async function fetchDailyQuote(options = {}) {
+          const { silent = false, showSpinner = false } = options;
+          if (!state.token) {
+            state.quotes.daily = null;
+            state.quotes.isLoading = false;
+            renderDailyQuote();
+            updateQuoteControls();
+            return;
+          }
+          if (state.quotes.isLoading && !showSpinner) {
+            return;
+          }
+          state.quotes.isLoading = true;
+          if (showSpinner && elements.dashboard.quoteRefreshButton) {
+            setButtonLoading(elements.dashboard.quoteRefreshButton, true);
+          }
+          renderDailyQuote();
+          try {
+            const quote = await server.getDailyQuote(state.token);
+            state.quotes.daily = quote || null;
+          } catch (err) {
+            console.error('Failed to fetch daily quote:', err);
+            if (!silent) {
+              showToast(err && err.message ? err.message : 'Unable to load quote of the day.', 'error');
+            }
+          } finally {
+            state.quotes.isLoading = false;
+            if (showSpinner && elements.dashboard.quoteRefreshButton) {
+              setButtonLoading(elements.dashboard.quoteRefreshButton, false);
+            }
+            renderDailyQuote();
+            updateQuoteControls();
+          }
+        }
+
+        function renderDailyQuote() {
+          const textEl = elements.dashboard.quoteText;
+          const authorEl = elements.dashboard.quoteAuthor;
+          const metaEl = elements.dashboard.quoteMeta;
+          const card = elements.dashboard.quoteCard;
+          if (card) {
+            card.setAttribute('aria-busy', state.quotes.isLoading ? 'true' : 'false');
+          }
+          if (!textEl || !authorEl) {
+            return;
+          }
+          if (!state.token) {
+            textEl.textContent = 'Sign in to unlock the daily inspiration stream.';
+            authorEl.textContent = '';
+            if (metaEl) {
+              metaEl.textContent = '';
+              metaEl.classList.add('hidden');
+            }
+            return;
+          }
+          if (state.quotes.isLoading && !state.quotes.daily) {
+            textEl.textContent = 'Loading inspiration…';
+            authorEl.textContent = '';
+            if (metaEl) {
+              metaEl.textContent = '';
+              metaEl.classList.add('hidden');
+            }
+            return;
+          }
+          const quote = state.quotes.daily || null;
+          const text = quote && (quote.text || quote.Text || quote.quote || quote.Quote || '');
+          const author = quote && (quote.author || quote.Author || quote.Attribution || quote.SubmittedBy || '');
+          const approvedBy = quote && (quote.approvedBy || quote.ApprovedBy || '');
+          const approvedAt = quote && (quote.approvedAt || quote.ApprovedAt || '');
+          if (text) {
+            textEl.textContent = `“${text}”`;
+          } else {
+            textEl.textContent = 'No approved quote yet. Share one below.';
+          }
+          authorEl.textContent = author ? `— ${author}` : '';
+          if (metaEl) {
+            const parts = [];
+            if (approvedBy) {
+              parts.push(`Approved by ${approvedBy}`);
+            }
+            const approvedAtDate = parseDateValue(approvedAt);
+            if (approvedAtDate) {
+              parts.push(`Updated ${approvedAtDate.toLocaleDateString()}`);
+            }
+            if (parts.length) {
+              metaEl.textContent = parts.join(' • ');
+              metaEl.classList.remove('hidden');
+            } else {
+              metaEl.textContent = '';
+              metaEl.classList.add('hidden');
+            }
+          }
+        }
+
+        async function handleQuoteSubmit(event) {
+          event.preventDefault();
+          if (!state.token) {
+            showToast('Sign in to share quotes.', 'error');
+            return;
+          }
+          const textarea = elements.dashboard.quoteTextarea;
+          const button = elements.dashboard.quoteSubmitButton;
+          const value = textarea ? String(textarea.value || '').trim() : '';
+          if (!value) {
+            showToast('Share a quote before submitting.', 'error');
+            return;
+          }
+          try {
+            if (button) {
+              setButtonLoading(button, true);
+            }
+            await server.addQuote(state.token, { text: value });
+            showToast('Quote submitted for review.', 'success');
+            if (textarea) {
+              textarea.value = '';
+            }
+            updateQuoteControls();
+          } catch (err) {
+            console.error('Quote submission failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to submit quote.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+            updateQuoteControls();
+          }
+        }
+
+        function updateQuoteControls() {
+          const textarea = elements.dashboard.quoteTextarea;
+          const submitButton = elements.dashboard.quoteSubmitButton;
+          const refreshButton = elements.dashboard.quoteRefreshButton;
+          const isAuthenticated = Boolean(state.token);
+          if (textarea) {
+            textarea.disabled = !isAuthenticated;
+            textarea.classList.toggle('opacity-60', !isAuthenticated);
+          }
+          if (submitButton) {
+            const isBusy = submitButton.getAttribute('aria-busy') === 'true';
+            if (!isBusy) {
+              const value = textarea ? String(textarea.value || '').trim() : '';
+              const shouldDisable = !isAuthenticated || !value;
+              submitButton.disabled = shouldDisable;
+              submitButton.classList.toggle('opacity-60', shouldDisable);
+            }
+          }
+          if (refreshButton) {
+            const refreshBusy = refreshButton.getAttribute('aria-busy') === 'true';
+            const disableRefresh = !isAuthenticated || refreshBusy;
+            refreshButton.disabled = disableRefresh;
+            refreshButton.classList.toggle('opacity-60', !isAuthenticated && !refreshBusy);
+          }
         }
 
         function toggleEmptyState(element, shouldShow, displayClass = 'flex') {
@@ -3102,6 +4002,11 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
           const lower = label.toLowerCase();
           const match = KANBAN_STATUSES.find((entry) => entry.id.toLowerCase() === lower);
           return match ? match.id : 'Planned';
+        }
+
+        function getStatusBadgeClass(status) {
+          const normalized = normalizeStatus(status);
+          return STATUS_BADGE_CLASSES[normalized] || 'bg-slate-700/60 text-slate-200';
         }
 
         function parseDateValue(value) {
@@ -3157,6 +4062,19 @@ elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestriction
           const [year, month, day] = key.split('-');
           const date = new Date(Number(year), Number(month) - 1, Number(day));
           return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        }
+
+        function formatDetailedTimestamp(value) {
+          const date = parseDateValue(value);
+          if (!date) {
+            return '—';
+          }
+          return date.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
         }
 
         function formatMinutes(total) {
