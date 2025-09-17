@@ -319,6 +319,53 @@
             </div>
 
             <div
+              id="dashboardQuoteCard"
+              class="mt-8 grid gap-6 rounded-3xl border border-white/5 bg-slate-900/70 p-6 lg:grid-cols-[1.6fr,1fr]"
+            >
+              <div class="space-y-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">Team Inspiration</p>
+                <blockquote class="space-y-3">
+                  <p id="dashboardQuoteText" class="text-lg font-medium text-white leading-relaxed">
+                    Sign in to load today's featured quote.
+                  </p>
+                  <footer id="dashboardQuoteAuthor" class="text-sm text-slate-400">&mdash;</footer>
+                </blockquote>
+              </div>
+              <form id="dashboardQuoteForm" class="grid gap-3">
+                <label class="grid gap-2">
+                  <span class="text-sm font-medium text-slate-200">Share a quote</span>
+                  <textarea
+                    id="dashboardQuoteInput"
+                    rows="3"
+                    class="min-h-[120px] rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                    placeholder="What words are inspiring the team?"
+                    required
+                  ></textarea>
+                </label>
+                <label class="grid gap-2">
+                  <span class="text-sm font-medium text-slate-200">Author <span class="text-xs text-slate-500">(optional)</span></span>
+                  <input
+                    id="dashboardQuoteAuthorInput"
+                    type="text"
+                    class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                    placeholder="Attributed to"
+                  />
+                </label>
+                <button
+                  id="dashboardQuoteSubmit"
+                  type="submit"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                >
+                  <span data-role="spinner" class="hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                  <span data-role="label">Submit Quote</span>
+                </button>
+                <p class="text-xs text-slate-500">
+                  Approved quotes rotate across the workspace dashboard for the entire team.
+                </p>
+              </form>
+            </div>
+
+            <div
               id="dashboardEmpty"
               class="mt-8 hidden flex flex-col items-center gap-4 rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-8 text-center"
             >
@@ -369,6 +416,41 @@
                     <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">Shifted</li>
                     <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">Cancelled</li>
                   </ul>
+                </div>
+              </div>
+              <div
+                id="kanbanBulkActions"
+                class="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-300 sm:flex-row sm:items-center sm:justify-between hidden"
+              >
+                <div id="kanbanBulkSelectionCount" class="font-semibold text-slate-100">No tasks selected</div>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2">
+                  <label for="kanbanBulkSelect" class="sr-only">Select bulk action</label>
+                  <select
+                    id="kanbanBulkSelect"
+                    class="w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary sm:w-44"
+                  >
+                    <option value="">Bulk actions</option>
+                    <option value="complete">Mark Complete</option>
+                    <option value="assign">Assign&hellip;</option>
+                    <option value="delete">Delete</option>
+                  </select>
+                  <div class="flex items-center gap-2">
+                    <button
+                      id="kanbanBulkApplyButton"
+                      type="button"
+                      class="inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                    >
+                      <span data-role="spinner" class="hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                      <span data-role="label">Apply</span>
+                    </button>
+                    <button
+                      id="kanbanBulkClearButton"
+                      type="button"
+                      class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
+                    >
+                      Clear
+                    </button>
+                  </div>
                 </div>
               </div>
               <div
@@ -1007,6 +1089,16 @@
             </button>
           </div>
           <div class="mt-6 space-y-6">
+            <div class="flex justify-end">
+              <button
+                id="taskDuplicateButton"
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+              >
+                <span data-role="spinner" class="hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                <span data-role="label">Duplicate Task</span>
+              </button>
+            </div>
             <div class="grid gap-3">
               <label class="grid gap-2">
                 <span class="text-sm font-medium text-slate-200">Apply Template</span>
@@ -1267,24 +1359,29 @@
             category: null,
             mood: null,
           },
-admin: {
-  users: [],
-  isLoading: false,
-  loaded: false,
-  modalMode: 'create',
-  editingUserEmail: '',
-  formSubmitting: false,
-},
-bulkUpload: {
-  fileName: '',
-  headers: [],
-  previewRows: [],
-  records: [],
-  errors: [],
-  isParsing: false,
-},
-isWorkspaceLoading: false,
-
+          admin: {
+            users: [],
+            isLoading: false,
+            loaded: false,
+            modalMode: 'create',
+            editingUserEmail: '',
+            formSubmitting: false,
+          },
+          bulkUpload: {
+            fileName: '',
+            headers: [],
+            previewRows: [],
+            records: [],
+            errors: [],
+            isParsing: false,
+          },
+          isWorkspaceLoading: false,
+          selectedTaskIds: new Set(),
+          quotes: {
+            items: [],
+            current: null,
+            isLoading: false,
+          },
         };
         const focusState = {
           durationMinutes: 25,
@@ -1310,16 +1407,15 @@ isWorkspaceLoading: false,
         const elements = {
           analytics: {},
           focus: {},
-admin: {},
-task: {},
-bulk: {},
-dashboard: {},
-kanban: {
-  columns: {},
-  lists: {},
-  counts: {},
-},
-
+          admin: {},
+          task: {},
+          bulk: {},
+          dashboard: {},
+          kanban: {
+            columns: {},
+            lists: {},
+            counts: {},
+          },
         };
 
         const tabs = ['dashboard', 'kanban', 'analytics', 'focus', 'admin'];
@@ -1370,6 +1466,9 @@ kanban: {
           enhanceTabButtons();
           setupKanbanBoard();
           bindEvents();
+          bindKanbanSelectionEvents();
+          bindDashboardQuoteEvents();
+          bindTaskDuplicateEvent();
           initializeFocusMode();
           updateShell();
           restoreSession();
@@ -1452,6 +1551,13 @@ function cacheElements() {
     time: document.getElementById('metric-time'),
     overdue: document.getElementById('metric-overdue'),
   };
+  elements.dashboard.quoteCard = document.getElementById('dashboardQuoteCard');
+  elements.dashboard.quoteText = document.getElementById('dashboardQuoteText');
+  elements.dashboard.quoteAuthor = document.getElementById('dashboardQuoteAuthor');
+  elements.dashboard.quoteForm = document.getElementById('dashboardQuoteForm');
+  elements.dashboard.quoteInput = document.getElementById('dashboardQuoteInput');
+  elements.dashboard.quoteAuthorInput = document.getElementById('dashboardQuoteAuthorInput');
+  elements.dashboard.quoteSubmit = document.getElementById('dashboardQuoteSubmit');
 
   // Kanban
   elements.kanban.board = document.getElementById('kanbanBoard');
@@ -1460,6 +1566,11 @@ function cacheElements() {
   elements.kanban.columns = {};
   elements.kanban.lists = {};
   elements.kanban.counts = {};
+  elements.kanban.bulkBar = document.getElementById('kanbanBulkActions');
+  elements.kanban.bulkSelect = document.getElementById('kanbanBulkSelect');
+  elements.kanban.bulkApply = document.getElementById('kanbanBulkApplyButton');
+  elements.kanban.bulkClear = document.getElementById('kanbanBulkClearButton');
+  elements.kanban.bulkCount = document.getElementById('kanbanBulkSelectionCount');
   if (elements.kanban.board) {
     elements.kanban.board.querySelectorAll('[data-kanban-column]').forEach((column) => {
       const columnId = column.getAttribute('data-kanban-column');
@@ -1516,6 +1627,7 @@ function cacheElements() {
   elements.task.reminderInput = document.getElementById('taskReminderInput');
   elements.task.reminderButton = document.getElementById('taskReminderButton');
   elements.task.reminderStatus = document.getElementById('taskReminderStatus');
+  elements.task.duplicateButton = document.getElementById('taskDuplicateButton');
 }
 
 
@@ -1614,6 +1726,34 @@ function cacheElements() {
           if (elements.focus.clearHistoryButton) {
             elements.focus.clearHistoryButton.addEventListener('click', clearFocusHistory);
           }
+        }
+
+        function bindKanbanSelectionEvents() {
+          if (elements.kanban.bulkApply) {
+            elements.kanban.bulkApply.addEventListener('click', handleKanbanBulkApply);
+          }
+          if (elements.kanban.bulkClear) {
+            elements.kanban.bulkClear.addEventListener('click', handleKanbanBulkClear);
+          }
+          if (elements.kanban.bulkSelect) {
+            elements.kanban.bulkSelect.addEventListener('change', updateBulkSelectionUi);
+          }
+          syncKanbanSelectionWithDom();
+          updateBulkSelectionUi();
+        }
+
+        function bindDashboardQuoteEvents() {
+          if (elements.dashboard.quoteForm) {
+            elements.dashboard.quoteForm.addEventListener('submit', handleQuoteSubmit);
+          }
+        }
+
+        function bindTaskDuplicateEvent() {
+          if (elements.task.duplicateButton) {
+            elements.task.duplicateButton.addEventListener('click', handleTaskDuplicate);
+          }
+        }
+
 // =========================
 // Event Bindings
 // =========================
@@ -1751,6 +1891,398 @@ async function moveTaskToStatus(taskId, nextStatus) { /* keep Main logic */ }
 function highlightKanbanColumn(statusId, shouldHighlight) { /* keep Main logic */ }
 function clearKanbanHighlights() { /* keep Main logic */ }
 function resetKanbanState() { /* keep Main logic */ }
+
+        const originalRenderKanbanBoard = typeof renderKanbanBoard === 'function' ? renderKanbanBoard : null;
+        const originalCreateKanbanCard = typeof createKanbanCard === 'function' ? createKanbanCard : null;
+        const originalResetKanbanState = typeof resetKanbanState === 'function' ? resetKanbanState : null;
+
+        renderKanbanBoard = function (...args) {
+          const result = originalRenderKanbanBoard ? originalRenderKanbanBoard.apply(this, args) : undefined;
+          requestAnimationFrame(() => {
+            syncKanbanSelectionWithDom();
+            updateBulkSelectionUi();
+          });
+          return result;
+        };
+
+        createKanbanCard = function (task, statusId) {
+          const card = originalCreateKanbanCard
+            ? originalCreateKanbanCard.call(this, task, statusId)
+            : document.createElement('article');
+          return decorateKanbanCardSelection(card, task);
+        };
+
+        resetKanbanState = function (...args) {
+          if (originalResetKanbanState) {
+            originalResetKanbanState.apply(this, args);
+          }
+          clearTaskSelection();
+        };
+
+        function ensureSelectionSet() {
+          if (!(state.selectedTaskIds instanceof Set)) {
+            state.selectedTaskIds = new Set();
+          }
+        }
+
+        function getSelectedTaskIds() {
+          ensureSelectionSet();
+          return Array.from(state.selectedTaskIds);
+        }
+
+        function setTaskSelected(taskId, isSelected) {
+          if (!taskId) {
+            return;
+          }
+          ensureSelectionSet();
+          if (isSelected) {
+            state.selectedTaskIds.add(taskId);
+          } else {
+            state.selectedTaskIds.delete(taskId);
+          }
+          updateBulkSelectionUi();
+        }
+
+        function clearTaskSelection() {
+          ensureSelectionSet();
+          if (state.selectedTaskIds.size) {
+            state.selectedTaskIds.clear();
+          }
+          if (elements.kanban.board) {
+            elements.kanban.board
+              .querySelectorAll('input[data-role="task-select"]')
+              .forEach((checkbox) => {
+                checkbox.checked = false;
+              });
+          }
+          updateBulkSelectionUi();
+        }
+
+        function decorateKanbanCardSelection(card, task) {
+          if (!card || !task || !task.TaskID) {
+            return card;
+          }
+          const taskId = task.TaskID;
+          card.setAttribute('data-kanban-task-id', taskId);
+          let toolbar = card.querySelector('[data-role="kanban-select-toolbar"]');
+          if (!toolbar) {
+            toolbar = document.createElement('div');
+            toolbar.setAttribute('data-role', 'kanban-select-toolbar');
+            toolbar.className = 'mb-3 flex items-center justify-between gap-2 text-xs text-slate-400';
+            const labelEl = document.createElement('label');
+            labelEl.setAttribute('data-role', 'kanban-select-control');
+            labelEl.className =
+              'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-200';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'h-4 w-4 rounded border-white/30 bg-slate-900 text-aura-primary focus:ring-aura-primary';
+            checkbox.setAttribute('data-role', 'task-select');
+            checkbox.addEventListener('click', (event) => {
+              event.stopPropagation();
+            });
+            checkbox.addEventListener('change', (event) => {
+              setTaskSelected(taskId, event.target.checked);
+            });
+            const srOnly = document.createElement('span');
+            srOnly.className = 'sr-only';
+            srOnly.textContent = 'Select task';
+            const labelText = document.createElement('span');
+            labelText.className = 'text-slate-200';
+            labelText.textContent = 'Select';
+            labelEl.append(checkbox, srOnly, labelText);
+            labelEl.addEventListener('click', (event) => {
+              event.stopPropagation();
+            });
+            toolbar.appendChild(labelEl);
+            card.insertBefore(toolbar, card.firstChild);
+          }
+          const checkboxEl = card.querySelector('input[data-role="task-select"]');
+          if (checkboxEl) {
+            ensureSelectionSet();
+            checkboxEl.checked = state.selectedTaskIds.has(taskId);
+          }
+          return card;
+        }
+
+        function syncKanbanSelectionWithDom() {
+          ensureSelectionSet();
+          if (!elements.kanban.board) {
+            updateBulkSelectionUi();
+            return;
+          }
+          const cards = elements.kanban.board.querySelectorAll('[data-kanban-task-id]');
+          const visibleIds = new Set();
+          cards.forEach((cardEl) => {
+            const taskId = cardEl.getAttribute('data-kanban-task-id');
+            if (!taskId) {
+              return;
+            }
+            visibleIds.add(taskId);
+            const checkbox = cardEl.querySelector('input[data-role="task-select"]');
+            if (checkbox) {
+              checkbox.checked = state.selectedTaskIds.has(taskId);
+            }
+          });
+          const staleIds = [];
+          state.selectedTaskIds.forEach((id) => {
+            if (!visibleIds.has(id)) {
+              staleIds.push(id);
+            }
+          });
+          if (staleIds.length) {
+            staleIds.forEach((id) => state.selectedTaskIds.delete(id));
+          }
+          updateBulkSelectionUi();
+        }
+
+        function updateBulkSelectionUi() {
+          ensureSelectionSet();
+          const count = state.selectedTaskIds.size;
+          const bar = elements.kanban.bulkBar;
+          const counter = elements.kanban.bulkCount;
+          const actionSelect = elements.kanban.bulkSelect;
+          const applyButton = elements.kanban.bulkApply;
+          if (counter) {
+            counter.textContent = count ? `${count} selected` : 'No tasks selected';
+          }
+          if (bar) {
+            if (count) {
+              bar.classList.remove('hidden');
+            } else {
+              bar.classList.add('hidden');
+            }
+          }
+          if (applyButton) {
+            const hasAction = Boolean(actionSelect && actionSelect.value);
+            const disabled = !count || !hasAction;
+            applyButton.disabled = disabled;
+            applyButton.classList.toggle('opacity-60', disabled);
+          }
+        }
+
+        function handleKanbanBulkClear() {
+          if (elements.kanban.bulkSelect) {
+            elements.kanban.bulkSelect.value = '';
+          }
+          clearTaskSelection();
+        }
+
+        async function handleKanbanBulkApply() {
+          ensureSelectionSet();
+          if (!state.token) {
+            showToast('Sign in to manage tasks.', 'error');
+            return;
+          }
+          const taskIds = getSelectedTaskIds();
+          if (!taskIds.length) {
+            showToast('Select tasks before running a bulk action.', 'error');
+            return;
+          }
+          const actionSelect = elements.kanban.bulkSelect;
+          const actionValue = actionSelect ? actionSelect.value : '';
+          if (!actionValue) {
+            showToast('Choose a bulk action first.', 'error');
+            return;
+          }
+          let actionPayload = actionValue;
+          let options = {};
+          if (actionValue === 'assign') {
+            const suggestion = state.user && state.user.Email ? state.user.Email : '';
+            const input = window.prompt('Assign selected tasks to which email?', suggestion);
+            if (!input) {
+              showToast('Bulk assignment cancelled.', 'info');
+              return;
+            }
+            const assignee = input.trim();
+            if (!assignee) {
+              showToast('Bulk assignment cancelled.', 'info');
+              return;
+            }
+            options = { assignee };
+            actionPayload = { type: 'assign', assignee };
+          } else if (actionValue === 'complete') {
+            actionPayload = 'complete';
+          } else if (actionValue === 'delete') {
+            actionPayload = 'delete';
+          } else {
+            showToast('Unsupported bulk action.', 'error');
+            return;
+          }
+          const button = elements.kanban.bulkApply;
+          if (button) {
+            setButtonLoading(button, true);
+          }
+          try {
+            await server.bulkUpdateTasks(state.token, taskIds, actionPayload, options);
+            const message =
+              actionValue === 'assign'
+                ? `Assigned ${taskIds.length} task${taskIds.length === 1 ? '' : 's'}.`
+                : actionValue === 'complete'
+                ? `Completed ${taskIds.length} task${taskIds.length === 1 ? '' : 's'}.`
+                : `Deleted ${taskIds.length} task${taskIds.length === 1 ? '' : 's'}.`;
+            showToast(message, 'success');
+            handleKanbanBulkClear();
+            await refreshWorkspaceData({ silent: true });
+          } catch (err) {
+            console.error('Bulk update failed:', err);
+            showToast(err && err.message ? err.message : 'Bulk action failed.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+            updateBulkSelectionUi();
+          }
+        }
+
+        async function handleTaskDuplicate() {
+          if (!state.token) {
+            showToast('Sign in to duplicate tasks.', 'error');
+            return;
+          }
+          const taskId = taskModalState.taskId;
+          if (!taskId) {
+            showToast('Select a task first.', 'error');
+            return;
+          }
+          const button = elements.task.duplicateButton;
+          if (button) {
+            setButtonLoading(button, true);
+          }
+          try {
+            const duplicated = await server.duplicateTask(state.token, taskId);
+            if (!duplicated || !duplicated.TaskID) {
+              throw new Error('Duplicate task response missing ID.');
+            }
+            mergeTaskIntoState(duplicated);
+            showToast('Task duplicated.', 'success');
+            await refreshWorkspaceData({ silent: true });
+            taskModalState.taskId = duplicated.TaskID;
+            updateTaskModalContent();
+            syncKanbanSelectionWithDom();
+          } catch (err) {
+            console.error('Duplicate task failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to duplicate task.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+          }
+        }
+
+        function resetQuoteState() {
+          if (!state.quotes) {
+            state.quotes = { items: [], current: null, isLoading: false };
+          }
+          state.quotes.items = [];
+          state.quotes.current = null;
+          state.quotes.isLoading = false;
+          renderDashboardQuote();
+        }
+
+        function renderDashboardQuote() {
+          const card = elements.dashboard.quoteCard;
+          const textEl = elements.dashboard.quoteText;
+          const authorEl = elements.dashboard.quoteAuthor;
+          const current = state.quotes && state.quotes.current;
+          const hasQuote = current && current.Text;
+          const isAuthenticated = Boolean(state.token);
+          if (card) {
+            card.classList.toggle('opacity-60', Boolean(state.quotes && state.quotes.isLoading));
+          }
+          if (textEl) {
+            const defaultMessage = isAuthenticated
+              ? 'No approved quotes yet. Share something inspiring with the team.'
+              : "Sign in to load today's featured quote.";
+            textEl.textContent = hasQuote ? String(current.Text) : defaultMessage;
+          }
+          if (authorEl) {
+            const author = hasQuote && current.Author ? String(current.Author).trim() : '';
+            authorEl.textContent = author ? `— ${author}` : '—';
+          }
+        }
+
+        function pickRandomQuote() {
+          if (!state.quotes) {
+            state.quotes = { items: [], current: null, isLoading: false };
+          }
+          const list = Array.isArray(state.quotes.items) ? state.quotes.items : [];
+          if (!list.length) {
+            state.quotes.current = null;
+            renderDashboardQuote();
+            return;
+          }
+          const index = Math.floor(Math.random() * list.length);
+          state.quotes.current = list[index];
+          renderDashboardQuote();
+        }
+
+        async function refreshDashboardQuote(options = {}) {
+          const { force = false } = options;
+          if (!state.token) {
+            resetQuoteState();
+            return;
+          }
+          if (!state.quotes) {
+            state.quotes = { items: [], current: null, isLoading: false };
+          }
+          if (state.quotes.isLoading) {
+            return;
+          }
+          if (!force && state.quotes.items && state.quotes.items.length) {
+            pickRandomQuote();
+            return;
+          }
+          state.quotes.isLoading = true;
+          renderDashboardQuote();
+          try {
+            const quotes = await server.listQuotes(state.token, { approvedOnly: true });
+            state.quotes.items = Array.isArray(quotes) ? quotes : [];
+            pickRandomQuote();
+          } catch (err) {
+            console.error('Failed to load quotes:', err);
+            state.quotes.items = [];
+            state.quotes.current = null;
+            showToast(err && err.message ? err.message : 'Unable to load quotes.', 'error');
+            renderDashboardQuote();
+          } finally {
+            state.quotes.isLoading = false;
+            renderDashboardQuote();
+          }
+        }
+
+        async function handleQuoteSubmit(event) {
+          event.preventDefault();
+          if (!state.token) {
+            showToast('Sign in to share a quote.', 'error');
+            return;
+          }
+          if (!elements.dashboard.quoteInput || !elements.dashboard.quoteSubmit) {
+            return;
+          }
+          const text = elements.dashboard.quoteInput.value.trim();
+          const author = elements.dashboard.quoteAuthorInput
+            ? elements.dashboard.quoteAuthorInput.value.trim()
+            : '';
+          if (!text) {
+            showToast('Quote text is required.', 'error');
+            return;
+          }
+          const button = elements.dashboard.quoteSubmit;
+          setButtonLoading(button, true);
+          try {
+            await server.addQuote(state.token, { text, author });
+            showToast('Quote submitted for review.', 'success');
+            if (elements.dashboard.quoteForm) {
+              elements.dashboard.quoteForm.reset();
+            }
+            await refreshDashboardQuote({ force: true });
+          } catch (err) {
+            console.error('Quote submission failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to submit quote.', 'error');
+          } finally {
+            setButtonLoading(button, false);
+          }
+        }
 
         }
 
@@ -2367,16 +2899,17 @@ function resetKanbanState() { /* keep Main logic */ }
           }
         }
 
-        function applySession(token, user) {
-          state.token = token;
-          state.user = user || null;
-          resetAdminState();
-          updateShell();
-          hydrateTasksFromCache();
-          startSessionRefresh();
-          refreshWorkspaceData({ silent: true });
+          function applySession(token, user) {
+            state.token = token;
+            state.user = user || null;
+            resetAdminState();
+            updateShell();
+            hydrateTasksFromCache();
+            startSessionRefresh();
+            refreshWorkspaceData({ silent: true });
+            refreshDashboardQuote({ force: true });
 
-        }
+          }
 
         function updateShell() {
           const isAuthenticated = Boolean(state.token && state.user);
@@ -2392,13 +2925,14 @@ function resetKanbanState() { /* keep Main logic */ }
           if (elements.roleBadge) {
             elements.roleBadge.textContent = isAuthenticated && state.user.Role ? state.user.Role : '';
           }
-renderAdminPanel();
-updateBulkUploadAvailability();
-updateIdentityBadges(isAuthenticated);
+  renderAdminPanel();
+  updateBulkUploadAvailability();
+  updateIdentityBadges(isAuthenticated);
 
           renderKanbanBoard();
           updateDashboardMetrics();
           setActiveTab(state.activeTab);
+          renderDashboardQuote();
         }
 
         function persistSession(token, user) {
@@ -2410,18 +2944,19 @@ updateIdentityBadges(isAuthenticated);
           }
         }
 
-        function clearSession() {
-          stopSessionRefresh();
-          state.token = null;
-          state.user = null;
-          resetWorkspaceData();
-          resetBulkUploadState();
-          updateBulkUploadAvailability();
-          try {
-            localStorage.removeItem(STORAGE_KEY);
-          } catch (err) {
-            console.warn('Failed to clear session storage', err);
-          }
+          function clearSession() {
+            stopSessionRefresh();
+            state.token = null;
+            state.user = null;
+            resetWorkspaceData();
+            resetBulkUploadState();
+            updateBulkUploadAvailability();
+            resetQuoteState();
+            try {
+              localStorage.removeItem(STORAGE_KEY);
+            } catch (err) {
+              console.warn('Failed to clear session storage', err);
+            }
           if (isAdminModalOpen()) {
             closeAdminUserModal();
           }
@@ -3457,6 +3992,7 @@ updateIdentityBadges(isAuthenticated);
           state.data.tasks = [];
           state.data.moods = [];
           state.data.templates = [];
+          resetQuoteState();
           analyticsState.lastUpdated = null;
           updateAnalyticsTimestamp();
           destroyChart('velocity');
