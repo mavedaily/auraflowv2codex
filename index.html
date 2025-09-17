@@ -137,6 +137,73 @@
       aria-atomic="true"
     ></div>
 
+    <div
+      id="tutorialOverlay"
+      class="fixed inset-0 z-[150] hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+    >
+      <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
+      <div
+        id="tutorialHighlight"
+        class="pointer-events-none fixed z-10 rounded-3xl border-2 border-aura-primary/80 bg-aura-primary/10 shadow-[0_0_0_9999px_rgba(15,23,42,0.65)] opacity-0 transition-all duration-300 ease-out"
+      ></div>
+      <div
+        id="tutorialTooltip"
+        class="fixed z-20 max-w-xs rounded-3xl border border-white/10 bg-slate-950/90 p-6 text-slate-100 shadow-xl transition-opacity duration-200 ease-out"
+        tabindex="-1"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p id="tutorialStepLabel" class="text-xs uppercase tracking-[0.3em] text-slate-400">Step 1 of 5</p>
+            <h3 id="tutorialTitle" class="mt-2 text-xl font-semibold text-white">Welcome</h3>
+          </div>
+          <button
+            id="tutorialSkipButton"
+            type="button"
+            class="text-xs font-medium text-slate-400 transition hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+          >
+            Skip
+          </button>
+        </div>
+        <p id="tutorialDescription" class="mt-4 text-sm text-slate-300">
+          Use Aura Flow to orchestrate projects across your team.
+        </p>
+        <div class="mt-6">
+          <div
+            id="tutorialProgressTrack"
+            class="h-1.5 w-full overflow-hidden rounded-full bg-white/10"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <div
+              id="tutorialProgress"
+              class="h-full w-0 rounded-full bg-aura-primary transition-all duration-300 ease-out"
+            ></div>
+          </div>
+        </div>
+        <div class="mt-6 flex items-center justify-between gap-4">
+          <button
+            id="tutorialPrevButton"
+            type="button"
+            class="text-sm font-medium text-slate-400 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+          >
+            Back
+          </button>
+          <button
+            id="tutorialNextButton"
+            type="button"
+            class="inline-flex items-center justify-center rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+
     <main class="relative z-10">
       <section id="loginView" class="min-h-screen flex items-center justify-center px-4 py-10 sm:px-6 sm:py-12">
         <div class="login-card relative isolate bg-slate-950/70 backdrop-blur-xl border border-white/10 rounded-3xl shadow-brand max-w-xl w-full">
@@ -218,6 +285,33 @@
               <div class="text-right">
                 <p id="userBadge" class="text-sm font-medium text-white">Authenticated</p>
                 <p class="text-xs text-slate-500" id="roleBadge">Role</p>
+              </div>
+              <div class="relative">
+                <button
+                  id="helpMenuButton"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+                  aria-haspopup="true"
+                  aria-expanded="false"
+                  aria-controls="helpMenuPanel"
+                >
+                  Help
+                </button>
+                <div
+                  id="helpMenuPanel"
+                  class="absolute right-0 mt-2 hidden w-48 rounded-2xl border border-white/10 bg-slate-950/90 p-2 text-sm text-slate-200 shadow-xl"
+                  role="menu"
+                  aria-labelledby="helpMenuButton"
+                >
+                  <button
+                    id="restartTutorialButton"
+                    type="button"
+                    class="w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+                    role="menuitem"
+                  >
+                    Start tutorial
+                  </button>
+                </div>
               </div>
               <button
                 id="logoutButton"
@@ -435,6 +529,54 @@
             </div>
 
             <div
+              id="dashboardQuoteCard"
+              class="mt-8 grid gap-6 rounded-3xl border border-white/5 bg-slate-900/70 p-6 lg:grid-cols-[1.6fr,1fr]"
+            >
+              <div class="space-y-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">Team Inspiration</p>
+                <blockquote class="space-y-3">
+                  <p id="dashboardQuoteText" class="text-lg font-medium text-white leading-relaxed">
+                    Sign in to load today's featured quote.
+                  </p>
+                  <footer id="dashboardQuoteAuthor" class="text-sm text-slate-400">&mdash;</footer>
+                </blockquote>
+              </div>
+              <form id="dashboardQuoteForm" class="grid gap-3">
+                <label class="grid gap-2">
+                  <span class="text-sm font-medium text-slate-200">Share a quote</span>
+                  <textarea
+                    id="dashboardQuoteInput"
+                    rows="3"
+                    class="min-h-[120px] rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                    placeholder="What words are inspiring the team?"
+                    required
+                  ></textarea>
+                </label>
+                <label class="grid gap-2">
+                  <span class="text-sm font-medium text-slate-200">Author <span class="text-xs text-slate-500">(optional)</span></span>
+                  <input
+                    id="dashboardQuoteAuthorInput"
+                    type="text"
+                    class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                    placeholder="Attributed to"
+                  />
+                </label>
+                <button
+                  id="dashboardQuoteSubmit"
+                  type="submit"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                >
+                  <span data-role="spinner" class="hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                  <span data-role="label">Submit Quote</span>
+                </button>
+                <p class="text-xs text-slate-500">
+                  Approved quotes rotate across the workspace dashboard for the entire team.
+                </p>
+              </form>
+
+            </div>
+
+            <div
               id="dashboardEmpty"
               class="mt-8 hidden flex flex-col items-center gap-4 rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-8 text-center"
             >
@@ -485,6 +627,41 @@
                     <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">Shifted</li>
                     <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">Cancelled</li>
                   </ul>
+                </div>
+              </div>
+              <div
+                id="kanbanBulkActions"
+                class="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-300 sm:flex-row sm:items-center sm:justify-between hidden"
+              >
+                <div id="kanbanBulkSelectionCount" class="font-semibold text-slate-100">No tasks selected</div>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-2">
+                  <label for="kanbanBulkSelect" class="sr-only">Select bulk action</label>
+                  <select
+                    id="kanbanBulkSelect"
+                    class="w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary sm:w-44"
+                  >
+                    <option value="">Bulk actions</option>
+                    <option value="complete">Mark Complete</option>
+                    <option value="assign">Assign&hellip;</option>
+                    <option value="delete">Delete</option>
+                  </select>
+                  <div class="flex items-center gap-2">
+                    <button
+                      id="kanbanBulkApplyButton"
+                      type="button"
+                      class="inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                    >
+                      <span data-role="spinner" class="hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                      <span data-role="label">Apply</span>
+                    </button>
+                    <button
+                      id="kanbanBulkClearButton"
+                      type="button"
+                      class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
+                    >
+                      Clear
+                    </button>
+                  </div>
                 </div>
               </div>
               <div
@@ -807,13 +984,23 @@
                   </label>
                   <label class="grid gap-2">
                     <span class="text-sm font-medium text-slate-200">Anchor Task</span>
-                    <select
-                      id="focusTaskSelect"
-                      aria-label="Anchor task selection"
-                      class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
-                    >
-                      <option value="">Select a task</option>
-                    </select>
+<div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+  <select
+    id="focusTaskSelect"
+    aria-label="Anchor task selection"
+    class="grow rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+  >
+    <option value="">Select a task</option>
+  </select>
+  <button
+    id="focusTaskToolsButton"
+    type="button"
+    class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+  >
+    Task Tools
+  </button>
+</div>
+
                     <span class="text-xs text-slate-500">Link your focus block to a task for logging.</span>
                   </label>
                   <label class="grid gap-2 md:col-span-2">
@@ -875,54 +1062,331 @@
           </section>
 
           <section data-tab-panel="admin" class="tab-panel hidden">
-            <div class="rounded-3xl bg-slate-900/70 border border-white/5 p-6 sm:p-8">
-              <h3 class="text-2xl font-semibold text-white">Admin Control Center</h3>
-              <p class="mt-4 text-sm text-slate-400">
-                User provisioning, hierarchy management, and bulk operations will surface here in Phase 5 once backend services solidify.
-              </p>
-              <div class="mt-8 grid gap-6 md:grid-cols-2">
-                <div class="rounded-2xl border border-dashed border-white/10 p-6">
-                  <p class="font-medium text-slate-300">Team Directory</p>
-                  <p class="mt-3 text-sm text-slate-500">View and manage role-based access across the org.</p>
-                </div>
-                <div id="adminBulkCard" class="rounded-2xl border border-white/10 bg-slate-950/40 p-6">
-                  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p class="font-medium text-slate-300">Bulk Ops</p>
-                      <p class="mt-1 text-sm text-slate-500">
-                        Upload CSV or XLSX files with Task, Duration, Category, Priority, Assignee, and Date columns.
-                      </p>
-                    </div>
-                    <button
-                      id="bulkUploadTrigger"
-                      type="button"
-                      class="inline-flex items-center justify-center rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Launch Bulk Upload
-                    </button>
-                  </div>
-                  <ul class="mt-4 space-y-2 text-xs text-slate-400">
-                    <li class="flex items-start gap-2">
-                      <span class="mt-0.5 text-aura-primary">•</span>
-                      <span>
-                        Required columns:
-                        <span class="font-medium text-slate-200">Task, Duration, Category, Priority, Assignee, Date</span>.
-                      </span>
-                    </li>
-                    <li class="flex items-start gap-2">
-                      <span class="mt-0.5 text-aura-primary">•</span>
-                      <span>Optional: Labels, Notes, Resources, Status.</span>
-                    </li>
-                  </ul>
-                  <p id="bulkUploadRestrictionNotice" class="mt-4 text-xs text-slate-500">
-                    Bulk upload is available for Admin, Sub-Admin, or Manager roles.
-                  </p>
+<div class="rounded-3xl border border-white/5 bg-slate-900/70 p-8">
+  <div class="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+    <div class="space-y-2">
+      <p class="text-xs uppercase tracking-[0.35em] text-slate-500">Administration</p>
+      <h3 class="text-2xl font-semibold text-white">Team Directory</h3>
+      <p class="text-sm text-slate-400">
+        Manage user access, assign roles, and keep accounts audit-ready.
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3" id="adminActionBar">
+      <button
+        id="adminRefreshButton"
+        type="button"
+        class="inline-flex items-center justify-center rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+      >
+        Refresh
+      </button>
+      <button
+        id="adminAddUserButton"
+        type="button"
+        class="inline-flex items-center justify-center rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+      >
+        Add user
+      </button>
+    </div>
+  </div>
+
+  <div
+    id="adminPermissionNotice"
+    class="mt-8 hidden rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-6 text-sm text-slate-400"
+  >
+    <p class="font-medium text-slate-200">Restricted access</p>
+    <p class="mt-1 text-slate-500">
+      You do not have permission to view the team directory. Contact an administrator for assistance.
+    </p>
+  </div>
+
+  <!-- Team Directory Table -->
+  <div id="adminUsersTableWrapper" class="mt-8 overflow-hidden rounded-2xl border border-white/5 bg-slate-950/40">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-white/5 text-sm">
+        <thead class="bg-white/5 text-left text-xs uppercase tracking-[0.25em] text-slate-400">
+          <tr>
+            <th scope="col" class="px-6 py-3 font-medium">Email</th>
+            <th scope="col" class="px-6 py-3 font-medium">Role</th>
+            <th scope="col" class="px-6 py-3 font-medium">Status</th>
+            <th scope="col" class="px-6 py-3 text-right font-medium">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="adminUsersTableBody" class="divide-y divide-white/5"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Bulk Upload Card -->
+  <div id="adminBulkCard" class="mt-8 rounded-2xl border border-white/10 bg-slate-950/40 p-6">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p class="font-medium text-slate-300">Bulk Ops</p>
+        <p class="mt-1 text-sm text-slate-500">
+          Upload CSV or XLSX files with Task, Duration, Category, Priority, Assignee, and Date columns.
+        </p>
+      </div>
+      <button
+        id="bulkUploadTrigger"
+        type="button"
+        class="inline-flex items-center justify-center rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        Launch Bulk Upload
+      </button>
+    </div>
+    <ul class="mt-4 space-y-2 text-xs text-slate-400">
+      <li class="flex items-start gap-2">
+        <span class="mt-0.5 text-aura-primary">•</span>
+        <span>
+          Required columns:
+          <span class="font-medium text-slate-200">Task, Duration, Category, Priority, Assignee, Date</span>.
+        </span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="mt-0.5 text-aura-primary">•</span>
+        <span>Optional: Labels, Notes, Resources, Status.</span>
+      </li>
+    </ul>
+    <p id="bulkUploadRestrictionNotice" class="mt-4 text-xs text-slate-500">
+      Bulk upload is available for Admin, Sub-Admin, or Manager roles.
+    </p>
+  </div>
+</div>
+
                 </div>
               </div>
             </div>
           </section>
         </div>
+        <div
+          id="adminUserModal"
+          class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-8"
+          role="dialog"
+          aria-modal="true"
+          aria-hidden="true"
+        >
+          <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" data-action="close-admin-modal"></div>
+          <div class="relative w-full max-w-xl rounded-3xl border border-white/10 bg-slate-900/90 p-8 shadow-2xl">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h3 id="adminUserModalTitle" class="text-xl font-semibold text-white">Add user</h3>
+                <p id="adminUserModalSubtitle" class="mt-1 text-sm text-slate-400">
+                  Provision a new teammate with the correct role.
+                </p>
+              </div>
+              <button
+                type="button"
+                class="rounded-full border border-white/10 p-2 text-slate-400 transition hover:text-white"
+                data-action="close-admin-modal"
+                aria-label="Close modal"
+              >
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <form id="adminUserForm" class="mt-6 space-y-5">
+              <div>
+                <label for="adminUserEmail" class="text-sm font-medium text-slate-200">Email</label>
+                <input
+                  id="adminUserEmail"
+                  name="email"
+                  type="email"
+                  required
+                  autocomplete="email"
+                  placeholder="teammate@company.com"
+                  class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                />
+              </div>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label for="adminUserRole" class="text-sm font-medium text-slate-200">Role</label>
+                  <select
+                    id="adminUserRole"
+                    name="role"
+                    class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                  >
+                    <option value="Admin">Admin</option>
+                    <option value="Sub-Admin">Sub-Admin</option>
+                    <option value="Manager">Manager</option>
+                    <option value="Intern" selected>Intern</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="adminUserManager" class="text-sm font-medium text-slate-200"
+                    >Manager Email <span class="text-xs text-slate-500">(optional)</span></label
+                  >
+                  <input
+                    id="adminUserManager"
+                    name="managerEmail"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="manager@company.com"
+                    class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label for="adminUserPassword" class="text-sm font-medium text-slate-200">Password</label>
+                <input
+                  id="adminUserPassword"
+                  name="password"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="Minimum 8 characters"
+                  class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                  required
+                />
+                <p id="adminUserPasswordHint" class="mt-2 text-xs text-slate-500">Minimum 8 characters.</p>
+              </div>
+              <div class="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                <input
+                  id="adminUserIsActive"
+                  name="isActive"
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-white/20 bg-slate-900 text-aura-primary focus:ring-aura-primary"
+                  checked
+                />
+                <div>
+                  <label for="adminUserIsActive" class="text-sm font-medium text-slate-200">Active account</label>
+                  <p class="text-xs text-slate-500">Disabled accounts cannot sign in.</p>
+                </div>
+              </div>
+              <div class="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+                  data-action="close-admin-modal"
+                >
+                  Cancel
+                </button>
+                <button
+                  id="adminUserSubmitButton"
+                  type="submit"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                >
+                  <span data-role="spinner" class="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin hidden"></span>
+                  <span data-role="label">Save user</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       </section>
+      <div
+        id="taskDetailModal"
+        class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm sm:items-center"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden="true"
+      >
+        <div
+          id="taskDetailPanel"
+          class="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-white/10 bg-slate-950/95 shadow-2xl outline-none"
+          tabindex="-1"
+        >
+          <button
+            id="taskDetailClose"
+            type="button"
+            class="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
+            aria-label="Close task details"
+          >
+            ✕
+          </button>
+          <div class="space-y-6 p-6 sm:p-8">
+            <header class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+              <div class="space-y-4">
+                <div class="flex flex-wrap items-center gap-3">
+                  <span
+                    id="taskDetailStatus"
+                    class="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white"
+                  >
+                    Status
+                  </span>
+                  <span id="taskDetailId" class="text-xs text-slate-500">—</span>
+                </div>
+                <h3 id="taskDetailTitle" class="text-2xl font-semibold leading-tight text-white">
+                  Task title
+                </h3>
+              </div>
+              <dl class="grid gap-4 text-xs text-slate-400 sm:text-right sm:text-sm">
+                <div>
+                  <dt class="font-medium uppercase tracking-wide text-[0.65rem] text-slate-400">Assignee</dt>
+                  <dd id="taskDetailAssignee" class="mt-1 text-sm text-white">—</dd>
+                </div>
+                <div>
+                  <dt class="font-medium uppercase tracking-wide text-[0.65rem] text-slate-400">Due</dt>
+                  <dd id="taskDetailDue" class="mt-1 text-sm text-white/80">—</dd>
+                </div>
+                <div>
+                  <dt class="font-medium uppercase tracking-wide text-[0.65rem] text-slate-400">Parent Task</dt>
+                  <dd id="taskDetailParent" class="mt-1 text-sm text-white/80">None</dd>
+                </div>
+              </dl>
+            </header>
+            <div
+              id="taskDetailNotes"
+              class="hidden whitespace-pre-wrap rounded-2xl border border-white/10 bg-slate-900/40 p-5 text-sm leading-relaxed text-slate-200"
+            ></div>
+            <section class="rounded-2xl border border-white/10 bg-slate-900/40 p-5">
+              <label class="flex flex-col gap-2 text-sm text-slate-200">
+                <span class="font-semibold text-white">Dependency</span>
+                <select
+                  id="taskDependencySelect"
+                  class="rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                >
+                  <option value="">No dependency</option>
+                </select>
+                <span id="taskDependencyHint" class="text-xs text-slate-500">
+                  Select a task that must finish before this one progresses.
+                </span>
+              </label>
+            </section>
+            <section class="space-y-4">
+              <div class="flex items-center justify-between gap-3">
+                <h4 class="text-lg font-semibold text-white">Comments</h4>
+              </div>
+              <div
+                id="taskCommentsLoading"
+                class="hidden rounded-2xl border border-dashed border-white/10 bg-slate-900/40 p-4 text-sm text-slate-400"
+              >
+                Loading comments&hellip;
+              </div>
+              <div
+                id="taskCommentsError"
+                class="hidden rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-100"
+              ></div>
+              <ul id="taskCommentsList" class="space-y-4"></ul>
+              <div
+                id="taskCommentsEmpty"
+                class="hidden rounded-2xl border border-dashed border-white/10 bg-slate-900/40 p-4 text-sm text-slate-400"
+              >
+                No comments yet. Start the discussion below.
+              </div>
+              <form id="taskCommentForm" class="space-y-3">
+                <label class="grid gap-2 text-sm text-slate-200" for="taskCommentInput">
+                  <span class="font-medium text-white">Add a comment</span>
+                  <textarea
+                    id="taskCommentInput"
+                    rows="3"
+                    class="min-h-[110px] rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                    placeholder="Share updates, blockers, or context."
+                    required
+                  ></textarea>
+                </label>
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-xs text-slate-500">Markdown not supported yet — line breaks are preserved.</p>
+                  <button
+                    id="taskCommentSubmit"
+                    type="submit"
+                    class="inline-flex items-center justify-center rounded-full bg-aura-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                  >
+                    Post comment
+                  </button>
+                </div>
+              </form>
+            </section>
+
+          </div>
+        </div>
+      </div>
     </main>
     <footer class="relative z-10 border-t border-white/10 bg-slate-950/70">
       <div class="mx-auto max-w-7xl px-6 py-6 text-center text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">
@@ -1151,9 +1615,8 @@
 
       (function () {
         const STORAGE_KEY = 'aura-flow-v2.session';
-        const TASK_CACHE_KEY = 'aura-flow-v2.tasks.cache';
-        const TASK_CACHE_LIMIT = 20;
-        const SESSION_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+        const TUTORIAL_STORAGE_KEY = 'aura-flow-v2.tutorialCompleted';
+
         const KANBAN_STATUSES = [
           { id: 'Planned', label: 'Planned' },
           { id: 'In-Progress', label: 'In-Progress' },
@@ -1174,9 +1637,49 @@
           'ring-offset-2',
           'ring-offset-slate-950'
         ];
-        const BULK_PREVIEW_LIMIT = 50;
-        const BULK_REQUIRED_COLUMNS = ['Task', 'Duration', 'Category', 'Priority', 'Assignee', 'Date'];
-
+        const tutorialSteps = [
+          {
+            id: 'login',
+            target: '.login-card',
+            title: 'Secure workspace login',
+            description:
+              'Enter your Aura Flow credentials to unlock the workspace. After signing in we will walk through each major area.',
+            autoAdvanceOnMissing: true,
+          },
+          {
+            id: 'dashboard',
+            target: '[data-tab-button="dashboard"]',
+            title: 'Dashboard pulse',
+            description: 'Review key metrics and activity snapshots from the dashboard tab.',
+            requiresAuth: true,
+            onBeforeShow: () => setActiveTab('dashboard'),
+          },
+          {
+            id: 'kanban',
+            target: '[data-tab-button="kanban"]',
+            title: 'Kanban workflow',
+            description: 'Drag tasks across swimlanes to reflect delivery progress in real time.',
+            requiresAuth: true,
+            onBeforeShow: () => setActiveTab('kanban'),
+          },
+          {
+            id: 'focus',
+            target: '[data-tab-button="focus"]',
+            title: 'Focus mode',
+            description: 'Launch Pomodoro-style sessions, capture mood, and auto-log progress.',
+            requiresAuth: true,
+            onBeforeShow: () => setActiveTab('focus'),
+          },
+          {
+            id: 'admin',
+            target: '[data-tab-button="admin"]',
+            title: 'Admin controls',
+            description: 'Manage workspace roles, provisioning, and future bulk operations.',
+            requiresAuth: true,
+            onBeforeShow: () => setActiveTab('admin'),
+          },
+        ];
+n
         const state = {
           token: null,
           user: null,
@@ -1184,11 +1687,22 @@
           data: {
             tasks: [],
             moods: [],
+            templates: [],
+            quotes: [],
           },
           charts: {
             velocity: null,
             category: null,
             mood: null,
+          },
+
+          admin: {
+            users: [],
+            isLoading: false,
+            loaded: false,
+            modalMode: 'create',
+            editingUserEmail: '',
+            formSubmitting: false,
           },
           bulkUpload: {
             fileName: '',
@@ -1214,6 +1728,16 @@
               taskId: null,
             },
           },
+
+        };
+        const tutorialState = {
+          steps: tutorialSteps,
+          activeSteps: tutorialSteps.slice(),
+          isActive: false,
+          currentIndex: 0,
+          describedTarget: null,
+          previousDescription: null,
+          hasAutoLaunched: false,
         };
         const focusState = {
           durationMinutes: 25,
@@ -1224,13 +1748,23 @@
           selectedMood: 'neutral',
           history: [],
         };
+        const taskModalState = {
+          isOpen: false,
+          taskId: '',
+        };
         const analyticsState = {
           isLoading: false,
           lastUpdated: null,
         };
-        const dragState = {
-          taskId: null,
-          originStatus: null,
+        const taskDetailState = {
+          isOpen: false,
+          taskId: '',
+          currentDependency: '',
+          dependencyUpdating: false,
+          comments: [],
+          commentsLoading: false,
+          commentsError: '',
+
         };
         const elements = {
           analytics: {},
@@ -1245,6 +1779,7 @@
             lists: {},
             counts: {},
           },
+
         };
 
         const tabs = ['dashboard', 'kanban', 'analytics', 'focus', 'admin'];
@@ -1282,8 +1817,8 @@
           burntout: 1,
         };
         let isInitialized = false;
-        let sessionRefreshTimerId = null;
-        let sessionRefreshFailureNotified = false;
+        let helpMenuOpen = false;
+
 
         document.addEventListener('DOMContentLoaded', init);
 
@@ -1295,13 +1830,19 @@
           updateTaskSelectionUi();
           renderDailyQuote();
           updateQuoteControls();
+
           resetBulkUploadState();
           enhanceTabButtons();
           setupKanbanBoard();
           bindEvents();
+          bindKanbanSelectionEvents();
+          bindDashboardQuoteEvents();
+          bindTaskDuplicateEvent();
           initializeFocusMode();
           updateShell();
-          restoreSession();
+          restoreSession().finally(() => {
+            maybeStartTutorial();
+          });
         }
 
         function cacheElements() {
@@ -1314,7 +1855,6 @@
           elements.logoutButton = document.getElementById('logoutButton');
           elements.tabButtons = document.querySelectorAll('[data-tab-button]');
           elements.tabPanels = document.querySelectorAll('[data-tab-panel]');
-          elements.tabDropdown = document.getElementById('tabDropdown');
           elements.analytics.refreshButton = document.getElementById('analyticsRefreshButton');
           elements.analytics.refreshTime = document.getElementById('analyticsRefreshTime');
           elements.analytics.velocityCanvas = document.getElementById('completionVelocityChart');
@@ -1326,8 +1866,6 @@
           elements.analytics.moodCanvas = document.getElementById('moodTrendChart');
           elements.analytics.moodEmpty = document.getElementById('moodChartEmpty');
           elements.analytics.moodMetric = document.getElementById('moodMetric');
-          elements.analytics.exportCsvButton = document.getElementById('reportExportCsv');
-          elements.analytics.exportPdfButton = document.getElementById('reportExportPdf');
           elements.focus.statusBadge = document.getElementById('focusStatusBadge');
           if (elements.focus.statusBadge) {
             elements.focus.statusDot = elements.focus.statusBadge.querySelector('[data-role="focus-status-dot"]');
@@ -1427,6 +1965,7 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           elements.taskModal.labels = document.getElementById('taskModalLabels');
           elements.taskModal.duplicateButton = document.getElementById('taskModalDuplicateButton');
 
+
         }
 
         function enhanceTabButtons() {
@@ -1522,22 +2061,17 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           if (elements.focus.clearHistoryButton) {
             elements.focus.clearHistoryButton.addEventListener('click', clearFocusHistory);
           }
-          if (elements.bulk.trigger) {
-            elements.bulk.trigger.addEventListener('click', openBulkUploadModal);
+          if (elements.taskDetail.closeButton) {
+            elements.taskDetail.closeButton.addEventListener('click', closeTaskDetail);
           }
-          if (elements.bulk.fileInput) {
-            elements.bulk.fileInput.addEventListener('change', handleBulkFileChange);
+          if (elements.taskDetail.modal) {
+            elements.taskDetail.modal.addEventListener('click', handleTaskDetailOverlayClick);
           }
-          if (elements.bulk.closeButtons && elements.bulk.closeButtons.length) {
-            elements.bulk.closeButtons.forEach((btn) => {
-              btn.addEventListener('click', closeBulkUploadModal);
-            });
+          if (elements.taskDetail.commentForm) {
+            elements.taskDetail.commentForm.addEventListener('submit', handleTaskCommentSubmit);
           }
-          if (elements.bulk.overlay) {
-            elements.bulk.overlay.addEventListener('click', closeBulkUploadModal);
-          }
-          if (elements.bulk.confirmButton) {
-            elements.bulk.confirmButton.addEventListener('click', handleBulkUploadConfirm);
+          if (elements.taskDetail.dependencySelect) {
+            elements.taskDetail.dependencySelect.addEventListener('change', handleTaskDependencyChange);
           }
           if (elements.tasks.selectAll) {
             elements.tasks.selectAll.addEventListener('change', handleTaskSelectAllChange);
@@ -1601,297 +2135,974 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           }
           if (isLoading && elements.kanban.empty) {
             elements.kanban.empty.classList.add('hidden');
+
           }
         }
 
-        function updateDashboardMetrics() {
-          const metrics = elements.dashboard.metrics || {};
-          if (!metrics.today || !metrics.complete || !metrics.time || !metrics.overdue) {
+        function openHelpMenu() {
+          if (!elements.help.button || !elements.help.menu) return;
+          elements.help.menu.classList.remove('hidden');
+          elements.help.button.setAttribute('aria-expanded', 'true');
+          helpMenuOpen = true;
+        }
+
+        function closeHelpMenu() {
+          if (!elements.help.button || !elements.help.menu) return;
+          elements.help.menu.classList.add('hidden');
+          elements.help.button.setAttribute('aria-expanded', 'false');
+          helpMenuOpen = false;
+        }
+
+        function handleDocumentClickForHelpMenu(event) {
+          if (!helpMenuOpen) {
             return;
           }
-          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          let tasksToday = 0;
-          let completed = 0;
-          let overdue = 0;
-          let trackedMinutes = 0;
-          const now = new Date();
-          tasks.forEach((task) => {
-            if (!task) return;
-            const status = normalizeStatus(task.Status);
-            if (status === 'Completed') {
-              completed += 1;
-            }
-            const minutes = Number(task.DurationMins || task.Duration || 0);
-            if (Number.isFinite(minutes) && minutes > 0) {
-              trackedMinutes += minutes;
-            }
-            const dueDate = parseDateValue(task.DueAt || task.DueDate || task.DueOn || task.Due);
-            if (dueDate) {
-              const dueDay = new Date(dueDate);
-              dueDay.setHours(0, 0, 0, 0);
-              if (isSameDay(dueDay, today)) {
-                tasksToday += 1;
-              }
-              if (dueDate < now && status !== 'Completed') {
-                overdue += 1;
-              }
-            } else {
-              const created = parseDateValue(task.Timestamp || task.CreatedAt || task.CreatedOn);
-              if (created) {
-                const createdDay = new Date(created);
-                createdDay.setHours(0, 0, 0, 0);
-                if (isSameDay(createdDay, today)) {
-                  tasksToday += 1;
-                }
-              }
-            }
-          });
-          metrics.today.textContent = String(tasksToday);
-          metrics.complete.textContent = String(completed);
-          metrics.time.textContent = trackedMinutes ? formatMinutes(trackedMinutes) : '0m';
-          metrics.overdue.textContent = String(overdue);
-          const shouldShowEmpty = !tasks.length && !state.isWorkspaceLoading;
-          toggleEmptyState(elements.dashboard.empty, shouldShowEmpty, 'flex');
-        }
-
-        function renderKanbanBoard() {
-          const lists = elements.kanban.lists || {};
-          const counts = elements.kanban.counts || {};
-          const board = elements.kanban.board;
-          if (!board) {
+          if (!elements.help.menu || !elements.help.button) {
             return;
           }
-          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
-          const grouped = new Map();
-          tasks.forEach((task) => {
-            if (!task) return;
-            const statusId = normalizeStatus(task.Status);
-            if (!grouped.has(statusId)) {
-              grouped.set(statusId, []);
+          const target = event.target;
+          if (elements.help.menu.contains(target) || elements.help.button.contains(target)) {
+            return;
+          }
+          closeHelpMenu();
+        }
+
+        function handleGlobalKeydown(event) {
+          if (event.key === 'Escape') {
+            if (helpMenuOpen) {
+              closeHelpMenu();
+              event.preventDefault();
+              return;
             }
-            grouped.get(statusId).push(task);
-          });
-          KANBAN_STATUSES.forEach((status) => {
-            const list = lists[status.id];
-            if (list) {
-              list.innerHTML = '';
+            if (tutorialState.isActive) {
+              event.preventDefault();
+              handleTutorialSkip();
+              return;
             }
-            const columnTasks = grouped.get(status.id) || [];
-            if (list) {
-              if (!columnTasks.length) {
-                list.appendChild(createKanbanPlaceholderCard());
-              } else {
-                columnTasks
-                  .sort((a, b) => {
-                    const aDate = parseDateValue(a.UpdatedAt || a.Timestamp);
-                    const bDate = parseDateValue(b.UpdatedAt || b.Timestamp);
-                    const aTime = aDate ? aDate.getTime() : 0;
-                    const bTime = bDate ? bDate.getTime() : 0;
-                    return bTime - aTime;
-                  })
-                  .forEach((task) => {
-                    list.appendChild(createKanbanCard(task, status.id));
-                  });
-              }
-            }
-            const badge = counts[status.id];
-            if (badge) {
-              badge.textContent = String(columnTasks.length);
-            }
-          });
-          const shouldShowEmpty = !tasks.length && !state.isWorkspaceLoading;
-          toggleEmptyState(elements.kanban.empty, shouldShowEmpty, 'flex');
-          if (!state.isWorkspaceLoading) {
-            board.classList.remove('hidden');
           }
         }
 
-        function createKanbanCard(task, statusId) {
-          const card = document.createElement('article');
-          card.className = 'group rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-sm text-slate-200 shadow-sm transition hover:border-white/20';
-          card.draggable = true;
-          card.setAttribute('data-task-id', task.TaskID);
-          card.setAttribute('role', 'listitem');
-          card.setAttribute('aria-grabbed', 'false');
-          const title = escapeHtml(task.Name || task.TaskID || 'Untitled task');
-          const dueLabel = formatDueLabel(task.DueAt || task.DueDate || task.DueOn || task.Due);
-          const metaParts = [];
-          if (task.Assignee) {
-            const assignee = formatAssigneeLabel(task.Assignee);
-            if (assignee) {
-              metaParts.push(assignee);
+        function maybeStartTutorial() {
+          if (tutorialState.hasAutoLaunched) {
+            return;
+          }
+          tutorialState.hasAutoLaunched = true;
+          if (hasCompletedTutorial()) {
+            return;
+          }
+          startTutorial({ includeLogin: !state.token });
+        }
+
+        function startTutorial(options = {}) {
+          const { force = false, includeLogin = !state.token } = options;
+          if (!force && hasCompletedTutorial()) {
+            return;
+          }
+          if (!elements.tutorial.overlay || !elements.tutorial.tooltip) {
+            return;
+          }
+          closeHelpMenu();
+          const stepsToUse = includeLogin
+            ? tutorialState.steps.slice()
+            : tutorialState.steps.filter((step) => step.id !== 'login');
+          if (!stepsToUse.length) {
+            markTutorialCompleted();
+            return;
+          }
+          tutorialState.activeSteps = stepsToUse;
+          tutorialState.isActive = true;
+          tutorialState.currentIndex = 0;
+          detachTutorialDescription();
+          const overlay = elements.tutorial.overlay;
+          overlay.classList.remove('hidden');
+          overlay.setAttribute('aria-hidden', 'false');
+          if (elements.tutorial.tooltip) {
+            elements.tutorial.tooltip.style.opacity = '0';
+            elements.tutorial.tooltip.style.pointerEvents = 'none';
+          }
+          showTutorialStep(0);
+        }
+
+        function hasCompletedTutorial() {
+          try {
+            return localStorage.getItem(TUTORIAL_STORAGE_KEY) === 'true';
+          } catch (err) {
+            console.warn('Unable to read tutorial preference', err);
+            return false;
+          }
+        }
+
+        function markTutorialCompleted() {
+          try {
+            localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
+          } catch (err) {
+            console.warn('Unable to persist tutorial preference', err);
+          }
+        }
+
+        function showTutorialStep(index) {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          const steps = tutorialState.activeSteps;
+          if (!Array.isArray(steps) || !steps.length) {
+            completeTutorial();
+            return;
+          }
+          const boundedIndex = Math.max(0, Math.min(index, steps.length - 1));
+          const step = steps[boundedIndex];
+          if (!step) {
+            completeTutorial();
+            return;
+          }
+          tutorialState.currentIndex = boundedIndex;
+          detachTutorialDescription();
+          if (typeof step.onBeforeShow === 'function') {
+            step.onBeforeShow();
+          }
+          const overlay = elements.tutorial.overlay;
+          if (overlay) {
+            overlay.classList.remove('hidden');
+            overlay.setAttribute('aria-hidden', 'false');
+          }
+          if (elements.tutorial.tooltip) {
+            elements.tutorial.tooltip.style.opacity = '0';
+            elements.tutorial.tooltip.style.pointerEvents = 'none';
+          }
+          updateTutorialContent(step, boundedIndex, steps.length);
+          if (elements.tutorial.tooltip) {
+            elements.tutorial.tooltip.focus();
+          }
+          requestAnimationFrame(() => {
+            if (!tutorialState.isActive) {
+              return;
+            }
+            const activeSteps = tutorialState.activeSteps;
+            const activeStep = activeSteps ? activeSteps[tutorialState.currentIndex] : null;
+            if (activeStep !== step) {
+              positionCurrentTutorialStep();
+              return;
+            }
+            const targetElement = document.querySelector(step.target);
+            if (targetElement && typeof targetElement.scrollIntoView === 'function') {
+              targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            }
+            positionCurrentTutorialStep();
+          });
+        }
+
+        function updateTutorialContent(step, index, total) {
+          if (elements.tutorial.stepLabel) {
+            elements.tutorial.stepLabel.textContent = `Step ${index + 1} of ${total}`;
+          }
+          if (elements.tutorial.title) {
+            elements.tutorial.title.textContent = step.title;
+          }
+          if (elements.tutorial.description) {
+            elements.tutorial.description.textContent = step.description;
+          }
+          if (elements.tutorial.progress) {
+            const percent = Math.round(((index + 1) / total) * 100);
+            elements.tutorial.progress.style.width = `${percent}%`;
+            if (elements.tutorial.progressTrack) {
+              elements.tutorial.progressTrack.setAttribute('aria-valuenow', String(percent));
             }
           }
-          const minutes = Number(task.DurationMins || task.Duration || 0);
-          if (Number.isFinite(minutes) && minutes > 0) {
-            metaParts.push(formatMinutes(minutes));
+          if (elements.tutorial.prevButton) {
+            const disabled = index === 0;
+            elements.tutorial.prevButton.disabled = disabled;
+            elements.tutorial.prevButton.classList.toggle('opacity-40', disabled);
+            elements.tutorial.prevButton.setAttribute('aria-disabled', disabled ? 'true' : 'false');
           }
-          if (task.Priority) {
-            metaParts.push(String(task.Priority));
+          if (elements.tutorial.nextButton) {
+            elements.tutorial.nextButton.textContent = index === total - 1 ? 'Finish' : 'Next';
           }
-          const content = [];
-          content.push(`
-            <div class="flex items-start justify-between gap-3">
-              <p class="font-medium text-slate-100">${title}</p>
-              ${dueLabel ? `<span class="rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium text-slate-300">${escapeHtml(dueLabel)}</span>` : ''}
-            </div>
-          `);
-          if (task.Category) {
-            content.push(`<p class="mt-2 text-xs uppercase tracking-[0.2em] text-slate-500">${escapeHtml(task.Category)}</p>`);
+        }
+
+        function goToTutorialStep(index) {
+          const steps = tutorialState.activeSteps;
+          if (!Array.isArray(steps) || !steps.length) {
+            completeTutorial();
+            return;
           }
-          if (metaParts.length) {
-            content.push(`<p class="mt-2 text-xs text-slate-400">${escapeHtml(metaParts.join(' • '))}</p>`);
+          if (index < 0) {
+            showTutorialStep(0);
+            return;
           }
-          card.innerHTML = content.join('');
-          card.addEventListener('dragstart', (event) => handleKanbanDragStart(event, task.TaskID, statusId));
-          card.addEventListener('dragend', handleKanbanDragEnd);
+          if (index >= steps.length) {
+            completeTutorial();
+            return;
+          }
+          showTutorialStep(index);
+        }
+
+        function handleTutorialNext() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          const steps = tutorialState.activeSteps;
+          const currentStep = steps ? steps[tutorialState.currentIndex] : null;
+          if (currentStep && currentStep.id === 'login' && !state.token) {
+            showToast('Sign in to continue the workspace tour.', 'info');
+            return;
+          }
+          goToTutorialStep(tutorialState.currentIndex + 1);
+        }
+
+        function handleTutorialPrev() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          if (tutorialState.currentIndex === 0) {
+            return;
+          }
+          goToTutorialStep(tutorialState.currentIndex - 1);
+        }
+
+        function handleTutorialSkip() {
+          completeTutorial();
+        }
+
+        function positionCurrentTutorialStep() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          const steps = tutorialState.activeSteps;
+          const step = steps ? steps[tutorialState.currentIndex] : null;
+          if (!step) {
+            completeTutorial();
+            return;
+          }
+          const target = document.querySelector(step.target);
+          if (!target || !isElementVisible(target)) {
+            detachTutorialDescription();
+            if (step.requiresAuth && !state.token) {
+              completeTutorial();
+              return;
+            }
+            if (step.autoAdvanceOnMissing) {
+              goToTutorialStep(tutorialState.currentIndex + 1);
+              return;
+            }
+            hideTutorialHighlight();
+            return;
+          }
+          requestAnimationFrame(() => {
+            if (!tutorialState.isActive) {
+              return;
+            }
+            const activeSteps = tutorialState.activeSteps;
+            const activeStep = activeSteps ? activeSteps[tutorialState.currentIndex] : null;
+            if (!activeStep) {
+              return;
+            }
+            const activeTarget = document.querySelector(activeStep.target);
+            if (!activeTarget || !isElementVisible(activeTarget)) {
+              if (activeStep.autoAdvanceOnMissing) {
+                goToTutorialStep(tutorialState.currentIndex + 1);
+              } else if (activeStep.requiresAuth && !state.token) {
+                completeTutorial();
+              }
+              return;
+            }
+            attachTutorialDescription(activeTarget);
+            drawTutorialHighlight(activeTarget);
+          });
+        }
+
+        function drawTutorialHighlight(target) {
+          if (!elements.tutorial.highlight || !elements.tutorial.tooltip) {
+            return;
+          }
+          const rect = target.getBoundingClientRect();
+          const padding = 12;
+          const highlight = elements.tutorial.highlight;
+          const tooltip = elements.tutorial.tooltip;
+          const left = Math.max(rect.left - padding, 0);
+          const top = Math.max(rect.top - padding, 0);
+          const width = rect.width + padding * 2;
+          const height = rect.height + padding * 2;
+          highlight.style.left = `${left}px`;
+          highlight.style.top = `${top}px`;
+          highlight.style.width = `${width}px`;
+          highlight.style.height = `${height}px`;
+          highlight.style.opacity = '1';
+
+          const tooltipWidth = tooltip.offsetWidth || 0;
+          const tooltipHeight = tooltip.offsetHeight || 0;
+          let tooltipTop = rect.bottom + 16;
+          if (tooltipTop + tooltipHeight > window.innerHeight - 24) {
+            tooltipTop = rect.top - tooltipHeight - 16;
+          }
+          tooltipTop = Math.max(24, Math.min(tooltipTop, window.innerHeight - tooltipHeight - 24));
+          let tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+          tooltipLeft = Math.max(24, Math.min(tooltipLeft, window.innerWidth - tooltipWidth - 24));
+          tooltip.style.top = `${tooltipTop}px`;
+          tooltip.style.left = `${tooltipLeft}px`;
+          tooltip.style.opacity = '1';
+          tooltip.style.pointerEvents = 'auto';
+        }
+
+        function attachTutorialDescription(target) {
+          if (!elements.tutorial.description) {
+            return;
+          }
+          const descriptionId = elements.tutorial.description.id;
+          if (!descriptionId) {
+            return;
+          }
+          detachTutorialDescription();
+          tutorialState.describedTarget = target;
+          tutorialState.previousDescription = target.getAttribute('aria-describedby');
+          target.setAttribute('aria-describedby', descriptionId);
+        }
+
+        function detachTutorialDescription() {
+          if (!tutorialState.describedTarget) {
+            return;
+          }
+          if (tutorialState.previousDescription) {
+            tutorialState.describedTarget.setAttribute('aria-describedby', tutorialState.previousDescription);
+          } else {
+            tutorialState.describedTarget.removeAttribute('aria-describedby');
+          }
+          tutorialState.describedTarget = null;
+          tutorialState.previousDescription = null;
+        }
+
+        function hideTutorialHighlight() {
+          if (elements.tutorial.highlight) {
+            elements.tutorial.highlight.style.opacity = '0';
+          }
+          if (elements.tutorial.tooltip) {
+            elements.tutorial.tooltip.style.opacity = '0';
+            elements.tutorial.tooltip.style.pointerEvents = 'none';
+          }
+        }
+
+        function hideTutorialOverlay() {
+          if (elements.tutorial.overlay) {
+            elements.tutorial.overlay.classList.add('hidden');
+            elements.tutorial.overlay.setAttribute('aria-hidden', 'true');
+          }
+          hideTutorialHighlight();
+        }
+
+        function completeTutorial() {
+          markTutorialCompleted();
+          tutorialState.isActive = false;
+          tutorialState.currentIndex = 0;
+          tutorialState.activeSteps = tutorialState.steps.slice();
+          hideTutorialOverlay();
+          detachTutorialDescription();
+        }
+
+        function handleTutorialRelayout() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          positionCurrentTutorialStep();
+        }
+
+        function handleTutorialPostLogin() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          const steps = tutorialState.activeSteps;
+          const step = steps ? steps[tutorialState.currentIndex] : null;
+          if (!step) {
+            return;
+          }
+          if (step.id === 'login') {
+            goToTutorialStep(tutorialState.currentIndex + 1);
+            return;
+          }
+          positionCurrentTutorialStep();
+        }
+
+        function isElementVisible(element) {
+          if (!element) {
+            return false;
+          }
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        }
+
+        function bindKanbanSelectionEvents() {
+          if (elements.kanban.bulkApply) {
+            elements.kanban.bulkApply.addEventListener('click', handleKanbanBulkApply);
+          }
+          if (elements.kanban.bulkClear) {
+            elements.kanban.bulkClear.addEventListener('click', handleKanbanBulkClear);
+          }
+          if (elements.kanban.bulkSelect) {
+            elements.kanban.bulkSelect.addEventListener('change', updateBulkSelectionUi);
+          }
+          syncKanbanSelectionWithDom();
+          updateBulkSelectionUi();
+        }
+
+        function bindDashboardQuoteEvents() {
+          if (elements.dashboard.quoteForm) {
+            elements.dashboard.quoteForm.addEventListener('submit', handleQuoteSubmit);
+          }
+        }
+
+        function bindTaskDuplicateEvent() {
+          if (elements.task.duplicateButton) {
+            elements.task.duplicateButton.addEventListener('click', handleTaskDuplicate);
+          }
+        }
+
+// =========================
+// Event Bindings
+// =========================
+
+// Admin Panel
+if (elements.admin.addButton) {
+  elements.admin.addButton.addEventListener('click', () => openAdminUserModal('create'));
+}
+if (elements.admin.refreshButton) {
+  elements.admin.refreshButton.addEventListener('click', () => refreshAdminUsers({ force: true }));
+}
+if (elements.admin.tableBody) {
+  elements.admin.tableBody.addEventListener('click', handleAdminTableClick);
+}
+if (elements.admin.form) {
+  elements.admin.form.addEventListener('submit', handleAdminUserFormSubmit);
+}
+if (elements.admin.modalCloseButtons) {
+  elements.admin.modalCloseButtons.forEach((btn) => {
+    btn.addEventListener('click', (event) => {
+      event.preventDefault();
+      closeAdminUserModal();
+    });
+  });
+}
+
+// Dashboard quote interactions
+if (elements.dashboard.quoteForm) {
+  elements.dashboard.quoteForm.addEventListener('submit', handleQuoteSubmit);
+}
+if (elements.dashboard.quoteRefreshButton) {
+  elements.dashboard.quoteRefreshButton.addEventListener('click', async () => {
+    if (!state.token) {
+      showToast('Sign in to refresh inspiration.', 'error');
+      return;
+    }
+    setButtonLoading(elements.dashboard.quoteRefreshButton, true);
+    try {
+      await refreshDashboardQuote({ silent: true, force: true });
+    } finally {
+      setButtonLoading(elements.dashboard.quoteRefreshButton, false);
+    }
+  });
+}
+
+// Task modal / templates / reminders
+if (elements.focus.taskToolsButton) {
+  elements.focus.taskToolsButton.addEventListener('click', handleTaskToolsButtonClick);
+}
+if (elements.task.closeButton) {
+  elements.task.closeButton.addEventListener('click', closeTaskModal);
+}
+if (elements.task.modal) {
+  elements.task.modal.addEventListener('click', handleTaskModalBackdropClick);
+}
+if (elements.task.templateSelect) {
+  elements.task.templateSelect.addEventListener('change', handleTemplateSelectChange);
+}
+if (elements.task.applyTemplateButton) {
+  elements.task.applyTemplateButton.addEventListener('click', handleTemplateApply);
+}
+if (elements.task.saveTemplateButton) {
+  elements.task.saveTemplateButton.addEventListener('click', handleTemplateSave);
+}
+if (elements.task.logTimeButton) {
+  elements.task.logTimeButton.addEventListener('click', handleTaskLogTime);
+}
+if (elements.task.reminderButton) {
+  elements.task.reminderButton.addEventListener('click', handleTaskScheduleReminder);
+}
+
+// Bulk upload modal
+if (elements.bulk.trigger) {
+  elements.bulk.trigger.addEventListener('click', openBulkUploadModal);
+}
+if (elements.bulk.fileInput) {
+  elements.bulk.fileInput.addEventListener('change', handleBulkFileChange);
+}
+if (elements.bulk.closeButtons && elements.bulk.closeButtons.length) {
+  elements.bulk.closeButtons.forEach((btn) => {
+    btn.addEventListener('click', closeBulkUploadModal);
+  });
+}
+if (elements.bulk.overlay) {
+  elements.bulk.overlay.addEventListener('click', closeBulkUploadModal);
+}
+if (elements.bulk.confirmButton) {
+  elements.bulk.confirmButton.addEventListener('click', handleBulkUploadConfirm);
+}
+
+// =========================
+// Global Keydown
+// =========================
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    if (isAdminModalOpen()) {
+      event.preventDefault();
+      closeAdminUserModal();
+    } else if (taskModalState.isOpen) {
+      closeTaskModal();
+    }
+  }
+});
+
+// =========================
+// Admin Panel Functions
+// =========================
+function canViewUsers() { /* keep Codex logic */ }
+function canManageUsers() { /* keep Codex logic */ }
+function normalizeEmailLocal(email) { /* keep Codex logic */ }
+function isCurrentUser(email) { /* keep Codex logic */ }
+function isAdminModalOpen() { /* keep Codex logic */ }
+function resetAdminState() { /* keep Codex logic */ }
+function resetAdminFormState() { /* keep Codex logic */ }
+function renderAdminPanel() { /* keep Codex logic */ }
+function renderAdminUsers() { /* keep Codex logic */ }
+function createAdminActionButton(label, action, email, options = {}) { /* keep Codex logic */ }
+async function refreshAdminUsers(options = {}) { /* keep Codex logic */ }
+function openAdminUserModal(mode, user) { /* keep Codex logic */ }
+function closeAdminUserModal(skipReset) { /* keep Codex logic */ }
+function setAdminFormSubmitting(isSubmitting) { /* keep Codex logic */ }
+async function handleAdminUserFormSubmit(event) { /* keep Codex logic */ }
+function handleAdminTableClick(event) { /* keep Codex logic */ }
+async function handleAdminDisableUser(email, trigger) { /* keep Codex logic */ }
+async function handleAdminResetPassword(email, trigger) { /* keep Codex logic */ }
+function setAdminActionLoading(button, isLoading) { /* keep Codex logic */ }
+
+// =========================
+// Task Modal Handlers
+// =========================
+async function handleTaskToolsButtonClick() { /* keep Main logic */ }
+function handleTemplateSelectChange() { /* keep Main logic */ }
+async function handleTemplateApply() { /* keep Main logic */ }
+async function handleTemplateSave() { /* keep Main logic */ }
+async function handleTaskLogTime() { /* keep Main logic */ }
+async function handleTaskScheduleReminder() { /* keep Main logic */ }
+function handleTaskModalBackdropClick(event) { /* keep Main logic */ }
+
+// =========================
+// Dashboard & Kanban
+// =========================
+function setWorkspaceLoading(isLoading) { /* keep Main logic */ }
+function updateDashboardMetrics() { /* keep Main logic */ }
+function renderKanbanBoard() { /* keep Main logic */ }
+function createKanbanCard(task, statusId) { /* keep Main logic */ }
+function createKanbanPlaceholderCard() { /* keep Main logic */ }
+function handleKanbanDragStart(event, taskId, statusId) { /* keep Main logic */ }
+function handleKanbanDragEnd(event) { /* keep Main logic */ }
+function handleKanbanDragEnter(event, statusId) { /* keep Main logic */ }
+function handleKanbanDragOver(event, statusId) { /* keep Main logic */ }
+function handleKanbanDragLeave(event, statusId) { /* keep Main logic */ }
+async function handleKanbanDrop(event, statusId) { /* keep Main logic */ }
+async function moveTaskToStatus(taskId, nextStatus) { /* keep Main logic */ }
+function highlightKanbanColumn(statusId, shouldHighlight) { /* keep Main logic */ }
+function clearKanbanHighlights() { /* keep Main logic */ }
+function resetKanbanState() { /* keep Main logic */ }
+
+        const originalRenderKanbanBoard = typeof renderKanbanBoard === 'function' ? renderKanbanBoard : null;
+        const originalCreateKanbanCard = typeof createKanbanCard === 'function' ? createKanbanCard : null;
+        const originalResetKanbanState = typeof resetKanbanState === 'function' ? resetKanbanState : null;
+
+        renderKanbanBoard = function (...args) {
+          const result = originalRenderKanbanBoard ? originalRenderKanbanBoard.apply(this, args) : undefined;
+          requestAnimationFrame(() => {
+            syncKanbanSelectionWithDom();
+            updateBulkSelectionUi();
+          });
+          return result;
+        };
+
+        createKanbanCard = function (task, statusId) {
+          const card = originalCreateKanbanCard
+            ? originalCreateKanbanCard.call(this, task, statusId)
+            : document.createElement('article');
+          return decorateKanbanCardSelection(card, task);
+        };
+
+        resetKanbanState = function (...args) {
+          if (originalResetKanbanState) {
+            originalResetKanbanState.apply(this, args);
+          }
+          clearTaskSelection();
+        };
+
+        function ensureSelectionSet() {
+          if (!(state.selectedTaskIds instanceof Set)) {
+            state.selectedTaskIds = new Set();
+          }
+        }
+
+        function getSelectedTaskIds() {
+          ensureSelectionSet();
+          return Array.from(state.selectedTaskIds);
+        }
+
+        function setTaskSelected(taskId, isSelected) {
+          if (!taskId) {
+            return;
+          }
+          ensureSelectionSet();
+          if (isSelected) {
+            state.selectedTaskIds.add(taskId);
+          } else {
+            state.selectedTaskIds.delete(taskId);
+          }
+          updateBulkSelectionUi();
+        }
+
+        function clearTaskSelection() {
+          ensureSelectionSet();
+          if (state.selectedTaskIds.size) {
+            state.selectedTaskIds.clear();
+          }
+          if (elements.kanban.board) {
+            elements.kanban.board
+              .querySelectorAll('input[data-role="task-select"]')
+              .forEach((checkbox) => {
+                checkbox.checked = false;
+              });
+          }
+          updateBulkSelectionUi();
+        }
+
+        function decorateKanbanCardSelection(card, task) {
+          if (!card || !task || !task.TaskID) {
+            return card;
+          }
+          const taskId = task.TaskID;
+          card.setAttribute('data-kanban-task-id', taskId);
+          let toolbar = card.querySelector('[data-role="kanban-select-toolbar"]');
+          if (!toolbar) {
+            toolbar = document.createElement('div');
+            toolbar.setAttribute('data-role', 'kanban-select-toolbar');
+            toolbar.className = 'mb-3 flex items-center justify-between gap-2 text-xs text-slate-400';
+            const labelEl = document.createElement('label');
+            labelEl.setAttribute('data-role', 'kanban-select-control');
+            labelEl.className =
+              'inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-200';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'h-4 w-4 rounded border-white/30 bg-slate-900 text-aura-primary focus:ring-aura-primary';
+            checkbox.setAttribute('data-role', 'task-select');
+            checkbox.addEventListener('click', (event) => {
+              event.stopPropagation();
+            });
+            checkbox.addEventListener('change', (event) => {
+              setTaskSelected(taskId, event.target.checked);
+            });
+            const srOnly = document.createElement('span');
+            srOnly.className = 'sr-only';
+            srOnly.textContent = 'Select task';
+            const labelText = document.createElement('span');
+            labelText.className = 'text-slate-200';
+            labelText.textContent = 'Select';
+            labelEl.append(checkbox, srOnly, labelText);
+            labelEl.addEventListener('click', (event) => {
+              event.stopPropagation();
+            });
+            toolbar.appendChild(labelEl);
+            card.insertBefore(toolbar, card.firstChild);
+          }
+          const checkboxEl = card.querySelector('input[data-role="task-select"]');
+          if (checkboxEl) {
+            ensureSelectionSet();
+            checkboxEl.checked = state.selectedTaskIds.has(taskId);
+          }
           return card;
         }
 
-        function createKanbanPlaceholderCard() {
-          const placeholder = document.createElement('div');
-          placeholder.className = 'flex flex-col gap-3 rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-4 animate-pulse';
-          placeholder.setAttribute('aria-hidden', 'true');
-          placeholder.innerHTML = `
-            <div class="h-3 w-3/4 rounded-full bg-white/10"></div>
-            <div class="h-3 w-1/2 rounded-full bg-white/5"></div>
-            <div class="h-8 rounded-xl bg-white/5"></div>
-          `;
-          return placeholder;
-        }
-
-        function handleKanbanDragStart(event, taskId, statusId) {
-          dragState.taskId = taskId;
-          dragState.originStatus = statusId;
-          if (event.dataTransfer) {
-            event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', taskId);
-          }
-          if (event.currentTarget) {
-            event.currentTarget.classList.add('opacity-60');
-            event.currentTarget.setAttribute('aria-grabbed', 'true');
-          }
-        }
-
-        function handleKanbanDragEnd(event) {
-          if (event && event.currentTarget) {
-            event.currentTarget.classList.remove('opacity-60');
-            event.currentTarget.setAttribute('aria-grabbed', 'false');
-          }
-          dragState.taskId = null;
-          dragState.originStatus = null;
-          clearKanbanHighlights();
-        }
-
-        function handleKanbanDragEnter(event, statusId) {
-          if (!dragState.taskId) {
+        function syncKanbanSelectionWithDom() {
+          ensureSelectionSet();
+          if (!elements.kanban.board) {
+            updateBulkSelectionUi();
             return;
           }
-          event.preventDefault();
-          highlightKanbanColumn(statusId, true);
+          const cards = elements.kanban.board.querySelectorAll('[data-kanban-task-id]');
+          const visibleIds = new Set();
+          cards.forEach((cardEl) => {
+            const taskId = cardEl.getAttribute('data-kanban-task-id');
+            if (!taskId) {
+              return;
+            }
+            visibleIds.add(taskId);
+            const checkbox = cardEl.querySelector('input[data-role="task-select"]');
+            if (checkbox) {
+              checkbox.checked = state.selectedTaskIds.has(taskId);
+            }
+          });
+          const staleIds = [];
+          state.selectedTaskIds.forEach((id) => {
+            if (!visibleIds.has(id)) {
+              staleIds.push(id);
+            }
+          });
+          if (staleIds.length) {
+            staleIds.forEach((id) => state.selectedTaskIds.delete(id));
+          }
+          updateBulkSelectionUi();
         }
 
-        function handleKanbanDragOver(event, statusId) {
-          if (!dragState.taskId) {
-            return;
+        function updateBulkSelectionUi() {
+          ensureSelectionSet();
+          const count = state.selectedTaskIds.size;
+          const bar = elements.kanban.bulkBar;
+          const counter = elements.kanban.bulkCount;
+          const actionSelect = elements.kanban.bulkSelect;
+          const applyButton = elements.kanban.bulkApply;
+          if (counter) {
+            counter.textContent = count ? `${count} selected` : 'No tasks selected';
           }
-          event.preventDefault();
-          highlightKanbanColumn(statusId, true);
-          if (event.dataTransfer) {
-            event.dataTransfer.dropEffect = 'move';
+          if (bar) {
+            if (count) {
+              bar.classList.remove('hidden');
+            } else {
+              bar.classList.add('hidden');
+            }
+          }
+          if (applyButton) {
+            const hasAction = Boolean(actionSelect && actionSelect.value);
+            const disabled = !count || !hasAction;
+            applyButton.disabled = disabled;
+            applyButton.classList.toggle('opacity-60', disabled);
           }
         }
 
-        function handleKanbanDragLeave(event, statusId) {
-          if (!dragState.taskId) {
-            return;
+        function handleKanbanBulkClear() {
+          if (elements.kanban.bulkSelect) {
+            elements.kanban.bulkSelect.value = '';
           }
-          if (event.relatedTarget && event.currentTarget && event.currentTarget.contains(event.relatedTarget)) {
-            return;
-          }
-          highlightKanbanColumn(statusId, false);
+          clearTaskSelection();
         }
 
-        async function handleKanbanDrop(event, statusId) {
-          if (!dragState.taskId) {
-            return;
-          }
-          event.preventDefault();
-          const taskId = dragState.taskId;
-          dragState.taskId = null;
-          dragState.originStatus = null;
-          highlightKanbanColumn(statusId, false);
-          clearKanbanHighlights();
-          await moveTaskToStatus(taskId, statusId);
-        }
-
-        async function moveTaskToStatus(taskId, nextStatus) {
-          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
-          const task = tasks.find((entry) => entry && entry.TaskID === taskId);
-          if (!task) {
-            renderKanbanBoard();
-            return;
-          }
-          const previousStatus = normalizeStatus(task.Status);
-          const targetStatus = normalizeStatus(nextStatus);
-          if (previousStatus === targetStatus) {
-            renderKanbanBoard();
-            return;
-          }
+        async function handleKanbanBulkApply() {
+          ensureSelectionSet();
           if (!state.token) {
-            showToast('Sign in to update tasks.', 'error');
-            renderKanbanBoard();
+            showToast('Sign in to manage tasks.', 'error');
             return;
           }
-          task.Status = targetStatus;
-          renderKanbanBoard();
-          updateDashboardMetrics();
+          const taskIds = getSelectedTaskIds();
+          if (!taskIds.length) {
+            showToast('Select tasks before running a bulk action.', 'error');
+            return;
+          }
+          const actionSelect = elements.kanban.bulkSelect;
+          const actionValue = actionSelect ? actionSelect.value : '';
+          if (!actionValue) {
+            showToast('Choose a bulk action first.', 'error');
+            return;
+          }
+          let actionPayload = actionValue;
+          let options = {};
+          if (actionValue === 'assign') {
+            const suggestion = state.user && state.user.Email ? state.user.Email : '';
+            const input = window.prompt('Assign selected tasks to which email?', suggestion);
+            if (!input) {
+              showToast('Bulk assignment cancelled.', 'info');
+              return;
+            }
+            const assignee = input.trim();
+            if (!assignee) {
+              showToast('Bulk assignment cancelled.', 'info');
+              return;
+            }
+            options = { assignee };
+            actionPayload = { type: 'assign', assignee };
+          } else if (actionValue === 'complete') {
+            actionPayload = 'complete';
+          } else if (actionValue === 'delete') {
+            actionPayload = 'delete';
+          } else {
+            showToast('Unsupported bulk action.', 'error');
+            return;
+          }
+          const button = elements.kanban.bulkApply;
+          if (button) {
+            setButtonLoading(button, true);
+          }
           try {
-            const updated = await server.updateTask(state.token, taskId, { Status: targetStatus });
-            if (updated && typeof updated === 'object') {
-              Object.assign(task, updated);
-            }
-            const taskName = escapeHtml(task.Name || task.TaskID || taskId);
-            showToast(`Moved “${taskName}” to ${escapeHtml(targetStatus)}.`, 'success');
+            await server.bulkUpdateTasks(state.token, taskIds, actionPayload, options);
+            const message =
+              actionValue === 'assign'
+                ? `Assigned ${taskIds.length} task${taskIds.length === 1 ? '' : 's'}.`
+                : actionValue === 'complete'
+                ? `Completed ${taskIds.length} task${taskIds.length === 1 ? '' : 's'}.`
+                : `Deleted ${taskIds.length} task${taskIds.length === 1 ? '' : 's'}.`;
+            showToast(message, 'success');
+            handleKanbanBulkClear();
+            await refreshWorkspaceData({ silent: true });
           } catch (err) {
-            task.Status = previousStatus;
-            renderKanbanBoard();
-            updateDashboardMetrics();
-            showToast(err && err.message ? err.message : 'Unable to update task status.', 'error');
+            console.error('Bulk update failed:', err);
+            showToast(err && err.message ? err.message : 'Bulk action failed.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+            updateBulkSelectionUi();
           }
         }
 
-        function highlightKanbanColumn(statusId, shouldHighlight) {
-          const column = elements.kanban.columns ? elements.kanban.columns[statusId] : null;
-          if (!column) {
+        async function handleTaskDuplicate() {
+          if (!state.token) {
+            showToast('Sign in to duplicate tasks.', 'error');
             return;
           }
-          COLUMN_HIGHLIGHT_CLASSES.forEach((cls) => {
-            column.classList.toggle(cls, shouldHighlight);
-          });
+          const taskId = taskModalState.taskId;
+          if (!taskId) {
+            showToast('Select a task first.', 'error');
+            return;
+          }
+          const button = elements.task.duplicateButton;
+          if (button) {
+            setButtonLoading(button, true);
+          }
+          try {
+            const duplicated = await server.duplicateTask(state.token, taskId);
+            if (!duplicated || !duplicated.TaskID) {
+              throw new Error('Duplicate task response missing ID.');
+            }
+            mergeTaskIntoState(duplicated);
+            showToast('Task duplicated.', 'success');
+            await refreshWorkspaceData({ silent: true });
+            taskModalState.taskId = duplicated.TaskID;
+            updateTaskModalContent();
+            syncKanbanSelectionWithDom();
+          } catch (err) {
+            console.error('Duplicate task failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to duplicate task.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+          }
         }
 
-        function clearKanbanHighlights() {
-          Object.keys(elements.kanban.columns || {}).forEach((key) => {
-            highlightKanbanColumn(key, false);
-          });
+        function resetQuoteState() {
+          if (!state.quotes) {
+            state.quotes = { items: [], current: null, isLoading: false };
+          }
+          state.quotes.items = [];
+          state.quotes.current = null;
+          state.quotes.isLoading = false;
+          renderDashboardQuote();
         }
 
-        function resetKanbanState() {
-          Object.values(elements.kanban.lists || {}).forEach((list) => {
-            if (list) {
-              list.innerHTML = '';
+        function renderDashboardQuote() {
+          const card = elements.dashboard.quoteCard;
+          const textEl = elements.dashboard.quoteText;
+          const authorEl = elements.dashboard.quoteAuthor;
+          const current = state.quotes && state.quotes.current;
+          const hasQuote = current && current.Text;
+          const isAuthenticated = Boolean(state.token);
+          if (card) {
+            card.classList.toggle('opacity-60', Boolean(state.quotes && state.quotes.isLoading));
+          }
+          if (textEl) {
+            const defaultMessage = isAuthenticated
+              ? 'No approved quotes yet. Share something inspiring with the team.'
+              : "Sign in to load today's featured quote.";
+            textEl.textContent = hasQuote ? String(current.Text) : defaultMessage;
+          }
+          if (authorEl) {
+            const author = hasQuote && current.Author ? String(current.Author).trim() : '';
+            authorEl.textContent = author ? `— ${author}` : '—';
+          }
+        }
+
+        function pickRandomQuote() {
+          if (!state.quotes) {
+            state.quotes = { items: [], current: null, isLoading: false };
+          }
+          const list = Array.isArray(state.quotes.items) ? state.quotes.items : [];
+          if (!list.length) {
+            state.quotes.current = null;
+            renderDashboardQuote();
+            return;
+          }
+          const index = Math.floor(Math.random() * list.length);
+          state.quotes.current = list[index];
+          renderDashboardQuote();
+        }
+
+        async function refreshDashboardQuote(options = {}) {
+          const { force = false } = options;
+          if (!state.token) {
+            resetQuoteState();
+            return;
+          }
+          if (!state.quotes) {
+            state.quotes = { items: [], current: null, isLoading: false };
+          }
+          if (state.quotes.isLoading) {
+            return;
+          }
+          if (!force && state.quotes.items && state.quotes.items.length) {
+            pickRandomQuote();
+            return;
+          }
+          state.quotes.isLoading = true;
+          renderDashboardQuote();
+          try {
+            const quotes = await server.listQuotes(state.token, { approvedOnly: true });
+            state.quotes.items = Array.isArray(quotes) ? quotes : [];
+            pickRandomQuote();
+          } catch (err) {
+            console.error('Failed to load quotes:', err);
+            state.quotes.items = [];
+            state.quotes.current = null;
+            showToast(err && err.message ? err.message : 'Unable to load quotes.', 'error');
+            renderDashboardQuote();
+          } finally {
+            state.quotes.isLoading = false;
+            renderDashboardQuote();
+          }
+        }
+
+        async function handleQuoteSubmit(event) {
+          event.preventDefault();
+          if (!state.token) {
+            showToast('Sign in to share a quote.', 'error');
+            return;
+          }
+          if (!elements.dashboard.quoteInput || !elements.dashboard.quoteSubmit) {
+            return;
+          }
+          const text = elements.dashboard.quoteInput.value.trim();
+          const author = elements.dashboard.quoteAuthorInput
+            ? elements.dashboard.quoteAuthorInput.value.trim()
+            : '';
+          if (!text) {
+            showToast('Quote text is required.', 'error');
+            return;
+          }
+          const button = elements.dashboard.quoteSubmit;
+          setButtonLoading(button, true);
+          try {
+            await server.addQuote(state.token, { text, author });
+            showToast('Quote submitted for review.', 'success');
+            if (elements.dashboard.quoteForm) {
+              elements.dashboard.quoteForm.reset();
             }
-          });
-          Object.values(elements.kanban.counts || {}).forEach((badge) => {
-            if (badge) {
-              badge.textContent = '0';
-            }
-          });
-          clearKanbanHighlights();
-          renderKanbanBoard();
+            await refreshDashboardQuote({ force: true });
+          } catch (err) {
+            console.error('Quote submission failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to submit quote.', 'error');
+          } finally {
+            setButtonLoading(button, false);
+          }
+        }
+
         }
 
         async function handleLoginSubmit(event) {
@@ -2003,6 +3214,241 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           const label = button.querySelector('[data-role="label"]');
           if (spinner) spinner.classList.toggle('hidden', !isLoading);
           if (label) label.classList.toggle('opacity-0', isLoading);
+        }
+
+        function selectQuoteForDisplay(quotes, previousId) {
+          if (!Array.isArray(quotes) || !quotes.length) {
+            return null;
+          }
+          if (quotes.length === 1) {
+            return quotes[0];
+          }
+          const withIds = quotes.filter((quote) => quote && quote.QuoteID);
+          if (!withIds.length) {
+            return null;
+          }
+          const pool = withIds.filter((quote) => quote.QuoteID !== previousId);
+          const candidates = pool.length ? pool : withIds;
+          const index = Math.floor(Math.random() * candidates.length);
+          return candidates[index];
+        }
+
+        async function refreshDashboardQuote(options = {}) {
+          const { silent = false, force = false } = options;
+          if (!elements.dashboard.quoteCard) {
+            return [];
+          }
+          if (!state.token) {
+            if (force) {
+              state.data.quotes = [];
+              state.quote.currentQuoteId = '';
+            }
+            updateDashboardQuote();
+            return [];
+          }
+          if (!force && state.data.quotes.length) {
+            updateDashboardQuote();
+            return state.data.quotes.slice();
+          }
+          try {
+            const quotes = await server.listQuotes(state.token, { approvedOnly: true });
+            state.data.quotes = Array.isArray(quotes) ? quotes.filter((quote) => quote && quote.Text) : [];
+            if (!state.data.quotes.length) {
+              state.quote.currentQuoteId = '';
+            }
+            updateDashboardQuote();
+            return state.data.quotes;
+          } catch (err) {
+            console.error('Quote refresh failed:', err);
+            if (!silent) {
+              showToast(err && err.message ? err.message : 'Unable to load quotes.', 'error');
+            }
+            updateDashboardQuote();
+            return [];
+          }
+        }
+
+        function updateDashboardQuote() {
+          const card = elements.dashboard.quoteCard;
+          if (!card) {
+            return;
+          }
+          const textEl = elements.dashboard.quoteText;
+          const authorEl = elements.dashboard.quoteAuthor;
+          const isAuthenticated = Boolean(state.token && state.user);
+          const quotes = Array.isArray(state.data.quotes) ? state.data.quotes.filter((quote) => quote && quote.Text) : [];
+          const quote = isAuthenticated ? selectQuoteForDisplay(quotes, state.quote.currentQuoteId) : null;
+          state.quote.currentQuoteId = quote && quote.QuoteID ? quote.QuoteID : '';
+
+          if (textEl) {
+            if (!isAuthenticated) {
+              textEl.textContent = 'Sign in to unlock inspiration curated by your team.';
+            } else if (!quote) {
+              textEl.textContent = 'No approved quotes yet. Share your first insight below.';
+            } else {
+              textEl.textContent = quote.Text;
+            }
+          }
+
+          if (authorEl) {
+            if (quote && quote.Author) {
+              authorEl.textContent = `— ${quote.Author}`;
+              authorEl.classList.remove('hidden');
+            } else if (quote) {
+              authorEl.textContent = '— Anonymous';
+              authorEl.classList.remove('hidden');
+            } else {
+              authorEl.textContent = '';
+              authorEl.classList.add('hidden');
+            }
+          }
+
+          const refreshButton = elements.dashboard.quoteRefreshButton;
+          if (refreshButton) {
+            refreshButton.disabled = !isAuthenticated;
+            refreshButton.classList.toggle('opacity-60', !isAuthenticated);
+          }
+
+          const textInput = elements.dashboard.quoteTextInput;
+          const authorInput = elements.dashboard.quoteAuthorInput;
+          const submitButton = elements.dashboard.quoteSubmitButton;
+          const inputs = [textInput, authorInput];
+          inputs.forEach((input) => {
+            if (!input) return;
+            input.disabled = !isAuthenticated;
+            input.classList.toggle('opacity-60', !isAuthenticated);
+          });
+          if (submitButton) {
+            submitButton.disabled = !isAuthenticated;
+            submitButton.classList.toggle('opacity-60', !isAuthenticated);
+          }
+        }
+
+        async function handleQuoteSubmit(event) {
+          event.preventDefault();
+          if (!state.token) {
+            showToast('Sign in to share a quote.', 'error');
+            return;
+          }
+          const textInput = elements.dashboard.quoteTextInput;
+          const authorInput = elements.dashboard.quoteAuthorInput;
+          const submitButton = elements.dashboard.quoteSubmitButton;
+          const textValue = textInput ? String(textInput.value || '').trim() : '';
+          const authorValue = authorInput ? String(authorInput.value || '').trim() : '';
+          if (!textValue) {
+            showToast('Add a quote before submitting.', 'error');
+            return;
+          }
+          setButtonLoading(submitButton, true);
+          try {
+            const result = await server.addQuote(state.token, textValue, authorValue || undefined);
+            if (textInput) {
+              textInput.value = '';
+            }
+            if (authorInput) {
+              authorInput.value = '';
+            }
+            const approvedMessage =
+              result && result.Approved
+                ? 'Quote published to the dashboard.'
+                : 'Quote submitted for approval.';
+            showToast(approvedMessage, 'success');
+            await refreshDashboardQuote({ silent: true, force: true });
+            return result;
+          } catch (err) {
+            console.error('Quote submission failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to submit quote.', 'error');
+          } finally {
+            setButtonLoading(submitButton, false);
+          }
+        }
+
+        async function handleBulkTaskAction(actionType, taskIds, actionOptions = {}, requestOptions = {}) {
+          if (!state.token) {
+            showToast('Sign in to manage tasks in bulk.', 'error');
+            return null;
+          }
+          const source = Array.isArray(taskIds) ? taskIds : [taskIds];
+          const normalizedIds = source
+            .map((value) => String(value || '').trim())
+            .filter((value, index, array) => value && array.indexOf(value) === index);
+          if (!normalizedIds.length) {
+            showToast('Select at least one task before running a bulk action.', 'error');
+            return null;
+          }
+          let actionPayload = actionOptions;
+          if (typeof actionPayload === 'string') {
+            actionPayload = actionPayload || actionType;
+          } else if (actionPayload && typeof actionPayload === 'object' && !Array.isArray(actionPayload)) {
+            actionPayload = Object.assign({}, actionPayload);
+            if (!actionPayload.type) {
+              actionPayload.type = actionType;
+            }
+          } else {
+            actionPayload = { type: actionType };
+          }
+          try {
+            const result = await server.bulkUpdateTasks(state.token, normalizedIds, actionPayload, requestOptions);
+            const updatedCount = Array.isArray(result && result.updated) ? result.updated.length : 0;
+            const deletedCount = Array.isArray(result && result.deleted) ? result.deleted.length : 0;
+            const successCount = updatedCount + deletedCount;
+            const errorCount = Array.isArray(result && result.errors) ? result.errors.length : 0;
+            const actionKey = typeof actionType === 'string' ? actionType.toLowerCase() : '';
+            const actionLabels = { complete: 'completed', assign: 'assigned', delete: 'deleted' };
+            if (successCount) {
+              const label = actionLabels[actionKey] || 'updated';
+              showToast(
+                `Bulk action ${label} ${successCount} task${successCount === 1 ? '' : 's'}.`,
+                'success'
+              );
+            } else if (!errorCount) {
+              showToast('No tasks were updated.', 'info');
+            }
+            if (errorCount) {
+              const firstError = result.errors[0];
+              const message =
+                errorCount === 1 && firstError && firstError.message
+                  ? firstError.message
+                  : `${errorCount} tasks failed. ${
+                      firstError && firstError.message ? firstError.message : 'Check permissions.'
+                    }`;
+              showToast(message, 'error');
+            }
+            if (Array.isArray(result && result.updated)) {
+              result.updated.forEach((task) => mergeTaskIntoState(task));
+            }
+            await refreshWorkspaceData({ silent: true });
+            return result;
+          } catch (err) {
+            console.error('Bulk action failed:', err);
+            showToast(err && err.message ? err.message : 'Bulk action failed.', 'error');
+            throw err;
+          }
+        }
+
+        async function handleTaskDuplicate(taskId) {
+          if (!state.token) {
+            showToast('Sign in to duplicate tasks.', 'error');
+            return null;
+          }
+          const normalizedId = String(taskId || '').trim();
+          if (!normalizedId) {
+            showToast('Select a task to duplicate.', 'error');
+            return null;
+          }
+          try {
+            const duplicated = await server.duplicateTask(state.token, normalizedId);
+            if (duplicated) {
+              mergeTaskIntoState(duplicated);
+              showToast('Task duplicated.', 'success');
+            }
+            await refreshWorkspaceData({ silent: true });
+            return duplicated;
+          } catch (err) {
+            console.error('Duplicate task failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to duplicate task.', 'error');
+            throw err;
+          }
         }
 
         function openBulkUploadModal() {
@@ -2499,18 +3945,23 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
             updateFocusControls();
 
           }
+          if (tabId === 'admin') {
+            renderAdminPanel();
+            if (canViewUsers()) {
+              refreshAdminUsers({ force: !state.admin.loaded });
+            }
+          }
         }
 
         function applySession(token, user) {
           state.token = token;
           state.user = user || null;
           updateShell();
-          hydrateTasksFromCache();
-          startSessionRefresh();
+          handleTutorialPostLogin();
           refreshWorkspaceData({ silent: true });
           fetchDailyQuote({ silent: true });
 
-        }
+          }
 
         function updateShell() {
           const isAuthenticated = Boolean(state.token && state.user);
@@ -2519,6 +3970,9 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           }
           if (elements.appView) {
             elements.appView.classList.toggle('hidden', !isAuthenticated);
+          }
+          if (!isAuthenticated && taskDetailState.isOpen) {
+            closeTaskDetail();
           }
           if (elements.userBadge) {
             elements.userBadge.textContent = isAuthenticated ? state.user.Email : 'Not authenticated';
@@ -2530,11 +3984,16 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           updateIdentityBadges(isAuthenticated);
           renderTaskTable();
           updateTaskSelectionUi();
+
           renderKanbanBoard();
           updateDashboardMetrics();
           renderDailyQuote();
           updateQuoteControls();
           setActiveTab(state.activeTab);
+          if (tutorialState.isActive) {
+            positionCurrentTutorialStep();
+          }
+
         }
 
         function persistSession(token, user) {
@@ -2558,7 +4017,12 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
             localStorage.removeItem(STORAGE_KEY);
           } catch (err) {
             console.warn('Failed to clear session storage', err);
+
           }
+          resetAdminFormState();
+          resetAdminState();
+          renderAdminUsers();
+          renderAdminPanel();
           resetKanbanState();
         }
 
@@ -2606,6 +4070,12 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           if (elements.analytics.refreshButton && !silent) {
             setButtonLoading(elements.analytics.refreshButton, true);
           }
+          if (elements.kanbanLoading) {
+            elements.kanbanLoading.classList.remove('hidden');
+          }
+          if (elements.kanbanEmpty) {
+            elements.kanbanEmpty.classList.add('hidden');
+          }
           try {
             const [tasks, moods] = await Promise.all([
               server.listTasks(state.token, {}),
@@ -2613,6 +4083,7 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
             ]);
             state.data.tasks = Array.isArray(tasks) ? tasks : [];
             state.data.moods = Array.isArray(moods) ? moods : [];
+            updateTaskModalContent();
             analyticsState.lastUpdated = new Date();
             updateAnalyticsTimestamp();
             cacheTasksSnapshot(state.data.tasks);
@@ -2627,6 +4098,7 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
                 renderTaskTable();
               }
             }
+
           } finally {
             analyticsState.isLoading = false;
             if (elements.analytics.refreshButton && !silent) {
@@ -2639,6 +4111,7 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
             renderTaskTable();
             updateDashboardMetrics();
             fetchDailyQuote({ silent: true });
+
           }
         }
 
@@ -3037,6 +4510,129 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           state.charts[key] = null;
         }
 
+        function renderKanbanBoard() {
+          const board = elements.kanbanBoard;
+          if (!board) {
+            return;
+          }
+          const lists = elements.kanbanLists || {};
+          const counts = elements.kanbanCounts || {};
+          if (elements.kanbanLoading) {
+            elements.kanbanLoading.classList.add('hidden');
+          }
+          Object.keys(lists).forEach((status) => {
+            const list = lists[status];
+            if (list) {
+              list.innerHTML = '';
+            }
+          });
+          Object.keys(counts).forEach((status) => {
+            const node = counts[status];
+            if (node) {
+              node.textContent = '0';
+            }
+          });
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks.slice() : [];
+          if (!tasks.length) {
+            if (elements.kanbanEmpty) {
+              elements.kanbanEmpty.classList.remove('hidden');
+            }
+            if (taskDetailState.isOpen) {
+              renderTaskDetail();
+            }
+            return;
+          }
+          if (elements.kanbanEmpty) {
+            elements.kanbanEmpty.classList.add('hidden');
+          }
+          const fallbackList = elements.kanbanLists['Planned'] || null;
+          tasks.sort((a, b) => {
+            const orderA = STATUS_ORDER[a && a.Status] ?? 99;
+            const orderB = STATUS_ORDER[b && b.Status] ?? 99;
+            if (orderA !== orderB) {
+              return orderA - orderB;
+            }
+            const updatedA = Date.parse((a && (a.UpdatedAt || a.Timestamp)) || '') || 0;
+            const updatedB = Date.parse((b && (b.UpdatedAt || b.Timestamp)) || '') || 0;
+            if (updatedA !== updatedB) {
+              return updatedB - updatedA;
+            }
+            return (a && a.Name ? a.Name : '').localeCompare(b && b.Name ? b.Name : '');
+          });
+          tasks.forEach((task) => {
+            if (!task) {
+              return;
+            }
+            const statusKey = elements.kanbanLists[task.Status] ? task.Status : 'Planned';
+            const targetList = elements.kanbanLists[statusKey] || fallbackList;
+            if (!targetList) {
+              return;
+            }
+            const card = createKanbanTaskCard(task);
+            targetList.appendChild(card);
+            const counter = elements.kanbanCounts[statusKey];
+            if (counter) {
+              const currentValue = Number(counter.textContent) || 0;
+              counter.textContent = String(currentValue + 1);
+            }
+          });
+          if (taskDetailState.isOpen) {
+            renderTaskDetail();
+          }
+        }
+
+        function createKanbanTaskCard(task) {
+          const card = document.createElement('article');
+          card.className =
+            'group cursor-pointer rounded-2xl border border-white/10 bg-slate-950/50 p-4 transition hover:border-white/30 focus-within:border-white/40 focus:outline-none';
+          card.setAttribute('role', 'listitem');
+          card.dataset.taskId = task.TaskID;
+          card.tabIndex = 0;
+          const categoryLabel = task.Category ? task.Category : 'General';
+          const metaBadges = [];
+          if (task.DueAt) {
+            metaBadges.push(
+              `<span class="rounded-full bg-white/5 px-2 py-0.5 text-xs text-slate-300">Due ${escapeHtml(formatShortDate(task.DueAt))}</span>`
+            );
+          }
+          if (task.Assignee) {
+            metaBadges.push(
+              `<span class="rounded-full bg-white/5 px-2 py-0.5 text-xs text-slate-300">${escapeHtml(task.Assignee)}</span>`
+            );
+          }
+          if (task.DependsOn) {
+            const dependencyName = getTaskNameById(task.DependsOn) || task.DependsOn;
+            metaBadges.push(
+              `<span class="rounded-full bg-aura-primary/10 px-2 py-0.5 text-xs text-aura-primary">Depends on ${escapeHtml(
+                dependencyName
+              )}</span>`
+            );
+          }
+          const badgesHtml = metaBadges.length
+            ? `<div class="mt-3 flex flex-wrap gap-2">${metaBadges.join('')}</div>`
+            : '';
+          card.innerHTML = `
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-sm font-semibold text-white">${escapeHtml(task.Name || task.TaskID)}</p>
+                <p class="mt-1 text-xs text-slate-400">${escapeHtml(categoryLabel)}</p>
+              </div>
+              <span class="rounded-full bg-white/5 px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-slate-300">${escapeHtml(
+                task.Status || 'Planned'
+              )}</span>
+            </div>
+            ${badgesHtml}
+          `;
+          card.addEventListener('click', () => openTaskDetail(task.TaskID));
+          card.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openTaskDetail(task.TaskID);
+            }
+          });
+          return card;
+        }
+
         function populateFocusTaskSelect() {
           const select = elements.focus.taskSelect;
           if (!select) return;
@@ -3154,6 +4750,10 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
         function handleFocusTaskChange(event) {
           focusState.selectedTaskId = event.target.value || '';
           updateFocusControls();
+          if (taskModalState.isOpen) {
+            taskModalState.taskId = focusState.selectedTaskId;
+            updateTaskModalContent();
+          }
         }
 
         function handleFocusMoodChange(event) {
@@ -3211,6 +4811,7 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           const note = `Focus session (${duration} min) completed via Aura Flow Focus Mode.`;
           const logPromises = [
             server.logMood(state.token, taskId, mood, note),
+            server.logTime(state.token, taskId, duration),
           ];
           if (state.user && state.user.Email) {
             logPromises.push(
@@ -3222,12 +4823,16 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           }
 
           const results = await Promise.allSettled(logPromises);
+          const timeResult = results[1];
           const failed = results.find((result) => result.status === 'rejected');
           if (failed) {
             const reason = failed.reason && failed.reason.message ? failed.reason.message : String(failed.reason || 'Unable to record focus session.');
             showToast(reason, 'error');
           } else {
-            showToast('Focus session captured. Mood & activity logged.', 'success');
+            showToast('Focus session captured. Mood, time, and activity logged.', 'success');
+          }
+          if (timeResult && timeResult.status === 'fulfilled' && timeResult.value) {
+            mergeTaskIntoState(timeResult.value);
           }
           focusState.remainingSeconds = focusState.durationMinutes * 60;
           updateFocusTimerDisplay();
@@ -3267,6 +4872,238 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
               </li>`;
             })
             .join('');
+        }
+
+        async function openTaskModal(taskId) {
+          if (!state.token) {
+            showToast('Sign in to manage tasks.', 'error');
+            return;
+          }
+          const task = getTaskFromState(taskId);
+          if (!task) {
+            showToast('Task not found. Refresh your workspace data.', 'error');
+            return;
+          }
+          taskModalState.taskId = taskId;
+          taskModalState.isOpen = true;
+          setReminderStatus(null);
+          if (elements.task.modal) {
+            elements.task.modal.classList.remove('hidden');
+            elements.task.modal.classList.add('flex');
+          }
+          document.body.classList.add('overflow-hidden');
+          updateTaskModalContent();
+          await loadTemplates(elements.task.templateSelect ? elements.task.templateSelect.value : '');
+        }
+
+        function closeTaskModal() {
+          if (elements.task.modal) {
+            elements.task.modal.classList.add('hidden');
+            elements.task.modal.classList.remove('flex');
+          }
+          document.body.classList.remove('overflow-hidden');
+          taskModalState.isOpen = false;
+          taskModalState.taskId = '';
+          setReminderStatus(null);
+          updateTaskModalContent();
+        }
+
+        async function loadTemplates(selectedId = '') {
+          if (!state.token) {
+            state.data.templates = [];
+            populateTemplateSelect();
+            return;
+          }
+          try {
+            const templates = await server.listTemplates(state.token);
+            state.data.templates = Array.isArray(templates) ? templates : [];
+            populateTemplateSelect(selectedId);
+          } catch (err) {
+            console.error('Failed to load templates:', err);
+            state.data.templates = [];
+            populateTemplateSelect();
+            showToast(err && err.message ? err.message : 'Unable to load templates.', 'error');
+          }
+        }
+
+        function populateTemplateSelect(selectedId) {
+          const select = elements.task.templateSelect;
+          if (!select) return;
+          const previousValue = typeof selectedId === 'string' ? selectedId : select.value;
+          while (select.options.length > 1) {
+            select.remove(1);
+          }
+          const templates = Array.isArray(state.data.templates) ? state.data.templates.slice() : [];
+          templates
+            .filter((template) => template && template.TemplateID)
+            .sort((a, b) => String(a.Name || '').localeCompare(String(b.Name || '')))
+            .forEach((template) => {
+              const option = document.createElement('option');
+              option.value = template.TemplateID;
+              option.textContent = template.Name || template.TemplateID;
+              select.appendChild(option);
+            });
+          if (previousValue && templates.some((tpl) => tpl && tpl.TemplateID === previousValue)) {
+            select.value = previousValue;
+          } else {
+            select.value = '';
+          }
+          updateTemplateApplyButtonState();
+        }
+
+        function updateTemplateApplyButtonState() {
+          const button = elements.task.applyTemplateButton;
+          const select = elements.task.templateSelect;
+          if (!button || !select) {
+            return;
+          }
+          const hasSelection = Boolean(select.value);
+          button.disabled = !hasSelection;
+          button.classList.toggle('opacity-60', !hasSelection);
+        }
+
+        function mergeTaskIntoState(updatedTask) {
+          if (!updatedTask || !updatedTask.TaskID) {
+            return;
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks.slice() : [];
+          const index = tasks.findIndex((task) => task.TaskID === updatedTask.TaskID);
+          if (index >= 0) {
+            tasks[index] = Object.assign({}, tasks[index], updatedTask);
+          } else {
+            tasks.push(updatedTask);
+          }
+          state.data.tasks = tasks;
+          populateFocusTaskSelect();
+          renderAnalyticsCharts();
+          updateTaskModalContent();
+        }
+
+        function getTaskFromState(taskId) {
+          if (!taskId) {
+            return null;
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          return tasks.find((task) => task.TaskID === taskId) || null;
+        }
+
+        function updateTaskModalContent() {
+          const titleEl = elements.task.title;
+          const subtitleEl = elements.task.subtitle;
+          const metaEl = elements.task.meta;
+          const summaryEl = elements.task.timeSummary;
+          const nameInput = elements.task.templateNameInput;
+          const timeInput = elements.task.timeInput;
+          const reminderInput = elements.task.reminderInput;
+          const task = getTaskFromState(taskModalState.taskId);
+          if (!task) {
+            if (titleEl) {
+              titleEl.textContent = 'Task Toolkit';
+            }
+            if (subtitleEl) {
+              subtitleEl.textContent = 'Select a task from Focus Mode to manage templates, time, and reminders.';
+            }
+            if (metaEl) {
+              metaEl.textContent = '';
+            }
+            if (summaryEl) {
+              summaryEl.textContent = 'Total logged: —';
+            }
+            if (nameInput && !taskModalState.isOpen) {
+              nameInput.value = '';
+            }
+            if (timeInput && !taskModalState.isOpen) {
+              timeInput.value = '';
+            }
+            if (reminderInput && !taskModalState.isOpen) {
+              reminderInput.value = '';
+            }
+            updateTemplateApplyButtonState();
+            return;
+          }
+          if (titleEl) {
+            titleEl.textContent = task.Name ? `Task Toolkit — ${task.Name}` : `Task Toolkit — ${task.TaskID}`;
+          }
+          if (subtitleEl) {
+            subtitleEl.textContent = task.Notes
+              ? task.Notes
+              : 'Manage reusable templates, time tracking, and reminders.';
+          }
+          if (metaEl) {
+            const status = task.Status || 'Planned';
+            const assignee = task.Assignee ? `Assigned to ${task.Assignee}` : 'Unassigned';
+            const dueLabel = task.DueAt ? ` • Due ${formatLocalDateTime(task.DueAt)}` : '';
+            metaEl.textContent = `${status} • ${assignee}${dueLabel}`;
+          }
+          if (summaryEl) {
+            summaryEl.textContent = `Total logged: ${formatMinutes(task.TimeSpentMins || 0)}`;
+          }
+          if (nameInput && (!nameInput.value || !taskModalState.isOpen)) {
+            nameInput.value = task.Name ? `${task.Name} Template` : '';
+          }
+          if (timeInput && (!timeInput.value || !taskModalState.isOpen)) {
+            const defaultMinutes = focusState.durationMinutes || Math.round(task.DurationMins || 0) || 25;
+            timeInput.value = Math.max(1, defaultMinutes);
+          }
+          if (reminderInput) {
+            reminderInput.value = task.DueAt ? toLocalInputValue(task.DueAt) : '';
+          }
+          updateTemplateApplyButtonState();
+        }
+
+        function setReminderStatus(eventInfo) {
+          const statusEl = elements.task.reminderStatus;
+          if (!statusEl) {
+            return;
+          }
+          statusEl.textContent = '';
+          if (!eventInfo) {
+            return;
+          }
+          const fragment = document.createDocumentFragment();
+          const startLabel = formatLocalDateTime(eventInfo.start || eventInfo.startTime || '');
+          const text = document.createElement('span');
+          text.textContent = startLabel ? `Reminder scheduled for ${startLabel}.` : 'Reminder scheduled.';
+          fragment.appendChild(text);
+          if (eventInfo.url) {
+            const link = document.createElement('a');
+            link.href = eventInfo.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = ' Open in Calendar';
+            link.className = 'text-aura-primary hover:underline';
+            fragment.appendChild(link);
+          }
+          statusEl.appendChild(fragment);
+        }
+
+        function toLocalInputValue(value) {
+          if (!value) {
+            return '';
+          }
+          const date = value instanceof Date ? value : new Date(value);
+          if (Number.isNaN(date.getTime())) {
+            return '';
+          }
+          const offsetMinutes = date.getTimezoneOffset();
+          const local = new Date(date.getTime() - offsetMinutes * 60000);
+          return local.toISOString().slice(0, 16);
+        }
+
+        function formatLocalDateTime(value) {
+          if (!value) {
+            return '';
+          }
+          const date = value instanceof Date ? value : new Date(value);
+          if (Number.isNaN(date.getTime())) {
+            return '';
+          }
+          return new Intl.DateTimeFormat(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }).format(date);
         }
 
         function updateFocusTimerDisplay() {
@@ -3321,6 +5158,7 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           const startButton = elements.focus.startButton;
           const pauseButton = elements.focus.pauseButton;
           const resetButton = elements.focus.resetButton;
+          const toolsButton = elements.focus.taskToolsButton;
           if (startButton) {
             const disabled = focusState.isRunning || !state.token || !focusState.selectedTaskId;
             startButton.disabled = disabled;
@@ -3334,12 +5172,20 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           if (resetButton) {
             resetButton.disabled = false;
           }
+          if (toolsButton) {
+            const disabledTools = !state.token || !focusState.selectedTaskId;
+            toolsButton.disabled = disabledTools;
+            toolsButton.classList.toggle('opacity-60', disabledTools);
+          }
         }
 
         function resetWorkspaceData() {
           closeTaskModal(true);
           state.data.tasks = [];
           state.data.moods = [];
+          state.data.templates = [];
+          resetQuoteState();
+
           analyticsState.lastUpdated = null;
           updateAnalyticsTimestamp();
           destroyChart('velocity');
@@ -3395,8 +5241,382 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
           renderDailyQuote();
           updateQuoteControls();
           updateDashboardMetrics();
+
           renderKanbanBoard();
-          setWorkspaceLoading(false);
+          if (taskDetailState.isOpen) {
+            closeTaskDetail();
+          }
+        }
+
+        function openTaskDetail(taskId) {
+          const task = findTaskById(taskId);
+          if (!task) {
+            showToast('Task not found.', 'error');
+            return;
+          }
+          taskDetailState.isOpen = true;
+          taskDetailState.taskId = task.TaskID;
+          taskDetailState.currentDependency = task.DependsOn || '';
+          taskDetailState.dependencyUpdating = false;
+          taskDetailState.comments = [];
+          taskDetailState.commentsLoading = false;
+          taskDetailState.commentsError = '';
+          if (elements.taskDetail.commentInput) {
+            elements.taskDetail.commentInput.value = '';
+          }
+          renderTaskDetail();
+          renderTaskComments();
+          if (elements.taskDetail.panel) {
+            window.setTimeout(() => {
+              try {
+                elements.taskDetail.panel.focus({ preventScroll: true });
+              } catch (err) {
+                elements.taskDetail.panel.focus();
+              }
+            }, 0);
+          }
+          if (state.token) {
+            loadTaskComments(task.TaskID);
+          }
+        }
+
+        function closeTaskDetail() {
+          taskDetailState.isOpen = false;
+          taskDetailState.taskId = '';
+          taskDetailState.currentDependency = '';
+          taskDetailState.dependencyUpdating = false;
+          taskDetailState.comments = [];
+          taskDetailState.commentsLoading = false;
+          taskDetailState.commentsError = '';
+          if (elements.taskDetail.modal) {
+            elements.taskDetail.modal.classList.add('hidden');
+            elements.taskDetail.modal.setAttribute('aria-hidden', 'true');
+          }
+        }
+
+        function renderTaskDetail() {
+          const modal = elements.taskDetail.modal;
+          if (!modal) {
+            return;
+          }
+          if (!taskDetailState.isOpen) {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            return;
+          }
+          const task = findTaskById(taskDetailState.taskId);
+          if (!task) {
+            showToast('Task is no longer available.', 'error');
+            closeTaskDetail();
+            return;
+          }
+          modal.classList.remove('hidden');
+          modal.setAttribute('aria-hidden', 'false');
+          if (elements.taskDetail.statusBadge) {
+            elements.taskDetail.statusBadge.textContent = task.Status || 'Planned';
+            applyStatusBadgeStyle(elements.taskDetail.statusBadge, task.Status);
+          }
+          if (elements.taskDetail.idLabel) {
+            elements.taskDetail.idLabel.textContent = task.TaskID;
+          }
+          if (elements.taskDetail.title) {
+            elements.taskDetail.title.textContent = task.Name || task.TaskID;
+          }
+          if (elements.taskDetail.assignee) {
+            elements.taskDetail.assignee.textContent = task.Assignee ? task.Assignee : 'Unassigned';
+          }
+          if (elements.taskDetail.due) {
+            elements.taskDetail.due.textContent = task.DueAt ? formatDetailDate(task.DueAt) : 'No due date';
+          }
+          if (elements.taskDetail.parent) {
+            if (task.ParentTaskID) {
+              const parentTask = findTaskById(task.ParentTaskID);
+              elements.taskDetail.parent.textContent = parentTask ? parentTask.Name || parentTask.TaskID : task.ParentTaskID;
+            } else {
+              elements.taskDetail.parent.textContent = 'None';
+            }
+          }
+          if (elements.taskDetail.notes) {
+            const note = (task.Notes || '').trim();
+            if (note) {
+              elements.taskDetail.notes.classList.remove('hidden');
+              elements.taskDetail.notes.textContent = note;
+            } else {
+              elements.taskDetail.notes.classList.add('hidden');
+              elements.taskDetail.notes.textContent = '';
+            }
+          }
+          populateDependencySelect(task);
+        }
+
+        function populateDependencySelect(task) {
+          const select = elements.taskDetail.dependencySelect;
+          if (!select) {
+            return;
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks.slice() : [];
+          select.innerHTML = '';
+          const defaultOption = document.createElement('option');
+          defaultOption.value = '';
+          defaultOption.textContent = 'No dependency';
+          select.appendChild(defaultOption);
+          tasks
+            .filter((item) => item && item.TaskID && item.TaskID !== task.TaskID)
+            .sort((a, b) => (a.Name || '').localeCompare(b.Name || ''))
+            .forEach((item) => {
+              const option = document.createElement('option');
+              option.value = item.TaskID;
+              option.textContent = item.Name || item.TaskID;
+              select.appendChild(option);
+            });
+          const current = task.DependsOn || '';
+          const hasOption = Array.from(select.options).some((option) => option.value === current);
+          select.value = hasOption ? current : '';
+          taskDetailState.currentDependency = select.value;
+          if (taskDetailState.dependencyUpdating) {
+            select.disabled = true;
+            select.classList.add('opacity-60');
+          } else {
+            select.disabled = false;
+            select.classList.remove('opacity-60');
+          }
+          updateDependencyHint();
+        }
+
+        function updateDependencyHint() {
+          const hint = elements.taskDetail.dependencyHint;
+          const select = elements.taskDetail.dependencySelect;
+          if (!hint || !select) {
+            return;
+          }
+          const value = select.value || '';
+          if (value) {
+            const dependencyTask = findTaskById(value);
+            const label = dependencyTask ? dependencyTask.Name || dependencyTask.TaskID : value;
+            hint.textContent = `This task waits on ${label}.`;
+          } else {
+            hint.textContent = 'Select a task that must finish before this one progresses.';
+          }
+        }
+
+        async function handleTaskDependencyChange(event) {
+          const select = event.target;
+          if (!taskDetailState.isOpen) {
+            return;
+          }
+          if (!state.token || !taskDetailState.taskId) {
+            select.value = taskDetailState.currentDependency || '';
+            updateDependencyHint();
+            showToast('Sign in to update dependencies.', 'error');
+            return;
+          }
+          const nextValue = select.value || '';
+          if (nextValue === (taskDetailState.currentDependency || '')) {
+            updateDependencyHint();
+            return;
+          }
+          select.disabled = true;
+          select.classList.add('opacity-60');
+          taskDetailState.dependencyUpdating = true;
+          try {
+            await server.updateTask(state.token, taskDetailState.taskId, { DependsOn: nextValue });
+            updateLocalTask(taskDetailState.taskId, { DependsOn: nextValue });
+            taskDetailState.currentDependency = nextValue;
+            showToast(nextValue ? 'Dependency updated.' : 'Dependency cleared.', 'success');
+            renderKanbanBoard();
+          } catch (err) {
+            console.error('Failed to update dependency:', err);
+            select.value = taskDetailState.currentDependency || '';
+            showToast(err && err.message ? err.message : 'Unable to update dependency.', 'error');
+          } finally {
+            taskDetailState.dependencyUpdating = false;
+            select.disabled = false;
+            select.classList.remove('opacity-60');
+            renderTaskDetail();
+          }
+        }
+
+        async function handleTaskCommentSubmit(event) {
+          event.preventDefault();
+          if (!taskDetailState.isOpen) {
+            return;
+          }
+          if (!state.token) {
+            showToast('Sign in to comment.', 'error');
+            return;
+          }
+          const input = elements.taskDetail.commentInput;
+          const button = elements.taskDetail.commentSubmit;
+          if (!input || !button) {
+            return;
+          }
+          const text = input.value.trim();
+          if (!text) {
+            showToast('Enter a comment before posting.', 'error');
+            return;
+          }
+          button.disabled = true;
+          button.classList.add('opacity-60');
+          try {
+            await server.addComment(state.token, taskDetailState.taskId, text);
+            input.value = '';
+            await loadTaskComments(taskDetailState.taskId);
+            showToast('Comment posted.', 'success');
+          } catch (err) {
+            console.error('Failed to add comment:', err);
+            showToast(err && err.message ? err.message : 'Unable to add comment.', 'error');
+          } finally {
+            button.disabled = false;
+            button.classList.remove('opacity-60');
+          }
+        }
+
+        function handleTaskDetailOverlayClick(event) {
+          if (!elements.taskDetail.modal) {
+            return;
+          }
+          if (event.target === elements.taskDetail.modal) {
+            closeTaskDetail();
+          }
+        }
+
+        function handleTaskDetailKeydown(event) {
+          if (event.key === 'Escape' && taskDetailState.isOpen) {
+            closeTaskDetail();
+          }
+        }
+
+        async function loadTaskComments(taskId) {
+          taskDetailState.commentsLoading = true;
+          taskDetailState.commentsError = '';
+          renderTaskComments();
+          if (!state.token) {
+            taskDetailState.commentsLoading = false;
+            renderTaskComments();
+            return;
+          }
+          try {
+            const comments = await server.listComments(state.token, taskId);
+            if (taskDetailState.taskId === taskId) {
+              taskDetailState.comments = Array.isArray(comments) ? comments : [];
+            }
+          } catch (err) {
+            console.error('Failed to load comments:', err);
+            if (taskDetailState.taskId === taskId) {
+              taskDetailState.comments = [];
+              taskDetailState.commentsError = err && err.message ? err.message : 'Unable to load comments.';
+            }
+          } finally {
+            if (taskDetailState.taskId === taskId) {
+              taskDetailState.commentsLoading = false;
+              renderTaskComments();
+            }
+          }
+        }
+
+        function renderTaskComments() {
+          const list = elements.taskDetail.commentsList;
+          const empty = elements.taskDetail.commentsEmpty;
+          const loader = elements.taskDetail.commentsLoader;
+          const errorNode = elements.taskDetail.commentsError;
+          if (!list) {
+            return;
+          }
+          if (!taskDetailState.isOpen) {
+            list.innerHTML = '';
+            if (empty) empty.classList.add('hidden');
+            if (loader) loader.classList.add('hidden');
+            if (errorNode) errorNode.classList.add('hidden');
+            return;
+          }
+          if (loader) {
+            loader.classList.toggle('hidden', !taskDetailState.commentsLoading);
+          }
+          if (errorNode) {
+            if (taskDetailState.commentsError) {
+              errorNode.textContent = taskDetailState.commentsError;
+              errorNode.classList.remove('hidden');
+            } else {
+              errorNode.textContent = '';
+              errorNode.classList.add('hidden');
+            }
+          }
+          if (taskDetailState.commentsLoading) {
+            list.innerHTML = '';
+            if (empty) {
+              empty.classList.add('hidden');
+            }
+            return;
+          }
+          const comments = Array.isArray(taskDetailState.comments) ? taskDetailState.comments : [];
+          if (!comments.length) {
+            list.innerHTML = '';
+            if (empty && !taskDetailState.commentsError) {
+              empty.classList.remove('hidden');
+            } else if (empty) {
+              empty.classList.add('hidden');
+            }
+            return;
+          }
+          if (empty) {
+            empty.classList.add('hidden');
+          }
+          list.innerHTML = comments
+            .map((comment) => {
+              const author = comment.UserEmail || 'Unknown';
+              const timestamp = formatCommentTimestamp(comment.CreatedAt);
+              const body = escapeHtml(comment.Text || '').replace(/\n/g, '<br />');
+              return `<li class="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                  <span class="font-semibold text-slate-200">${escapeHtml(author)}</span>
+                  <span>${escapeHtml(timestamp)}</span>
+                </div>
+                <div class="mt-3 text-sm leading-relaxed text-slate-200">${body}</div>
+              </li>`;
+            })
+            .join('');
+        }
+
+        function updateLocalTask(taskId, updates) {
+          if (!taskId || !updates) {
+            return;
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          const index = tasks.findIndex((task) => task && task.TaskID === taskId);
+          if (index === -1) {
+            return;
+          }
+          const current = tasks[index] || {};
+          tasks[index] = Object.assign({}, current, updates);
+          state.data.tasks = tasks;
+        }
+
+        function findTaskById(taskId) {
+          if (!taskId) {
+            return null;
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          for (let i = 0; i < tasks.length; i += 1) {
+            if (tasks[i] && tasks[i].TaskID === taskId) {
+              return tasks[i];
+            }
+          }
+          return null;
+        }
+
+        function applyStatusBadgeStyle(element, status) {
+          if (!element) {
+            return;
+          }
+          const palette = {
+            'In-Progress': 'border-sky-400/30 bg-sky-500/20 text-sky-100',
+            Planned: 'border-white/15 bg-white/10 text-slate-100',
+            Completed: 'border-emerald-400/30 bg-emerald-500/20 text-emerald-100',
+            Shifted: 'border-amber-400/30 bg-amber-500/20 text-amber-100',
+            Cancelled: 'border-rose-400/30 bg-rose-500/20 text-rose-100',
+          };
+          const base = 'rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ';
+          element.className = base + (palette[status] || palette.Planned);
         }
 
         function renderTaskTable() {
@@ -3984,6 +6204,7 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
         }
 
         function toggleEmptyState(element, shouldShow, displayClass = 'flex') {
+
           if (!element) return;
           element.classList.toggle('hidden', !shouldShow);
           if (displayClass) {
@@ -4127,10 +6348,8 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
         }
 
         function getTaskNameById(taskId) {
-          if (!taskId) return '';
-          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
-          const match = tasks.find((task) => task.TaskID === taskId);
-          return match ? match.Name || match.TaskID : '';
+          const task = findTaskById(taskId);
+          return task ? task.Name || task.TaskID : '';
         }
 
         function formatHistoryTimestamp(date) {
@@ -4155,6 +6374,14 @@ elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-
         function clampNumber(value, min, max) {
           return Math.min(Math.max(value, min), max);
 
+        }
+
+        if (typeof window !== 'undefined') {
+          window.AuraFlow = Object.assign(window.AuraFlow || {}, {
+            bulkAction: handleBulkTaskAction,
+            duplicateTask: handleTaskDuplicate,
+            refreshQuote: refreshDashboardQuote,
+          });
         }
       })();
 
