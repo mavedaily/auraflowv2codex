@@ -137,6 +137,73 @@
       aria-atomic="true"
     ></div>
 
+    <div
+      id="tutorialOverlay"
+      class="fixed inset-0 z-[150] hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+    >
+      <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
+      <div
+        id="tutorialHighlight"
+        class="pointer-events-none fixed z-10 rounded-3xl border-2 border-aura-primary/80 bg-aura-primary/10 shadow-[0_0_0_9999px_rgba(15,23,42,0.65)] opacity-0 transition-all duration-300 ease-out"
+      ></div>
+      <div
+        id="tutorialTooltip"
+        class="fixed z-20 max-w-xs rounded-3xl border border-white/10 bg-slate-950/90 p-6 text-slate-100 shadow-xl transition-opacity duration-200 ease-out"
+        tabindex="-1"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p id="tutorialStepLabel" class="text-xs uppercase tracking-[0.3em] text-slate-400">Step 1 of 5</p>
+            <h3 id="tutorialTitle" class="mt-2 text-xl font-semibold text-white">Welcome</h3>
+          </div>
+          <button
+            id="tutorialSkipButton"
+            type="button"
+            class="text-xs font-medium text-slate-400 transition hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+          >
+            Skip
+          </button>
+        </div>
+        <p id="tutorialDescription" class="mt-4 text-sm text-slate-300">
+          Use Aura Flow to orchestrate projects across your team.
+        </p>
+        <div class="mt-6">
+          <div
+            id="tutorialProgressTrack"
+            class="h-1.5 w-full overflow-hidden rounded-full bg-white/10"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <div
+              id="tutorialProgress"
+              class="h-full w-0 rounded-full bg-aura-primary transition-all duration-300 ease-out"
+            ></div>
+          </div>
+        </div>
+        <div class="mt-6 flex items-center justify-between gap-4">
+          <button
+            id="tutorialPrevButton"
+            type="button"
+            class="text-sm font-medium text-slate-400 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+          >
+            Back
+          </button>
+          <button
+            id="tutorialNextButton"
+            type="button"
+            class="inline-flex items-center justify-center rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+
     <main class="relative z-10">
       <section id="loginView" class="min-h-screen flex items-center justify-center px-4 py-10 sm:px-6 sm:py-12">
         <div class="login-card relative isolate bg-slate-950/70 backdrop-blur-xl border border-white/10 rounded-3xl shadow-brand max-w-xl w-full">
@@ -218,6 +285,33 @@
               <div class="text-right">
                 <p id="userBadge" class="text-sm font-medium text-white">Authenticated</p>
                 <p class="text-xs text-slate-500" id="roleBadge">Role</p>
+              </div>
+              <div class="relative">
+                <button
+                  id="helpMenuButton"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+                  aria-haspopup="true"
+                  aria-expanded="false"
+                  aria-controls="helpMenuPanel"
+                >
+                  Help
+                </button>
+                <div
+                  id="helpMenuPanel"
+                  class="absolute right-0 mt-2 hidden w-48 rounded-2xl border border-white/10 bg-slate-950/90 p-2 text-sm text-slate-200 shadow-xl"
+                  role="menu"
+                  aria-labelledby="helpMenuButton"
+                >
+                  <button
+                    id="restartTutorialButton"
+                    type="button"
+                    class="w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+                    role="menuitem"
+                  >
+                    Start tutorial
+                  </button>
+                </div>
               </div>
               <button
                 id="logoutButton"
@@ -1327,9 +1421,8 @@
 
       (function () {
         const STORAGE_KEY = 'aura-flow-v2.session';
-        const TASK_CACHE_KEY = 'aura-flow-v2.tasks.cache';
-        const TASK_CACHE_LIMIT = 20;
-        const SESSION_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+        const TUTORIAL_STORAGE_KEY = 'aura-flow-v2.tutorialCompleted';
+
         const KANBAN_STATUSES = [
           { id: 'Planned', label: 'Planned' },
           { id: 'In-Progress', label: 'In-Progress' },
@@ -1343,9 +1436,49 @@
           'ring-offset-2',
           'ring-offset-slate-950'
         ];
-        const BULK_PREVIEW_LIMIT = 50;
-        const BULK_REQUIRED_COLUMNS = ['Task', 'Duration', 'Category', 'Priority', 'Assignee', 'Date'];
-
+        const tutorialSteps = [
+          {
+            id: 'login',
+            target: '.login-card',
+            title: 'Secure workspace login',
+            description:
+              'Enter your Aura Flow credentials to unlock the workspace. After signing in we will walk through each major area.',
+            autoAdvanceOnMissing: true,
+          },
+          {
+            id: 'dashboard',
+            target: '[data-tab-button="dashboard"]',
+            title: 'Dashboard pulse',
+            description: 'Review key metrics and activity snapshots from the dashboard tab.',
+            requiresAuth: true,
+            onBeforeShow: () => setActiveTab('dashboard'),
+          },
+          {
+            id: 'kanban',
+            target: '[data-tab-button="kanban"]',
+            title: 'Kanban workflow',
+            description: 'Drag tasks across swimlanes to reflect delivery progress in real time.',
+            requiresAuth: true,
+            onBeforeShow: () => setActiveTab('kanban'),
+          },
+          {
+            id: 'focus',
+            target: '[data-tab-button="focus"]',
+            title: 'Focus mode',
+            description: 'Launch Pomodoro-style sessions, capture mood, and auto-log progress.',
+            requiresAuth: true,
+            onBeforeShow: () => setActiveTab('focus'),
+          },
+          {
+            id: 'admin',
+            target: '[data-tab-button="admin"]',
+            title: 'Admin controls',
+            description: 'Manage workspace roles, provisioning, and future bulk operations.',
+            requiresAuth: true,
+            onBeforeShow: () => setActiveTab('admin'),
+          },
+        ];
+n
         const state = {
           token: null,
           user: null,
@@ -1386,6 +1519,15 @@
           },
 
         };
+        const tutorialState = {
+          steps: tutorialSteps,
+          activeSteps: tutorialSteps.slice(),
+          isActive: false,
+          currentIndex: 0,
+          describedTarget: null,
+          previousDescription: null,
+          hasAutoLaunched: false,
+        };
         const focusState = {
           durationMinutes: 25,
           remainingSeconds: 25 * 60,
@@ -1410,15 +1552,9 @@
         const elements = {
           analytics: {},
           focus: {},
-          admin: {},
-          task: {},
-          bulk: {},
-          dashboard: {},
-          kanban: {
-            columns: {},
-            lists: {},
-            counts: {},
-          },
+          tutorial: {},
+          help: {},
+
         };
 
         const tabs = ['dashboard', 'kanban', 'analytics', 'focus', 'admin'];
@@ -1456,8 +1592,8 @@
           burntout: 1,
         };
         let isInitialized = false;
-        let sessionRefreshTimerId = null;
-        let sessionRefreshFailureNotified = false;
+        let helpMenuOpen = false;
+
 
         document.addEventListener('DOMContentLoaded', init);
 
@@ -1475,166 +1611,62 @@
           bindTaskDuplicateEvent();
           initializeFocusMode();
           updateShell();
-          restoreSession();
+          restoreSession().finally(() => {
+            maybeStartTutorial();
+          });
         }
 
-function cacheElements() {
-  elements.loginView = document.getElementById('loginView');
-  elements.appView = document.getElementById('appView');
-  elements.loginForm = document.getElementById('loginForm');
-  elements.loginButton = document.getElementById('loginButton');
-  elements.userBadge = document.getElementById('userBadge');
-  elements.roleBadge = document.getElementById('roleBadge');
-  elements.logoutButton = document.getElementById('logoutButton');
-  elements.tabButtons = document.querySelectorAll('[data-tab-button]');
-  elements.tabPanels = document.querySelectorAll('[data-tab-panel]');
-  elements.tabDropdown = document.getElementById('tabDropdown');
-
-  // Analytics
-  elements.analytics.refreshButton = document.getElementById('analyticsRefreshButton');
-  elements.analytics.refreshTime = document.getElementById('analyticsRefreshTime');
-  elements.analytics.velocityCanvas = document.getElementById('completionVelocityChart');
-  elements.analytics.velocityEmpty = document.getElementById('velocityChartEmpty');
-  elements.analytics.velocityMetric = document.getElementById('velocityMetric');
-  elements.analytics.categoryCanvas = document.getElementById('timeByCategoryChart');
-  elements.analytics.categoryEmpty = document.getElementById('categoryChartEmpty');
-  elements.analytics.categoryMetric = document.getElementById('categoryMetric');
-  elements.analytics.moodCanvas = document.getElementById('moodTrendChart');
-  elements.analytics.moodEmpty = document.getElementById('moodChartEmpty');
-  elements.analytics.moodMetric = document.getElementById('moodMetric');
-  elements.analytics.exportCsvButton = document.getElementById('reportExportCsv');
-  elements.analytics.exportPdfButton = document.getElementById('reportExportPdf');
-
-  // Focus
-  elements.focus.statusBadge = document.getElementById('focusStatusBadge');
-  if (elements.focus.statusBadge) {
-    elements.focus.statusDot = elements.focus.statusBadge.querySelector('[data-role="focus-status-dot"]');
-    elements.focus.statusText = elements.focus.statusBadge.querySelector('[data-role="focus-status-text"]');
-  }
-  elements.focus.timerDisplay = document.getElementById('focusTimerDisplay');
-  elements.focus.timerSubtitle = document.getElementById('focusTimerSubtitle');
-  elements.focus.startButton = document.getElementById('focusStartButton');
-  elements.focus.pauseButton = document.getElementById('focusPauseButton');
-  elements.focus.resetButton = document.getElementById('focusResetButton');
-  elements.focus.durationInput = document.getElementById('focusDurationInput');
-  elements.focus.taskSelect = document.getElementById('focusTaskSelect');
-  elements.focus.taskToolsButton = document.getElementById('focusTaskToolsButton');
-  elements.focus.moodSelect = document.getElementById('focusMoodSelect');
-  elements.focus.historyList = document.getElementById('focusHistoryList');
-  elements.focus.historyEmpty = document.getElementById('focusHistoryEmpty');
-  elements.focus.clearHistoryButton = document.getElementById('focusClearHistoryButton');
-
-  // Admin Panel
-  elements.admin.actionBar = document.getElementById('adminActionBar');
-  elements.admin.permissionNotice = document.getElementById('adminPermissionNotice');
-  elements.admin.tableWrapper = document.getElementById('adminUsersTableWrapper');
-  elements.admin.tableBody = document.getElementById('adminUsersTableBody');
-  elements.admin.addButton = document.getElementById('adminAddUserButton');
-  elements.admin.refreshButton = document.getElementById('adminRefreshButton');
-  elements.admin.modal = document.getElementById('adminUserModal');
-  elements.admin.modalTitle = document.getElementById('adminUserModalTitle');
-  elements.admin.modalSubtitle = document.getElementById('adminUserModalSubtitle');
-  elements.admin.form = document.getElementById('adminUserForm');
-  elements.admin.emailInput = document.getElementById('adminUserEmail');
-  elements.admin.roleSelect = document.getElementById('adminUserRole');
-  elements.admin.managerInput = document.getElementById('adminUserManager');
-  elements.admin.passwordInput = document.getElementById('adminUserPassword');
-  elements.admin.passwordHint = document.getElementById('adminUserPasswordHint');
-  elements.admin.activeCheckbox = document.getElementById('adminUserIsActive');
-  elements.admin.submitButton = document.getElementById('adminUserSubmitButton');
-  elements.admin.modalCloseButtons = document.querySelectorAll('[data-action="close-admin-modal"]');
-
-  // Dashboard
-  elements.dashboard.section = document.querySelector('[data-tab-panel="dashboard"]');
-  elements.dashboard.skeleton = document.getElementById('dashboardSkeleton');
-  elements.dashboard.metricsContainer = document.getElementById('dashboardMetrics');
-  elements.dashboard.empty = document.getElementById('dashboardEmpty');
-  elements.dashboard.metrics = {
-    today: document.getElementById('metric-today'),
-    complete: document.getElementById('metric-complete'),
-    time: document.getElementById('metric-time'),
-    overdue: document.getElementById('metric-overdue'),
-  };
-  elements.dashboard.quoteCard = document.getElementById('dashboardQuoteCard');
-  elements.dashboard.quoteText = document.getElementById('dashboardQuoteText');
-  elements.dashboard.quoteAuthor = document.getElementById('dashboardQuoteAuthor');
-  elements.dashboard.quoteForm = document.getElementById('dashboardQuoteForm');
-  elements.dashboard.quoteInput = document.getElementById('dashboardQuoteInput');
-  elements.dashboard.quoteAuthorInput = document.getElementById('dashboardQuoteAuthorInput');
-  elements.dashboard.quoteSubmit = document.getElementById('dashboardQuoteSubmit');
-
-
-  // Kanban
-  elements.kanban.board = document.getElementById('kanbanBoard');
-  elements.kanban.loading = document.getElementById('kanbanLoading');
-  elements.kanban.empty = document.getElementById('kanbanEmpty');
-  elements.kanban.columns = {};
-  elements.kanban.lists = {};
-  elements.kanban.counts = {};
-  elements.kanban.bulkBar = document.getElementById('kanbanBulkActions');
-  elements.kanban.bulkSelect = document.getElementById('kanbanBulkSelect');
-  elements.kanban.bulkApply = document.getElementById('kanbanBulkApplyButton');
-  elements.kanban.bulkClear = document.getElementById('kanbanBulkClearButton');
-  elements.kanban.bulkCount = document.getElementById('kanbanBulkSelectionCount');
-  if (elements.kanban.board) {
-    elements.kanban.board.querySelectorAll('[data-kanban-column]').forEach((column) => {
-      const columnId = column.getAttribute('data-kanban-column');
-      if (!columnId) return;
-      elements.kanban.columns[columnId] = column;
-      elements.kanban.lists[columnId] = column.querySelector('[data-kanban-list]');
-      elements.kanban.counts[columnId] = column.querySelector('[data-kanban-count]');
-    });
-  }
-  elements.kanbanBoard = elements.kanban.board;
-  elements.kanbanColumns = elements.kanban.columns;
-
-  // Bulk Upload
-  elements.bulk.trigger = document.getElementById('bulkUploadTrigger');
-  elements.bulk.modal = document.getElementById('bulkUploadModal');
-  elements.bulk.overlay = document.getElementById('bulkUploadModalOverlay');
-  elements.bulk.fileInput = document.getElementById('bulkUploadFileInput');
-  elements.bulk.fileName = document.getElementById('bulkUploadFileName');
-  elements.bulk.previewWrapper = document.getElementById('bulkUploadPreviewWrapper');
-  elements.bulk.previewEmpty = document.getElementById('bulkUploadPreviewEmpty');
-  elements.bulk.previewTable = document.getElementById('bulkUploadPreviewTable');
-  elements.bulk.previewHead = document.getElementById('bulkUploadPreviewHead');
-  elements.bulk.previewBody = document.getElementById('bulkUploadPreviewBody');
-  elements.bulk.previewSummary = document.getElementById('bulkUploadPreviewSummary');
-  elements.bulk.confirmButton = document.getElementById('bulkUploadConfirmButton');
-  elements.bulk.cancelButton = document.getElementById('bulkUploadCancelButton');
-  elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-close"]');
-  elements.bulk.errorsContainer = document.getElementById('bulkUploadErrorsContainer');
-  elements.bulk.errorsList = document.getElementById('bulkUploadErrorsList');
-  elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestrictionNotice');
-
-  // Task Modal
-  elements.task.modal = document.getElementById('taskModal');
-  elements.task.dialog = document.getElementById('taskModalDialog');
-  elements.task.closeButton = elements.task.modal
-    ? elements.task.modal.querySelector('[data-task-modal-close]')
-    : null;
-  elements.task.title = elements.task.modal
-    ? elements.task.modal.querySelector('[data-task-modal-title]')
-    : null;
-  elements.task.subtitle = elements.task.modal
-    ? elements.task.modal.querySelector('[data-task-modal-subtitle]')
-    : null;
-  elements.task.meta = elements.task.modal
-    ? elements.task.modal.querySelector('[data-task-modal-meta]')
-    : null;
-  elements.task.templateSelect = document.getElementById('taskTemplateSelect');
-  elements.task.applyTemplateButton = document.getElementById('taskApplyTemplateButton');
-  elements.task.templateNameInput = document.getElementById('taskTemplateNameInput');
-  elements.task.saveTemplateButton = document.getElementById('taskSaveTemplateButton');
-  elements.task.timeInput = document.getElementById('taskTimeInput');
-  elements.task.logTimeButton = document.getElementById('taskLogTimeButton');
-  elements.task.timeSummary = document.getElementById('taskTimeSummary');
-  elements.task.reminderInput = document.getElementById('taskReminderInput');
-  elements.task.reminderButton = document.getElementById('taskReminderButton');
-  elements.task.reminderStatus = document.getElementById('taskReminderStatus');
-  elements.task.duplicateButton = document.getElementById('taskDuplicateButton');
-}
-
+        function cacheElements() {
+          elements.loginView = document.getElementById('loginView');
+          elements.appView = document.getElementById('appView');
+          elements.loginForm = document.getElementById('loginForm');
+          elements.loginButton = document.getElementById('loginButton');
+          elements.userBadge = document.getElementById('userBadge');
+          elements.roleBadge = document.getElementById('roleBadge');
+          elements.logoutButton = document.getElementById('logoutButton');
+          elements.tabButtons = document.querySelectorAll('[data-tab-button]');
+          elements.tabPanels = document.querySelectorAll('[data-tab-panel]');
+          elements.analytics.refreshButton = document.getElementById('analyticsRefreshButton');
+          elements.analytics.refreshTime = document.getElementById('analyticsRefreshTime');
+          elements.analytics.velocityCanvas = document.getElementById('completionVelocityChart');
+          elements.analytics.velocityEmpty = document.getElementById('velocityChartEmpty');
+          elements.analytics.velocityMetric = document.getElementById('velocityMetric');
+          elements.analytics.categoryCanvas = document.getElementById('timeByCategoryChart');
+          elements.analytics.categoryEmpty = document.getElementById('categoryChartEmpty');
+          elements.analytics.categoryMetric = document.getElementById('categoryMetric');
+          elements.analytics.moodCanvas = document.getElementById('moodTrendChart');
+          elements.analytics.moodEmpty = document.getElementById('moodChartEmpty');
+          elements.analytics.moodMetric = document.getElementById('moodMetric');
+          elements.focus.statusBadge = document.getElementById('focusStatusBadge');
+          if (elements.focus.statusBadge) {
+            elements.focus.statusDot = elements.focus.statusBadge.querySelector('[data-role="focus-status-dot"]');
+            elements.focus.statusText = elements.focus.statusBadge.querySelector('[data-role="focus-status-text"]');
+          }
+          elements.focus.timerDisplay = document.getElementById('focusTimerDisplay');
+          elements.focus.timerSubtitle = document.getElementById('focusTimerSubtitle');
+          elements.focus.startButton = document.getElementById('focusStartButton');
+          elements.focus.pauseButton = document.getElementById('focusPauseButton');
+          elements.focus.resetButton = document.getElementById('focusResetButton');
+          elements.focus.durationInput = document.getElementById('focusDurationInput');
+          elements.focus.taskSelect = document.getElementById('focusTaskSelect');
+          elements.focus.moodSelect = document.getElementById('focusMoodSelect');
+          elements.focus.historyList = document.getElementById('focusHistoryList');
+          elements.focus.historyEmpty = document.getElementById('focusHistoryEmpty');
+          elements.focus.clearHistoryButton = document.getElementById('focusClearHistoryButton');
+          elements.help.button = document.getElementById('helpMenuButton');
+          elements.help.menu = document.getElementById('helpMenuPanel');
+          elements.help.restartButton = document.getElementById('restartTutorialButton');
+          elements.tutorial.overlay = document.getElementById('tutorialOverlay');
+          elements.tutorial.highlight = document.getElementById('tutorialHighlight');
+          elements.tutorial.tooltip = document.getElementById('tutorialTooltip');
+          elements.tutorial.stepLabel = document.getElementById('tutorialStepLabel');
+          elements.tutorial.title = document.getElementById('tutorialTitle');
+          elements.tutorial.description = document.getElementById('tutorialDescription');
+          elements.tutorial.progressTrack = document.getElementById('tutorialProgressTrack');
+          elements.tutorial.progress = document.getElementById('tutorialProgress');
+          elements.tutorial.prevButton = document.getElementById('tutorialPrevButton');
+          elements.tutorial.nextButton = document.getElementById('tutorialNextButton');
+          elements.tutorial.skipButton = document.getElementById('tutorialSkipButton');
 
         }
 
@@ -1731,6 +1763,425 @@ function cacheElements() {
           if (elements.focus.clearHistoryButton) {
             elements.focus.clearHistoryButton.addEventListener('click', clearFocusHistory);
           }
+          if (elements.help.button) {
+            elements.help.button.addEventListener('click', toggleHelpMenu);
+          }
+          if (elements.help.restartButton) {
+            elements.help.restartButton.addEventListener('click', () => {
+              closeHelpMenu();
+              startTutorial({ force: true, includeLogin: !state.token });
+            });
+          }
+          if (elements.tutorial.nextButton) {
+            elements.tutorial.nextButton.addEventListener('click', handleTutorialNext);
+          }
+          if (elements.tutorial.prevButton) {
+            elements.tutorial.prevButton.addEventListener('click', handleTutorialPrev);
+          }
+          if (elements.tutorial.skipButton) {
+            elements.tutorial.skipButton.addEventListener('click', handleTutorialSkip);
+          }
+          document.addEventListener('click', handleDocumentClickForHelpMenu);
+          document.addEventListener('keydown', handleGlobalKeydown);
+          window.addEventListener('resize', handleTutorialRelayout, { passive: true });
+          window.addEventListener('scroll', handleTutorialRelayout, true);
+        }
+
+        function toggleHelpMenu() {
+          if (helpMenuOpen) {
+            closeHelpMenu();
+          } else {
+            openHelpMenu();
+          }
+        }
+
+        function openHelpMenu() {
+          if (!elements.help.button || !elements.help.menu) return;
+          elements.help.menu.classList.remove('hidden');
+          elements.help.button.setAttribute('aria-expanded', 'true');
+          helpMenuOpen = true;
+        }
+
+        function closeHelpMenu() {
+          if (!elements.help.button || !elements.help.menu) return;
+          elements.help.menu.classList.add('hidden');
+          elements.help.button.setAttribute('aria-expanded', 'false');
+          helpMenuOpen = false;
+        }
+
+        function handleDocumentClickForHelpMenu(event) {
+          if (!helpMenuOpen) {
+            return;
+          }
+          if (!elements.help.menu || !elements.help.button) {
+            return;
+          }
+          const target = event.target;
+          if (elements.help.menu.contains(target) || elements.help.button.contains(target)) {
+            return;
+          }
+          closeHelpMenu();
+        }
+
+        function handleGlobalKeydown(event) {
+          if (event.key === 'Escape') {
+            if (helpMenuOpen) {
+              closeHelpMenu();
+              event.preventDefault();
+              return;
+            }
+            if (tutorialState.isActive) {
+              event.preventDefault();
+              handleTutorialSkip();
+              return;
+            }
+          }
+        }
+
+        function maybeStartTutorial() {
+          if (tutorialState.hasAutoLaunched) {
+            return;
+          }
+          tutorialState.hasAutoLaunched = true;
+          if (hasCompletedTutorial()) {
+            return;
+          }
+          startTutorial({ includeLogin: !state.token });
+        }
+
+        function startTutorial(options = {}) {
+          const { force = false, includeLogin = !state.token } = options;
+          if (!force && hasCompletedTutorial()) {
+            return;
+          }
+          if (!elements.tutorial.overlay || !elements.tutorial.tooltip) {
+            return;
+          }
+          closeHelpMenu();
+          const stepsToUse = includeLogin
+            ? tutorialState.steps.slice()
+            : tutorialState.steps.filter((step) => step.id !== 'login');
+          if (!stepsToUse.length) {
+            markTutorialCompleted();
+            return;
+          }
+          tutorialState.activeSteps = stepsToUse;
+          tutorialState.isActive = true;
+          tutorialState.currentIndex = 0;
+          detachTutorialDescription();
+          const overlay = elements.tutorial.overlay;
+          overlay.classList.remove('hidden');
+          overlay.setAttribute('aria-hidden', 'false');
+          if (elements.tutorial.tooltip) {
+            elements.tutorial.tooltip.style.opacity = '0';
+            elements.tutorial.tooltip.style.pointerEvents = 'none';
+          }
+          showTutorialStep(0);
+        }
+
+        function hasCompletedTutorial() {
+          try {
+            return localStorage.getItem(TUTORIAL_STORAGE_KEY) === 'true';
+          } catch (err) {
+            console.warn('Unable to read tutorial preference', err);
+            return false;
+          }
+        }
+
+        function markTutorialCompleted() {
+          try {
+            localStorage.setItem(TUTORIAL_STORAGE_KEY, 'true');
+          } catch (err) {
+            console.warn('Unable to persist tutorial preference', err);
+          }
+        }
+
+        function showTutorialStep(index) {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          const steps = tutorialState.activeSteps;
+          if (!Array.isArray(steps) || !steps.length) {
+            completeTutorial();
+            return;
+          }
+          const boundedIndex = Math.max(0, Math.min(index, steps.length - 1));
+          const step = steps[boundedIndex];
+          if (!step) {
+            completeTutorial();
+            return;
+          }
+          tutorialState.currentIndex = boundedIndex;
+          detachTutorialDescription();
+          if (typeof step.onBeforeShow === 'function') {
+            step.onBeforeShow();
+          }
+          const overlay = elements.tutorial.overlay;
+          if (overlay) {
+            overlay.classList.remove('hidden');
+            overlay.setAttribute('aria-hidden', 'false');
+          }
+          if (elements.tutorial.tooltip) {
+            elements.tutorial.tooltip.style.opacity = '0';
+            elements.tutorial.tooltip.style.pointerEvents = 'none';
+          }
+          updateTutorialContent(step, boundedIndex, steps.length);
+          if (elements.tutorial.tooltip) {
+            elements.tutorial.tooltip.focus();
+          }
+          requestAnimationFrame(() => {
+            if (!tutorialState.isActive) {
+              return;
+            }
+            const activeSteps = tutorialState.activeSteps;
+            const activeStep = activeSteps ? activeSteps[tutorialState.currentIndex] : null;
+            if (activeStep !== step) {
+              positionCurrentTutorialStep();
+              return;
+            }
+            const targetElement = document.querySelector(step.target);
+            if (targetElement && typeof targetElement.scrollIntoView === 'function') {
+              targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            }
+            positionCurrentTutorialStep();
+          });
+        }
+
+        function updateTutorialContent(step, index, total) {
+          if (elements.tutorial.stepLabel) {
+            elements.tutorial.stepLabel.textContent = `Step ${index + 1} of ${total}`;
+          }
+          if (elements.tutorial.title) {
+            elements.tutorial.title.textContent = step.title;
+          }
+          if (elements.tutorial.description) {
+            elements.tutorial.description.textContent = step.description;
+          }
+          if (elements.tutorial.progress) {
+            const percent = Math.round(((index + 1) / total) * 100);
+            elements.tutorial.progress.style.width = `${percent}%`;
+            if (elements.tutorial.progressTrack) {
+              elements.tutorial.progressTrack.setAttribute('aria-valuenow', String(percent));
+            }
+          }
+          if (elements.tutorial.prevButton) {
+            const disabled = index === 0;
+            elements.tutorial.prevButton.disabled = disabled;
+            elements.tutorial.prevButton.classList.toggle('opacity-40', disabled);
+            elements.tutorial.prevButton.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+          }
+          if (elements.tutorial.nextButton) {
+            elements.tutorial.nextButton.textContent = index === total - 1 ? 'Finish' : 'Next';
+          }
+        }
+
+        function goToTutorialStep(index) {
+          const steps = tutorialState.activeSteps;
+          if (!Array.isArray(steps) || !steps.length) {
+            completeTutorial();
+            return;
+          }
+          if (index < 0) {
+            showTutorialStep(0);
+            return;
+          }
+          if (index >= steps.length) {
+            completeTutorial();
+            return;
+          }
+          showTutorialStep(index);
+        }
+
+        function handleTutorialNext() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          const steps = tutorialState.activeSteps;
+          const currentStep = steps ? steps[tutorialState.currentIndex] : null;
+          if (currentStep && currentStep.id === 'login' && !state.token) {
+            showToast('Sign in to continue the workspace tour.', 'info');
+            return;
+          }
+          goToTutorialStep(tutorialState.currentIndex + 1);
+        }
+
+        function handleTutorialPrev() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          if (tutorialState.currentIndex === 0) {
+            return;
+          }
+          goToTutorialStep(tutorialState.currentIndex - 1);
+        }
+
+        function handleTutorialSkip() {
+          completeTutorial();
+        }
+
+        function positionCurrentTutorialStep() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          const steps = tutorialState.activeSteps;
+          const step = steps ? steps[tutorialState.currentIndex] : null;
+          if (!step) {
+            completeTutorial();
+            return;
+          }
+          const target = document.querySelector(step.target);
+          if (!target || !isElementVisible(target)) {
+            detachTutorialDescription();
+            if (step.requiresAuth && !state.token) {
+              completeTutorial();
+              return;
+            }
+            if (step.autoAdvanceOnMissing) {
+              goToTutorialStep(tutorialState.currentIndex + 1);
+              return;
+            }
+            hideTutorialHighlight();
+            return;
+          }
+          requestAnimationFrame(() => {
+            if (!tutorialState.isActive) {
+              return;
+            }
+            const activeSteps = tutorialState.activeSteps;
+            const activeStep = activeSteps ? activeSteps[tutorialState.currentIndex] : null;
+            if (!activeStep) {
+              return;
+            }
+            const activeTarget = document.querySelector(activeStep.target);
+            if (!activeTarget || !isElementVisible(activeTarget)) {
+              if (activeStep.autoAdvanceOnMissing) {
+                goToTutorialStep(tutorialState.currentIndex + 1);
+              } else if (activeStep.requiresAuth && !state.token) {
+                completeTutorial();
+              }
+              return;
+            }
+            attachTutorialDescription(activeTarget);
+            drawTutorialHighlight(activeTarget);
+          });
+        }
+
+        function drawTutorialHighlight(target) {
+          if (!elements.tutorial.highlight || !elements.tutorial.tooltip) {
+            return;
+          }
+          const rect = target.getBoundingClientRect();
+          const padding = 12;
+          const highlight = elements.tutorial.highlight;
+          const tooltip = elements.tutorial.tooltip;
+          const left = Math.max(rect.left - padding, 0);
+          const top = Math.max(rect.top - padding, 0);
+          const width = rect.width + padding * 2;
+          const height = rect.height + padding * 2;
+          highlight.style.left = `${left}px`;
+          highlight.style.top = `${top}px`;
+          highlight.style.width = `${width}px`;
+          highlight.style.height = `${height}px`;
+          highlight.style.opacity = '1';
+
+          const tooltipWidth = tooltip.offsetWidth || 0;
+          const tooltipHeight = tooltip.offsetHeight || 0;
+          let tooltipTop = rect.bottom + 16;
+          if (tooltipTop + tooltipHeight > window.innerHeight - 24) {
+            tooltipTop = rect.top - tooltipHeight - 16;
+          }
+          tooltipTop = Math.max(24, Math.min(tooltipTop, window.innerHeight - tooltipHeight - 24));
+          let tooltipLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+          tooltipLeft = Math.max(24, Math.min(tooltipLeft, window.innerWidth - tooltipWidth - 24));
+          tooltip.style.top = `${tooltipTop}px`;
+          tooltip.style.left = `${tooltipLeft}px`;
+          tooltip.style.opacity = '1';
+          tooltip.style.pointerEvents = 'auto';
+        }
+
+        function attachTutorialDescription(target) {
+          if (!elements.tutorial.description) {
+            return;
+          }
+          const descriptionId = elements.tutorial.description.id;
+          if (!descriptionId) {
+            return;
+          }
+          detachTutorialDescription();
+          tutorialState.describedTarget = target;
+          tutorialState.previousDescription = target.getAttribute('aria-describedby');
+          target.setAttribute('aria-describedby', descriptionId);
+        }
+
+        function detachTutorialDescription() {
+          if (!tutorialState.describedTarget) {
+            return;
+          }
+          if (tutorialState.previousDescription) {
+            tutorialState.describedTarget.setAttribute('aria-describedby', tutorialState.previousDescription);
+          } else {
+            tutorialState.describedTarget.removeAttribute('aria-describedby');
+          }
+          tutorialState.describedTarget = null;
+          tutorialState.previousDescription = null;
+        }
+
+        function hideTutorialHighlight() {
+          if (elements.tutorial.highlight) {
+            elements.tutorial.highlight.style.opacity = '0';
+          }
+          if (elements.tutorial.tooltip) {
+            elements.tutorial.tooltip.style.opacity = '0';
+            elements.tutorial.tooltip.style.pointerEvents = 'none';
+          }
+        }
+
+        function hideTutorialOverlay() {
+          if (elements.tutorial.overlay) {
+            elements.tutorial.overlay.classList.add('hidden');
+            elements.tutorial.overlay.setAttribute('aria-hidden', 'true');
+          }
+          hideTutorialHighlight();
+        }
+
+        function completeTutorial() {
+          markTutorialCompleted();
+          tutorialState.isActive = false;
+          tutorialState.currentIndex = 0;
+          tutorialState.activeSteps = tutorialState.steps.slice();
+          hideTutorialOverlay();
+          detachTutorialDescription();
+        }
+
+        function handleTutorialRelayout() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          positionCurrentTutorialStep();
+        }
+
+        function handleTutorialPostLogin() {
+          if (!tutorialState.isActive) {
+            return;
+          }
+          const steps = tutorialState.activeSteps;
+          const step = steps ? steps[tutorialState.currentIndex] : null;
+          if (!step) {
+            return;
+          }
+          if (step.id === 'login') {
+            goToTutorialStep(tutorialState.currentIndex + 1);
+            return;
+          }
+          positionCurrentTutorialStep();
+        }
+
+        function isElementVisible(element) {
+          if (!element) {
+            return false;
+          }
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
         }
 
         function bindKanbanSelectionEvents() {
@@ -3158,15 +3609,12 @@ function resetKanbanState() { /* keep Main logic */ }
           }
         }
 
-          function applySession(token, user) {
-            state.token = token;
-            state.user = user || null;
-            resetAdminState();
-            updateShell();
-            hydrateTasksFromCache();
-            startSessionRefresh();
-            refreshWorkspaceData({ silent: true });
-            refreshDashboardQuote({ force: true });
+        function applySession(token, user) {
+          state.token = token;
+          state.user = user || null;
+          updateShell();
+          handleTutorialPostLogin();
+          refreshWorkspaceData({ silent: true });
 
           }
 
@@ -3192,7 +3640,10 @@ function resetKanbanState() { /* keep Main logic */ }
           renderKanbanBoard();
           updateDashboardMetrics();
           setActiveTab(state.activeTab);
-          renderDashboardQuote();
+          if (tutorialState.isActive) {
+            positionCurrentTutorialStep();
+          }
+
         }
 
         function persistSession(token, user) {
