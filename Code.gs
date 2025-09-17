@@ -155,6 +155,16 @@ function whoami(token) {
   });
 }
 
+function refreshSession(token) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    return {
+      token: session.token,
+      user: session.user
+    };
+  });
+}
+
 function listUsers(token) {
   return handleApi_(function () {
     var session = requireSession_(token);
