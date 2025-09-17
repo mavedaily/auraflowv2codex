@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aura Flow V2 — by Rare Aura Media Group</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -46,9 +52,27 @@
         color-scheme: dark;
       }
       body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
         background: radial-gradient(circle at top left, rgba(127, 90, 240, 0.3), transparent 40%),
           radial-gradient(circle at bottom right, rgba(44, 177, 188, 0.25), transparent 45%),
           #0f172a;
+        font-family: 'Manrope', 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #e2e8f0;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        letter-spacing: 0.01em;
+      }
+      main {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+      }
+      footer {
+        backdrop-filter: blur(14px);
       }
       .login-card::before {
         content: '';
@@ -80,21 +104,44 @@
         opacity: 0;
         transition: opacity 0.2s ease, transform 0.2s ease;
       }
+      .tab-dropdown {
+        display: none;
+      }
+      @media (max-width: 599px) {
+        .tab-button-group {
+          display: none;
+        }
+        .tab-dropdown {
+          display: block;
+        }
+      }
+      body .text-slate-500 {
+        color: rgb(148 163 184 / var(--tw-text-opacity, 1));
+      }
+      body .text-slate-400 {
+        color: rgb(203 213 225 / var(--tw-text-opacity, 1));
+      }
     </style>
   </head>
-  <body class="min-h-screen text-slate-100">
+  <body class="min-h-screen text-slate-100 font-sans">
     <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
       <div class="absolute -top-32 -right-32 h-72 w-72 rounded-full bg-aura-primary/30 blur-3xl"></div>
       <div class="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-aura-secondary/25 blur-3xl"></div>
     </div>
 
-    <div id="toastStack" class="fixed top-4 right-4 z-[100] flex flex-col gap-3 w-72 pointer-events-none" role="status" aria-live="assertive"></div>
+    <div
+      id="toastStack"
+      class="fixed top-4 right-4 z-[100] flex flex-col gap-3 w-72 pointer-events-none"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
 
     <main class="relative z-10">
-      <section id="loginView" class="min-h-screen flex items-center justify-center px-6 py-12">
+      <section id="loginView" class="min-h-screen flex items-center justify-center px-4 py-10 sm:px-6 sm:py-12">
         <div class="login-card relative isolate bg-slate-950/70 backdrop-blur-xl border border-white/10 rounded-3xl shadow-brand max-w-xl w-full">
           <div class="absolute inset-x-0 -top-20 mx-auto w-40 h-40 rounded-full bg-gradient-to-br from-aura-primary to-aura-secondary blur-3xl opacity-40"></div>
-          <div class="p-10 space-y-10">
+          <div class="p-8 space-y-8 sm:p-10 sm:space-y-10">
 
             <div>
               <p class="text-sm uppercase tracking-[0.3em] text-slate-400 mb-2">Welcome to</p>
@@ -115,6 +162,7 @@
                   placeholder="you@rareaura.co"
                   required
                   autocomplete="email"
+                  aria-label="Work email address"
                   class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
 
                 />
@@ -128,6 +176,7 @@
                   placeholder="••••••••"
                   required
                   autocomplete="current-password"
+                  aria-label="Account password"
                   class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
 
                 />
@@ -135,6 +184,7 @@
               <button
                 id="loginButton"
                 type="submit"
+                aria-label="Sign in to Aura Flow"
                 class="group relative w-full inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-3 text-base font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
               >
                 <span data-role="spinner" class="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin hidden"></span>
@@ -155,9 +205,9 @@
         </div>
       </section>
 
-      <section id="appView" class="hidden min-h-screen pb-16">
+      <section id="appView" class="hidden min-h-[calc(100vh-5rem)] pb-16">
         <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur border-b border-white/5">
-          <div class="max-w-7xl mx-auto px-6 py-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-4 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p class="text-xs uppercase tracking-[0.35em] text-slate-500">Workspace</p>
               <h2 class="text-2xl font-semibold text-white">
@@ -171,6 +221,7 @@
               </div>
               <button
                 id="logoutButton"
+                aria-label="Sign out of Aura Flow"
                 class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
               >
                 Logout
@@ -179,38 +230,103 @@
           </div>
           <nav class="border-t border-white/5 bg-slate-950/70">
             <div class="max-w-7xl mx-auto px-4 overflow-x-auto">
-              <div class="flex items-center gap-2 py-3" role="tablist">
-                <button data-tab-button="dashboard" class="tab-button">Dashboard</button>
-                <button data-tab-button="kanban" class="tab-button">Kanban</button>
-                <button data-tab-button="analytics" class="tab-button">Analytics</button>
-                <button data-tab-button="focus" class="tab-button">Focus</button>
-                <button data-tab-button="admin" class="tab-button">Admin</button>
+              <div class="tab-button-group flex items-center gap-2 py-3" role="tablist">
+                <button data-tab-button="dashboard" class="tab-button" aria-label="Open Dashboard panel">Dashboard</button>
+                <button data-tab-button="kanban" class="tab-button" aria-label="Open Kanban panel">Kanban</button>
+                <button data-tab-button="analytics" class="tab-button" aria-label="Open Analytics panel">Analytics</button>
+                <button data-tab-button="focus" class="tab-button" aria-label="Open Focus panel">Focus</button>
+                <button data-tab-button="admin" class="tab-button" aria-label="Open Admin panel">Admin</button>
+              </div>
+              <div class="tab-dropdown py-3">
+                <label for="tabDropdown" class="sr-only">Select workspace section</label>
+                <select
+                  id="tabDropdown"
+                  class="w-full rounded-full border border-white/10 bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                  aria-label="Workspace section selector"
+                >
+                  <option value="dashboard">Dashboard</option>
+                  <option value="kanban">Kanban</option>
+                  <option value="analytics">Analytics</option>
+                  <option value="focus">Focus</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
             </div>
           </nav>
         </header>
+
         <div class="max-w-7xl mx-auto px-6 py-12 space-y-12">
-          <section data-tab-panel="dashboard" class="tab-panel">
-            <div class="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
+          <section data-tab-panel="dashboard" class="tab-panel" aria-busy="false">
+            <div
+              id="dashboardSkeleton"
+              class="hidden grid gap-6 animate-pulse lg:grid-cols-2 xl:grid-cols-4"
+              aria-hidden="true"
+            >
+              <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-6">
+                <div class="h-3 w-24 rounded-full bg-white/10"></div>
+                <div class="mt-4 h-10 w-20 rounded-full bg-white/10"></div>
+                <div class="mt-6 space-y-2">
+                  <div class="h-2.5 w-32 rounded-full bg-white/10"></div>
+                  <div class="h-2.5 w-28 rounded-full bg-white/5"></div>
+                </div>
+              </div>
+              <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-6">
+                <div class="h-3 w-20 rounded-full bg-white/10"></div>
+                <div class="mt-4 h-10 w-24 rounded-full bg-white/10"></div>
+                <div class="mt-6 space-y-2">
+                  <div class="h-2.5 w-28 rounded-full bg-white/10"></div>
+                  <div class="h-2.5 w-24 rounded-full bg-white/5"></div>
+                </div>
+              </div>
+              <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-6">
+                <div class="h-3 w-24 rounded-full bg-white/10"></div>
+                <div class="mt-4 h-10 w-24 rounded-full bg-white/10"></div>
+                <div class="mt-6 space-y-2">
+                  <div class="h-2.5 w-32 rounded-full bg-white/10"></div>
+                  <div class="h-2.5 w-24 rounded-full bg-white/5"></div>
+                </div>
+              </div>
+              <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-6">
+                <div class="h-3 w-16 rounded-full bg-white/10"></div>
+                <div class="mt-4 h-10 w-20 rounded-full bg-white/10"></div>
+                <div class="mt-6 space-y-2">
+                  <div class="h-2.5 w-28 rounded-full bg-white/10"></div>
+                  <div class="h-2.5 w-24 rounded-full bg-white/5"></div>
+                </div>
+              </div>
+            </div>
+            <div id="dashboardMetrics" class="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
               <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
                 <p class="text-sm text-slate-400">Tasks Today</p>
-                <p class="mt-3 text-3xl font-semibold text-white" id="metric-today">—</p>
+                <p class="mt-3 text-3xl font-semibold text-white" id="metric-today">0</p>
                 <p class="mt-4 text-xs text-slate-500">Coming soon: surfaced from real-time assignments.</p>
               </div>
               <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
                 <p class="text-sm text-slate-400">Completed</p>
-                <p class="mt-3 text-3xl font-semibold text-white" id="metric-complete">—</p>
+                <p class="mt-3 text-3xl font-semibold text-white" id="metric-complete">0</p>
                 <p class="mt-4 text-xs text-slate-500">Completion streaks and throughput analytics arrive in Phase 4.</p>
               </div>
               <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
                 <p class="text-sm text-slate-400">Time Tracked</p>
-                <p class="mt-3 text-3xl font-semibold text-white" id="metric-time">—</p>
+                <p class="mt-3 text-3xl font-semibold text-white" id="metric-time">0m</p>
                 <p class="mt-4 text-xs text-slate-500">Focus mode sessions will sync minutes here.</p>
               </div>
               <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
                 <p class="text-sm text-slate-400">Overdue</p>
-                <p class="mt-3 text-3xl font-semibold text-white" id="metric-overdue">—</p>
+                <p class="mt-3 text-3xl font-semibold text-white" id="metric-overdue">0</p>
                 <p class="mt-4 text-xs text-slate-500">Due date intelligence with nudges ships later.</p>
+              </div>
+            </div>
+
+            <div
+              id="dashboardEmpty"
+              class="mt-8 hidden flex flex-col items-center gap-4 rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-8 text-center"
+            >
+              <div class="mx-auto flex max-w-lg flex-col items-center gap-3">
+                <h4 class="text-lg font-semibold text-white">No tasks to show yet</h4>
+                <p class="text-sm text-slate-400">
+                  Spin up a task from the workspace to populate your dashboard metrics and unlock velocity insights.
+                </p>
               </div>
             </div>
             <div class="mt-10 rounded-3xl bg-slate-900/80 border border-white/5 p-8">
@@ -257,20 +373,41 @@
               </div>
               <div
                 id="kanbanLoading"
-                class="hidden items-center gap-3 text-sm text-slate-400 sm:flex"
+                class="hidden"
                 role="status"
                 aria-live="polite"
               >
-                <span class="flex h-2.5 w-2.5 items-center justify-center">
-                  <span class="h-2.5 w-2.5 animate-ping rounded-full bg-aura-primary/70"></span>
-                </span>
-                <span>Syncing tasks&hellip;</span>
+                <span class="sr-only">Loading kanban board&hellip;</span>
+                <div class="flex gap-4 overflow-x-auto pb-6 animate-pulse">
+                  <div class="min-w-[230px] rounded-3xl border border-white/10 bg-slate-950/40 p-5">
+                    <div class="h-3 w-20 rounded-full bg-white/10"></div>
+                    <div class="mt-6 space-y-3">
+                      <div class="h-16 rounded-2xl border border-white/10 bg-slate-900/60"></div>
+                      <div class="h-16 rounded-2xl border border-white/10 bg-slate-900/60"></div>
+                    </div>
+                  </div>
+                  <div class="min-w-[230px] rounded-3xl border border-white/10 bg-slate-950/40 p-5">
+                    <div class="h-3 w-24 rounded-full bg-white/10"></div>
+                    <div class="mt-6 space-y-3">
+                      <div class="h-16 rounded-2xl border border-white/10 bg-slate-900/60"></div>
+                      <div class="h-16 rounded-2xl border border-white/10 bg-slate-900/60"></div>
+                    </div>
+                  </div>
+                  <div class="min-w-[230px] rounded-3xl border border-white/10 bg-slate-950/40 p-5">
+                    <div class="h-3 w-16 rounded-full bg-white/10"></div>
+                    <div class="mt-6 space-y-3">
+                      <div class="h-16 rounded-2xl border border-white/10 bg-slate-900/60"></div>
+                      <div class="h-16 rounded-2xl border border-white/10 bg-slate-900/60"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div
                 id="kanbanEmpty"
-                class="hidden rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-10 text-center"
+                class="hidden rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-8 text-center sm:p-10"
+
               >
-                <div class="mx-auto flex max-w-md flex-col gap-3">
+                <div class="mx-auto flex max-w-md flex-col items-center gap-3">
                   <h4 class="text-lg font-semibold text-white">No tasks yet</h4>
                   <p class="text-sm text-slate-400">
                     When tasks are created they will appear here, ready to be triaged across the workflow.
@@ -369,6 +506,7 @@
                   <button
                     id="analyticsRefreshButton"
                     type="button"
+                    aria-label="Refresh analytics"
                     class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
                   >
                     <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-transparent"></span>
@@ -394,7 +532,12 @@
                     id="velocityChartEmpty"
                     class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-slate-950/75 px-8 text-center text-sm font-medium text-slate-400 backdrop-blur-sm"
                   >
-                    No completed tasks yet — close work to unlock velocity insights.
+                    <div class="flex flex-col items-center gap-2">
+                      <p class="text-base font-semibold text-white">No data yet</p>
+                      <p class="text-xs font-normal text-slate-400">
+                        Close tasks to unlock completion velocity trends.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -414,7 +557,12 @@
                     id="categoryChartEmpty"
                     class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-slate-950/75 px-8 text-center text-sm font-medium text-slate-400 backdrop-blur-sm"
                   >
-                    Add duration estimates to your tasks to visualize category distribution.
+                    <div class="flex flex-col items-center gap-2">
+                      <p class="text-base font-semibold text-white">No data yet</p>
+                      <p class="text-xs font-normal text-slate-400">
+                        Add duration estimates to surface category distribution.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -435,15 +583,51 @@
                   id="moodChartEmpty"
                   class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-slate-950/75 px-8 text-center text-sm font-medium text-slate-400 backdrop-blur-sm"
                 >
-                  Log a focus session to begin charting team sentiment.
+                  <div class="flex flex-col items-center gap-2">
+                    <p class="text-base font-semibold text-white">No data yet</p>
+                    <p class="text-xs font-normal text-slate-400">
+                      Log focus sessions to chart evolving mood trends.
+                    </p>
+                  </div>
                 </div>
+              </div>
+
+              <div class="rounded-3xl border border-white/5 bg-slate-900/70 p-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Reports</p>
+                    <h4 class="mt-1 text-lg font-semibold text-white">Exports</h4>
+                    <p class="mt-3 text-sm text-slate-400">
+                      Download your filtered task grid or a leadership-ready PDF snapshot.
+                    </p>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <button
+                      id="reportExportCsv"
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                    >
+                      <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-transparent"></span>
+                      <span data-role="label">Export CSV</span>
+                    </button>
+                    <button
+                      id="reportExportPdf"
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-xl bg-aura-primary/90 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                    >
+                      <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-transparent"></span>
+                      <span data-role="label">Export PDF</span>
+                    </button>
+                  </div>
+                </div>
+                <p class="mt-4 text-xs text-slate-500">Reports respect task visibility and any filters in play.</p>
               </div>
             </div>
           </section>
 
           <section data-tab-panel="focus" class="tab-panel hidden">
             <div class="grid gap-8 xl:grid-cols-[2fr,1fr]">
-              <div class="space-y-8 rounded-3xl border border-white/5 bg-slate-900/70 p-8">
+              <div class="space-y-8 rounded-3xl border border-white/5 bg-slate-900/70 p-6 sm:p-8">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 class="text-2xl font-semibold text-white">Focus Mode</h3>
@@ -458,7 +642,7 @@
                   </span>
                 </div>
 
-                <div class="rounded-2xl border border-white/5 bg-slate-950/60 p-8 text-center">
+                <div class="rounded-2xl border border-white/5 bg-slate-950/60 p-6 text-center sm:p-8">
                   <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Current Session</p>
                   <p id="focusTimerDisplay" class="mt-4 text-6xl font-semibold tracking-tight text-white tabular-nums">25:00</p>
                   <p id="focusTimerSubtitle" class="mt-2 text-sm text-slate-400">Default Pomodoro — 25 minutes</p>
@@ -466,6 +650,7 @@
                     <button
                       id="focusStartButton"
                       type="button"
+                      aria-label="Start focus session"
                       class="inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
                     >
                       Start
@@ -473,6 +658,7 @@
                     <button
                       id="focusPauseButton"
                       type="button"
+                      aria-label="Pause focus session"
                       class="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
                     >
                       Pause
@@ -480,6 +666,7 @@
                     <button
                       id="focusResetButton"
                       type="button"
+                      aria-label="Reset focus session"
                       class="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
                     >
                       Reset
@@ -497,6 +684,7 @@
                       max="90"
                       step="5"
                       value="25"
+                      aria-label="Session length in minutes"
                       class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
                     />
                     <span class="text-xs text-slate-500">Default Pomodoro cadence. Adjust before you start.</span>
@@ -505,6 +693,7 @@
                     <span class="text-sm font-medium text-slate-200">Anchor Task</span>
                     <select
                       id="focusTaskSelect"
+                      aria-label="Anchor task selection"
                       class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
                     >
                       <option value="">Select a task</option>
@@ -515,6 +704,7 @@
                     <span class="text-sm font-medium text-slate-200">How are you arriving to this session?</span>
                     <select
                       id="focusMoodSelect"
+                      aria-label="Mood selection"
                       class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
                     >
                       <option value="focused">Focused</option>
@@ -531,7 +721,7 @@
                 <div>
                   <div class="flex items-center justify-between gap-2">
                     <h4 class="text-sm font-semibold text-white">Recent Sessions</h4>
-                    <button id="focusClearHistoryButton" type="button" class="text-xs text-slate-500 transition hover:text-slate-300">
+                    <button id="focusClearHistoryButton" type="button" aria-label="Clear focus session history" class="text-xs text-slate-500 transition hover:text-slate-300">
                       Clear
                     </button>
                   </div>
@@ -545,7 +735,7 @@
                 </div>
               </div>
 
-              <aside class="space-y-6 rounded-3xl border border-white/5 bg-slate-900/50 p-8">
+              <aside class="space-y-6 rounded-3xl border border-white/5 bg-slate-900/50 p-6 sm:p-8">
                 <div>
                   <h4 class="text-lg font-semibold text-white">Flow Tips</h4>
                   <p class="mt-2 text-sm text-slate-400">Prime your environment, celebrate each win, and recharge between cycles.</p>
@@ -569,7 +759,7 @@
           </section>
 
           <section data-tab-panel="admin" class="tab-panel hidden">
-            <div class="rounded-3xl bg-slate-900/70 border border-white/5 p-8">
+            <div class="rounded-3xl bg-slate-900/70 border border-white/5 p-6 sm:p-8">
               <h3 class="text-2xl font-semibold text-white">Admin Control Center</h3>
               <p class="mt-4 text-sm text-slate-400">
                 User provisioning, hierarchy management, and bulk operations will surface here in Phase 5 once backend services solidify.
@@ -618,6 +808,11 @@
         </div>
       </section>
     </main>
+    <footer class="relative z-10 border-t border-white/10 bg-slate-950/70">
+      <div class="mx-auto max-w-7xl px-6 py-6 text-center text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">
+        Aura Flow V2 — Rare Aura Media Group
+      </div>
+    </footer>
 
     <div
       id="bulkUploadModal"
@@ -755,6 +950,9 @@
 
       (function () {
         const STORAGE_KEY = 'aura-flow-v2.session';
+        const TASK_CACHE_KEY = 'aura-flow-v2.tasks.cache';
+        const TASK_CACHE_LIMIT = 20;
+        const SESSION_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
         const KANBAN_STATUSES = [
           { id: 'Planned', label: 'Planned' },
           { id: 'In-Progress', label: 'In-Progress' },
@@ -784,14 +982,16 @@
             category: null,
             mood: null,
           },
-          bulkUpload: {
-            fileName: '',
-            headers: [],
-            previewRows: [],
-            records: [],
-            errors: [],
-            isParsing: false,
-          },
+bulkUpload: {
+  fileName: '',
+  headers: [],
+  previewRows: [],
+  records: [],
+  errors: [],
+  isParsing: false,
+},
+isWorkspaceLoading: false,
+
         };
         const focusState = {
           durationMinutes: 25,
@@ -806,10 +1006,20 @@
           isLoading: false,
           lastUpdated: null,
         };
+        const dragState = {
+          taskId: null,
+          originStatus: null,
+        };
         const elements = {
           analytics: {},
           focus: {},
           bulk: {},
+          dashboard: {},
+          kanban: {
+            columns: {},
+            lists: {},
+            counts: {},
+          },
         };
 
         const tabs = ['dashboard', 'kanban', 'analytics', 'focus', 'admin'];
@@ -847,6 +1057,8 @@
           burntout: 1,
         };
         let isInitialized = false;
+        let sessionRefreshTimerId = null;
+        let sessionRefreshFailureNotified = false;
 
         document.addEventListener('DOMContentLoaded', init);
 
@@ -873,6 +1085,7 @@
           elements.logoutButton = document.getElementById('logoutButton');
           elements.tabButtons = document.querySelectorAll('[data-tab-button]');
           elements.tabPanels = document.querySelectorAll('[data-tab-panel]');
+          elements.tabDropdown = document.getElementById('tabDropdown');
           elements.analytics.refreshButton = document.getElementById('analyticsRefreshButton');
           elements.analytics.refreshTime = document.getElementById('analyticsRefreshTime');
           elements.analytics.velocityCanvas = document.getElementById('completionVelocityChart');
@@ -884,6 +1097,8 @@
           elements.analytics.moodCanvas = document.getElementById('moodTrendChart');
           elements.analytics.moodEmpty = document.getElementById('moodChartEmpty');
           elements.analytics.moodMetric = document.getElementById('moodMetric');
+          elements.analytics.exportCsvButton = document.getElementById('reportExportCsv');
+          elements.analytics.exportPdfButton = document.getElementById('reportExportPdf');
           elements.focus.statusBadge = document.getElementById('focusStatusBadge');
           if (elements.focus.statusBadge) {
             elements.focus.statusDot = elements.focus.statusBadge.querySelector('[data-role="focus-status-dot"]');
@@ -900,23 +1115,56 @@
           elements.focus.historyList = document.getElementById('focusHistoryList');
           elements.focus.historyEmpty = document.getElementById('focusHistoryEmpty');
           elements.focus.clearHistoryButton = document.getElementById('focusClearHistoryButton');
-          elements.bulk.trigger = document.getElementById('bulkUploadTrigger');
-          elements.bulk.modal = document.getElementById('bulkUploadModal');
-          elements.bulk.overlay = document.getElementById('bulkUploadModalOverlay');
-          elements.bulk.fileInput = document.getElementById('bulkUploadFileInput');
-          elements.bulk.fileName = document.getElementById('bulkUploadFileName');
-          elements.bulk.previewWrapper = document.getElementById('bulkUploadPreviewWrapper');
-          elements.bulk.previewEmpty = document.getElementById('bulkUploadPreviewEmpty');
-          elements.bulk.previewTable = document.getElementById('bulkUploadPreviewTable');
-          elements.bulk.previewHead = document.getElementById('bulkUploadPreviewHead');
-          elements.bulk.previewBody = document.getElementById('bulkUploadPreviewBody');
-          elements.bulk.previewSummary = document.getElementById('bulkUploadPreviewSummary');
-          elements.bulk.confirmButton = document.getElementById('bulkUploadConfirmButton');
-          elements.bulk.cancelButton = document.getElementById('bulkUploadCancelButton');
-          elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-close"]');
-          elements.bulk.errorsContainer = document.getElementById('bulkUploadErrorsContainer');
-          elements.bulk.errorsList = document.getElementById('bulkUploadErrorsList');
-          elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestrictionNotice');
+// Dashboard elements
+elements.dashboard.section = document.querySelector('[data-tab-panel="dashboard"]');
+elements.dashboard.skeleton = document.getElementById('dashboardSkeleton');
+elements.dashboard.metricsContainer = document.getElementById('dashboardMetrics');
+elements.dashboard.empty = document.getElementById('dashboardEmpty');
+elements.dashboard.metrics = {
+  today: document.getElementById('metric-today'),
+  complete: document.getElementById('metric-complete'),
+  time: document.getElementById('metric-time'),
+  overdue: document.getElementById('metric-overdue'),
+};
+
+// Kanban elements
+elements.kanban.board = document.getElementById('kanbanBoard');
+elements.kanban.loading = document.getElementById('kanbanLoading');
+elements.kanban.empty = document.getElementById('kanbanEmpty');
+elements.kanban.columns = {};
+elements.kanban.lists = {};
+elements.kanban.counts = {};
+if (elements.kanban.board) {
+  elements.kanban.board.querySelectorAll('[data-kanban-column]').forEach((column) => {
+    const columnId = column.getAttribute('data-kanban-column');
+    if (!columnId) return;
+    elements.kanban.columns[columnId] = column;
+    elements.kanban.lists[columnId] = column.querySelector('[data-kanban-list]');
+    elements.kanban.counts[columnId] = column.querySelector('[data-kanban-count]');
+  });
+}
+elements.kanbanBoard = elements.kanban.board;
+elements.kanbanColumns = elements.kanban.columns;
+
+// Bulk Upload elements
+elements.bulk.trigger = document.getElementById('bulkUploadTrigger');
+elements.bulk.modal = document.getElementById('bulkUploadModal');
+elements.bulk.overlay = document.getElementById('bulkUploadModalOverlay');
+elements.bulk.fileInput = document.getElementById('bulkUploadFileInput');
+elements.bulk.fileName = document.getElementById('bulkUploadFileName');
+elements.bulk.previewWrapper = document.getElementById('bulkUploadPreviewWrapper');
+elements.bulk.previewEmpty = document.getElementById('bulkUploadPreviewEmpty');
+elements.bulk.previewTable = document.getElementById('bulkUploadPreviewTable');
+elements.bulk.previewHead = document.getElementById('bulkUploadPreviewHead');
+elements.bulk.previewBody = document.getElementById('bulkUploadPreviewBody');
+elements.bulk.previewSummary = document.getElementById('bulkUploadPreviewSummary');
+elements.bulk.confirmButton = document.getElementById('bulkUploadConfirmButton');
+elements.bulk.cancelButton = document.getElementById('bulkUploadCancelButton');
+elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-close"]');
+elements.bulk.errorsContainer = document.getElementById('bulkUploadErrorsContainer');
+elements.bulk.errorsList = document.getElementById('bulkUploadErrorsList');
+elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestrictionNotice');
+
         }
 
         function enhanceTabButtons() {
@@ -976,8 +1224,20 @@
               setActiveTab(targetTab);
             });
           });
+          if (elements.tabDropdown) {
+            elements.tabDropdown.addEventListener('change', (event) => {
+              const targetTab = event.target && event.target.value ? String(event.target.value) : '';
+              setActiveTab(targetTab);
+            });
+          }
           if (elements.analytics.refreshButton) {
             elements.analytics.refreshButton.addEventListener('click', () => refreshWorkspaceData({ silent: false }));
+          }
+          if (elements.analytics.exportCsvButton) {
+            elements.analytics.exportCsvButton.addEventListener('click', handleExportCsvClick);
+          }
+          if (elements.analytics.exportPdfButton) {
+            elements.analytics.exportPdfButton.addEventListener('click', handleExportPdfClick);
           }
           if (elements.focus.startButton) {
             elements.focus.startButton.addEventListener('click', startFocusTimer);
@@ -1019,6 +1279,321 @@
           }
         }
 
+        function setWorkspaceLoading(isLoading) {
+          state.isWorkspaceLoading = isLoading;
+          if (elements.dashboard.section) {
+            elements.dashboard.section.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+          }
+          if (elements.dashboard.skeleton) {
+            elements.dashboard.skeleton.classList.toggle('hidden', !isLoading);
+          }
+          if (elements.dashboard.metricsContainer) {
+            elements.dashboard.metricsContainer.classList.toggle('hidden', isLoading);
+          }
+          if (isLoading && elements.dashboard.empty) {
+            elements.dashboard.empty.classList.add('hidden');
+          }
+          if (elements.kanban.loading) {
+            elements.kanban.loading.classList.toggle('hidden', !isLoading);
+          }
+          if (elements.kanban.board) {
+            elements.kanban.board.classList.toggle('hidden', isLoading);
+          }
+          if (isLoading && elements.kanban.empty) {
+            elements.kanban.empty.classList.add('hidden');
+          }
+        }
+
+        function updateDashboardMetrics() {
+          const metrics = elements.dashboard.metrics || {};
+          if (!metrics.today || !metrics.complete || !metrics.time || !metrics.overdue) {
+            return;
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          let tasksToday = 0;
+          let completed = 0;
+          let overdue = 0;
+          let trackedMinutes = 0;
+          const now = new Date();
+          tasks.forEach((task) => {
+            if (!task) return;
+            const status = normalizeStatus(task.Status);
+            if (status === 'Completed') {
+              completed += 1;
+            }
+            const minutes = Number(task.DurationMins || task.Duration || 0);
+            if (Number.isFinite(minutes) && minutes > 0) {
+              trackedMinutes += minutes;
+            }
+            const dueDate = parseDateValue(task.DueAt || task.DueDate || task.DueOn || task.Due);
+            if (dueDate) {
+              const dueDay = new Date(dueDate);
+              dueDay.setHours(0, 0, 0, 0);
+              if (isSameDay(dueDay, today)) {
+                tasksToday += 1;
+              }
+              if (dueDate < now && status !== 'Completed') {
+                overdue += 1;
+              }
+            } else {
+              const created = parseDateValue(task.Timestamp || task.CreatedAt || task.CreatedOn);
+              if (created) {
+                const createdDay = new Date(created);
+                createdDay.setHours(0, 0, 0, 0);
+                if (isSameDay(createdDay, today)) {
+                  tasksToday += 1;
+                }
+              }
+            }
+          });
+          metrics.today.textContent = String(tasksToday);
+          metrics.complete.textContent = String(completed);
+          metrics.time.textContent = trackedMinutes ? formatMinutes(trackedMinutes) : '0m';
+          metrics.overdue.textContent = String(overdue);
+          const shouldShowEmpty = !tasks.length && !state.isWorkspaceLoading;
+          toggleEmptyState(elements.dashboard.empty, shouldShowEmpty, 'flex');
+        }
+
+        function renderKanbanBoard() {
+          const lists = elements.kanban.lists || {};
+          const counts = elements.kanban.counts || {};
+          const board = elements.kanban.board;
+          if (!board) {
+            return;
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          const grouped = new Map();
+          tasks.forEach((task) => {
+            if (!task) return;
+            const statusId = normalizeStatus(task.Status);
+            if (!grouped.has(statusId)) {
+              grouped.set(statusId, []);
+            }
+            grouped.get(statusId).push(task);
+          });
+          KANBAN_STATUSES.forEach((status) => {
+            const list = lists[status.id];
+            if (list) {
+              list.innerHTML = '';
+            }
+            const columnTasks = grouped.get(status.id) || [];
+            if (list) {
+              if (!columnTasks.length) {
+                list.appendChild(createKanbanPlaceholderCard());
+              } else {
+                columnTasks
+                  .sort((a, b) => {
+                    const aDate = parseDateValue(a.UpdatedAt || a.Timestamp);
+                    const bDate = parseDateValue(b.UpdatedAt || b.Timestamp);
+                    const aTime = aDate ? aDate.getTime() : 0;
+                    const bTime = bDate ? bDate.getTime() : 0;
+                    return bTime - aTime;
+                  })
+                  .forEach((task) => {
+                    list.appendChild(createKanbanCard(task, status.id));
+                  });
+              }
+            }
+            const badge = counts[status.id];
+            if (badge) {
+              badge.textContent = String(columnTasks.length);
+            }
+          });
+          const shouldShowEmpty = !tasks.length && !state.isWorkspaceLoading;
+          toggleEmptyState(elements.kanban.empty, shouldShowEmpty, 'flex');
+          if (!state.isWorkspaceLoading) {
+            board.classList.remove('hidden');
+          }
+        }
+
+        function createKanbanCard(task, statusId) {
+          const card = document.createElement('article');
+          card.className = 'group rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-sm text-slate-200 shadow-sm transition hover:border-white/20';
+          card.draggable = true;
+          card.setAttribute('data-task-id', task.TaskID);
+          card.setAttribute('role', 'listitem');
+          card.setAttribute('aria-grabbed', 'false');
+          const title = escapeHtml(task.Name || task.TaskID || 'Untitled task');
+          const dueLabel = formatDueLabel(task.DueAt || task.DueDate || task.DueOn || task.Due);
+          const metaParts = [];
+          if (task.Assignee) {
+            const assignee = formatAssigneeLabel(task.Assignee);
+            if (assignee) {
+              metaParts.push(assignee);
+            }
+          }
+          const minutes = Number(task.DurationMins || task.Duration || 0);
+          if (Number.isFinite(minutes) && minutes > 0) {
+            metaParts.push(formatMinutes(minutes));
+          }
+          if (task.Priority) {
+            metaParts.push(String(task.Priority));
+          }
+          const content = [];
+          content.push(`
+            <div class="flex items-start justify-between gap-3">
+              <p class="font-medium text-slate-100">${title}</p>
+              ${dueLabel ? `<span class="rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium text-slate-300">${escapeHtml(dueLabel)}</span>` : ''}
+            </div>
+          `);
+          if (task.Category) {
+            content.push(`<p class="mt-2 text-xs uppercase tracking-[0.2em] text-slate-500">${escapeHtml(task.Category)}</p>`);
+          }
+          if (metaParts.length) {
+            content.push(`<p class="mt-2 text-xs text-slate-400">${escapeHtml(metaParts.join(' • '))}</p>`);
+          }
+          card.innerHTML = content.join('');
+          card.addEventListener('dragstart', (event) => handleKanbanDragStart(event, task.TaskID, statusId));
+          card.addEventListener('dragend', handleKanbanDragEnd);
+          return card;
+        }
+
+        function createKanbanPlaceholderCard() {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'flex flex-col gap-3 rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-4 animate-pulse';
+          placeholder.setAttribute('aria-hidden', 'true');
+          placeholder.innerHTML = `
+            <div class="h-3 w-3/4 rounded-full bg-white/10"></div>
+            <div class="h-3 w-1/2 rounded-full bg-white/5"></div>
+            <div class="h-8 rounded-xl bg-white/5"></div>
+          `;
+          return placeholder;
+        }
+
+        function handleKanbanDragStart(event, taskId, statusId) {
+          dragState.taskId = taskId;
+          dragState.originStatus = statusId;
+          if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', taskId);
+          }
+          if (event.currentTarget) {
+            event.currentTarget.classList.add('opacity-60');
+            event.currentTarget.setAttribute('aria-grabbed', 'true');
+          }
+        }
+
+        function handleKanbanDragEnd(event) {
+          if (event && event.currentTarget) {
+            event.currentTarget.classList.remove('opacity-60');
+            event.currentTarget.setAttribute('aria-grabbed', 'false');
+          }
+          dragState.taskId = null;
+          dragState.originStatus = null;
+          clearKanbanHighlights();
+        }
+
+        function handleKanbanDragEnter(event, statusId) {
+          if (!dragState.taskId) {
+            return;
+          }
+          event.preventDefault();
+          highlightKanbanColumn(statusId, true);
+        }
+
+        function handleKanbanDragOver(event, statusId) {
+          if (!dragState.taskId) {
+            return;
+          }
+          event.preventDefault();
+          highlightKanbanColumn(statusId, true);
+          if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = 'move';
+          }
+        }
+
+        function handleKanbanDragLeave(event, statusId) {
+          if (!dragState.taskId) {
+            return;
+          }
+          if (event.relatedTarget && event.currentTarget && event.currentTarget.contains(event.relatedTarget)) {
+            return;
+          }
+          highlightKanbanColumn(statusId, false);
+        }
+
+        async function handleKanbanDrop(event, statusId) {
+          if (!dragState.taskId) {
+            return;
+          }
+          event.preventDefault();
+          const taskId = dragState.taskId;
+          dragState.taskId = null;
+          dragState.originStatus = null;
+          highlightKanbanColumn(statusId, false);
+          clearKanbanHighlights();
+          await moveTaskToStatus(taskId, statusId);
+        }
+
+        async function moveTaskToStatus(taskId, nextStatus) {
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          const task = tasks.find((entry) => entry && entry.TaskID === taskId);
+          if (!task) {
+            renderKanbanBoard();
+            return;
+          }
+          const previousStatus = normalizeStatus(task.Status);
+          const targetStatus = normalizeStatus(nextStatus);
+          if (previousStatus === targetStatus) {
+            renderKanbanBoard();
+            return;
+          }
+          if (!state.token) {
+            showToast('Sign in to update tasks.', 'error');
+            renderKanbanBoard();
+            return;
+          }
+          task.Status = targetStatus;
+          renderKanbanBoard();
+          updateDashboardMetrics();
+          try {
+            const updated = await server.updateTask(state.token, taskId, { Status: targetStatus });
+            if (updated && typeof updated === 'object') {
+              Object.assign(task, updated);
+            }
+            const taskName = escapeHtml(task.Name || task.TaskID || taskId);
+            showToast(`Moved “${taskName}” to ${escapeHtml(targetStatus)}.`, 'success');
+          } catch (err) {
+            task.Status = previousStatus;
+            renderKanbanBoard();
+            updateDashboardMetrics();
+            showToast(err && err.message ? err.message : 'Unable to update task status.', 'error');
+          }
+        }
+
+        function highlightKanbanColumn(statusId, shouldHighlight) {
+          const column = elements.kanban.columns ? elements.kanban.columns[statusId] : null;
+          if (!column) {
+            return;
+          }
+          COLUMN_HIGHLIGHT_CLASSES.forEach((cls) => {
+            column.classList.toggle(cls, shouldHighlight);
+          });
+        }
+
+        function clearKanbanHighlights() {
+          Object.keys(elements.kanban.columns || {}).forEach((key) => {
+            highlightKanbanColumn(key, false);
+          });
+        }
+
+        function resetKanbanState() {
+          Object.values(elements.kanban.lists || {}).forEach((list) => {
+            if (list) {
+              list.innerHTML = '';
+            }
+          });
+          Object.values(elements.kanban.counts || {}).forEach((badge) => {
+            if (badge) {
+              badge.textContent = '0';
+            }
+          });
+          clearKanbanHighlights();
+          renderKanbanBoard();
+        }
+
         async function handleLoginSubmit(event) {
           event.preventDefault();
           const formData = new FormData(elements.loginForm);
@@ -1057,6 +1632,66 @@
             }
           }
           showToast('You are signed out.', 'success');
+        }
+
+        function buildReportFilters() {
+          return {};
+        }
+
+        async function handleExportCsvClick() {
+          if (!state.token) {
+            showToast('Sign in to export reports.', 'error');
+            return;
+          }
+          const button = elements.analytics.exportCsvButton;
+          setButtonLoading(button, true);
+          try {
+            const filters = buildReportFilters();
+            const result = await server.exportTasksCsv(state.token, filters);
+            const content = result && typeof result === 'object' && 'content' in result ? result.content : result;
+            if (!content) {
+              throw new Error('No CSV data was generated.');
+            }
+            const filename = (result && result.filename) || `aura-flow-tasks-${Date.now()}.csv`;
+            const mimeType = (result && result.mimeType) || 'text/csv';
+            const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+            downloadBlob(blob, filename);
+            showToast('Tasks CSV export ready.', 'success');
+          } catch (err) {
+            console.error('CSV export failed:', err);
+            showToast(err && err.message ? err.message : 'Failed to export CSV.', 'error');
+          } finally {
+            setButtonLoading(button, false);
+          }
+        }
+
+        async function handleExportPdfClick() {
+          if (!state.token) {
+            showToast('Sign in to export reports.', 'error');
+            return;
+          }
+          const button = elements.analytics.exportPdfButton;
+          setButtonLoading(button, true);
+          try {
+            const filters = buildReportFilters();
+            const result = await server.generatePdfReport(state.token, filters);
+            if (!result || !result.base64) {
+              throw new Error('No PDF data was generated.');
+            }
+            const filename = result.filename || `aura-flow-report-${Date.now()}.pdf`;
+            const mimeType = result.mimeType || 'application/pdf';
+            const blob = base64ToBlob(result.base64, mimeType);
+            if (!blob || !blob.size) {
+              throw new Error('Unable to prepare PDF download.');
+            }
+            downloadBlob(blob, filename);
+            showToast('PDF report generated.', 'success');
+          } catch (err) {
+            console.error('PDF export failed:', err);
+            showToast(err && err.message ? err.message : 'Failed to export PDF.', 'error');
+          } finally {
+            setButtonLoading(button, false);
+          }
         }
 
         function setButtonLoading(button, isLoading) {
@@ -1547,6 +2182,9 @@
             panel.classList.toggle('hidden', !isActive);
             panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
           });
+          if (elements.tabDropdown && elements.tabDropdown.value !== tabId) {
+            elements.tabDropdown.value = tabId;
+          }
           if (tabId === 'analytics') {
             renderAnalyticsCharts();
             requestAnimationFrame(() => {
@@ -1567,6 +2205,8 @@
           state.token = token;
           state.user = user || null;
           updateShell();
+          hydrateTasksFromCache();
+          startSessionRefresh();
           refreshWorkspaceData({ silent: true });
 
         }
@@ -1586,7 +2226,9 @@
             elements.roleBadge.textContent = isAuthenticated && state.user.Role ? state.user.Role : '';
           }
           updateBulkUploadAvailability();
+          updateIdentityBadges(isAuthenticated);
           renderKanbanBoard();
+          updateDashboardMetrics();
           setActiveTab(state.activeTab);
         }
 
@@ -1600,6 +2242,7 @@
         }
 
         function clearSession() {
+          stopSessionRefresh();
           state.token = null;
           state.user = null;
           resetWorkspaceData();
@@ -1653,6 +2296,7 @@
             return;
           }
           analyticsState.isLoading = true;
+          setWorkspaceLoading(true);
           if (elements.analytics.refreshButton && !silent) {
             setButtonLoading(elements.analytics.refreshButton, true);
           }
@@ -1666,16 +2310,30 @@
             analyticsState.lastUpdated = new Date();
             updateAnalyticsTimestamp();
             populateFocusTaskSelect();
+            renderKanbanBoard();
             renderAnalyticsCharts();
+            cacheTasksSnapshot(state.data.tasks);
           } catch (err) {
             console.error('Failed to refresh workspace data:', err);
             showToast(err && err.message ? err.message : 'Unable to refresh analytics.', 'error');
-            renderAnalyticsCharts();
+            if (!state.data.tasks.length) {
+              const hydrated = hydrateTasksFromCache();
+              if (!hydrated) {
+                renderKanbanBoard();
+                renderAnalyticsCharts();
+              }
+            } else {
+              renderKanbanBoard();
+              renderAnalyticsCharts();
+            }
           } finally {
             analyticsState.isLoading = false;
             if (elements.analytics.refreshButton && !silent) {
               setButtonLoading(elements.analytics.refreshButton, false);
             }
+            setWorkspaceLoading(false);
+            updateDashboardMetrics();
+            renderKanbanBoard();
           }
         }
 
@@ -1692,6 +2350,132 @@
             day: 'numeric',
           });
           elements.analytics.refreshTime.textContent = `Updated ${formatted}`;
+        }
+
+        function startSessionRefresh() {
+          stopSessionRefresh();
+          if (!state.token) {
+            return;
+          }
+          sessionRefreshFailureNotified = false;
+          sessionRefreshTimerId = setInterval(() => {
+            handleSessionRefresh().catch((err) => {
+              console.warn('Session refresh error:', err);
+            });
+          }, SESSION_REFRESH_INTERVAL_MS);
+        }
+
+        async function handleSessionRefresh() {
+          if (!state.token) {
+            return;
+          }
+          try {
+            const refreshed = await server.refreshSession(state.token);
+            if (!refreshed || !refreshed.token) {
+              return;
+            }
+            state.token = refreshed.token;
+            if (refreshed.user) {
+              state.user = refreshed.user;
+            }
+            persistSession(state.token, state.user);
+            updateIdentityBadges();
+          } catch (err) {
+            const message = err && err.message ? err.message : String(err || '');
+            if (message.toLowerCase().includes('unauthorized')) {
+              stopSessionRefresh();
+              const hadToken = Boolean(state.token);
+              clearSession();
+              updateShell();
+              if (!sessionRefreshFailureNotified && hadToken) {
+                sessionRefreshFailureNotified = true;
+                showToast('Your session expired. Please sign in again.', 'error');
+              }
+            } else {
+              console.warn('Session refresh failed:', err);
+            }
+          }
+        }
+
+        function stopSessionRefresh() {
+          if (sessionRefreshTimerId) {
+            clearInterval(sessionRefreshTimerId);
+            sessionRefreshTimerId = null;
+          }
+        }
+
+        function updateIdentityBadges(isAuthenticated = Boolean(state.token && state.user)) {
+          if (elements.userBadge) {
+            elements.userBadge.textContent = isAuthenticated && state.user && state.user.Email
+              ? state.user.Email
+              : 'Not authenticated';
+          }
+          if (elements.roleBadge) {
+            elements.roleBadge.textContent =
+              isAuthenticated && state.user && state.user.Role ? state.user.Role : '';
+          }
+        }
+
+        function hydrateTasksFromCache() {
+          let hydrated = false;
+          try {
+            const raw = localStorage.getItem(TASK_CACHE_KEY);
+            if (!raw) {
+              return hydrated;
+            }
+            const payload = JSON.parse(raw);
+            if (!payload || !Array.isArray(payload.tasks) || !payload.tasks.length) {
+              return hydrated;
+            }
+            state.data.tasks = payload.tasks;
+            if (payload.savedAt) {
+              const savedAt = new Date(payload.savedAt);
+              if (!Number.isNaN(savedAt.getTime())) {
+                analyticsState.lastUpdated = savedAt;
+                updateAnalyticsTimestamp();
+              }
+            }
+            populateFocusTaskSelect();
+            renderKanbanBoard();
+            renderAnalyticsCharts();
+            hydrated = true;
+          } catch (err) {
+            console.warn('Failed to hydrate cached tasks', err);
+          }
+          return hydrated;
+        }
+
+        function cacheTasksSnapshot(tasks) {
+          if (!Array.isArray(tasks)) {
+            return;
+          }
+          try {
+            const snapshot = sortTasksByRecency(tasks).slice(0, TASK_CACHE_LIMIT);
+            const payload = JSON.stringify({ savedAt: Date.now(), tasks: snapshot });
+            localStorage.setItem(TASK_CACHE_KEY, payload);
+          } catch (err) {
+            console.warn('Failed to cache tasks for offline access', err);
+          }
+        }
+
+        function sortTasksByRecency(tasks) {
+          return tasks.slice().sort((a, b) => resolveTaskTimestamp(b) - resolveTaskTimestamp(a));
+        }
+
+        function resolveTaskTimestamp(task) {
+          if (!task) {
+            return 0;
+          }
+          const fields = [task.UpdatedAt, task.Timestamp, task.DueAt];
+          for (let i = 0; i < fields.length; i += 1) {
+            const value = fields[i];
+            if (!value) continue;
+            const date = new Date(value);
+            if (!Number.isNaN(date.getTime())) {
+              return date.getTime();
+            }
+          }
+          return 0;
         }
 
         function renderAnalyticsCharts() {
@@ -2294,12 +3078,68 @@
           updateFocusStatus('ready');
           updateFocusControls();
           updateFocusHistoryUi();
+          updateDashboardMetrics();
+          renderKanbanBoard();
+          setWorkspaceLoading(false);
         }
 
-        function toggleEmptyState(element, shouldShow) {
+        function toggleEmptyState(element, shouldShow, displayClass = 'flex') {
           if (!element) return;
           element.classList.toggle('hidden', !shouldShow);
-          element.classList.toggle('flex', shouldShow);
+          if (displayClass) {
+            element.classList.toggle(displayClass, shouldShow);
+          }
+        }
+
+        function normalizeStatus(status) {
+          const label = String(status || '').trim();
+          if (!label) {
+            return 'Planned';
+          }
+          if (KANBAN_STATUSES.some((entry) => entry.id === label)) {
+            return label;
+          }
+          const lower = label.toLowerCase();
+          const match = KANBAN_STATUSES.find((entry) => entry.id.toLowerCase() === lower);
+          return match ? match.id : 'Planned';
+        }
+
+        function parseDateValue(value) {
+          if (!value) {
+            return null;
+          }
+          if (value instanceof Date) {
+            return Number.isNaN(value.getTime()) ? null : value;
+          }
+          const parsed = new Date(value);
+          return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        function isSameDay(a, b) {
+          if (!a || !b) {
+            return false;
+          }
+          return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+        }
+
+        function formatAssigneeLabel(value) {
+          if (!value) {
+            return '';
+          }
+          const normalized = String(value).trim();
+          if (!normalized) {
+            return '';
+          }
+          const [name] = normalized.split('@');
+          return name || normalized;
+        }
+
+        function formatDueLabel(value) {
+          const date = parseDateValue(value);
+          if (!date) {
+            return '';
+          }
+          return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
         }
 
         function formatDateKey(value) {
@@ -2327,6 +3167,39 @@
           if (hours && mins) return `${hours}h ${mins}m`;
           if (hours) return `${hours}h`;
           return `${mins}m`;
+        }
+
+        function downloadBlob(blob, filename) {
+          if (!blob) {
+            throw new Error('Nothing to download.');
+          }
+          if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+            throw new Error('Download not supported in this environment.');
+          }
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = url;
+          anchor.download = filename || 'download';
+          document.body.appendChild(anchor);
+          anchor.click();
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+            anchor.remove();
+          }, 0);
+        }
+
+        function base64ToBlob(base64, mimeType = 'application/octet-stream') {
+          const cleaned = typeof base64 === 'string' ? base64.replace(/\s/g, '') : '';
+          if (!cleaned) {
+            return new Blob([], { type: mimeType });
+          }
+          const byteCharacters = atob(cleaned);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i += 1) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          return new Blob([byteArray], { type: mimeType });
         }
 
         function resolveMoodScore(label) {
@@ -2373,7 +3246,6 @@
         const toast = document.createElement('div');
         const baseClasses = [
           'pointer-events-auto',
-
           'rounded-2xl',
           'border',
           'border-white/10',
@@ -2386,35 +3258,66 @@
           'items-start',
           'gap-3',
           'transition',
+          'w-full',
+          'min-w-0',
         ];
         const palette = {
           success: 'bg-emerald-500/20 text-emerald-100',
           error: 'bg-rose-500/20 text-rose-100',
           info: 'bg-slate-800/80 text-slate-100',
         };
+        const safeMessage = String(message ?? '');
         toast.className = baseClasses.join(' ');
         toast.classList.add('toast-enter');
-        toast.innerHTML = `
-          <span class="mt-0.5 text-lg">${type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️'}</span>
-          <div class="leading-snug">
-            <p class="font-medium">${message}</p>
-          </div>
-        `;
         toast.classList.add(...(palette[type] || palette.info).split(' '));
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.setAttribute('aria-label', `${type} notification: ${safeMessage}`);
 
+        const icon = document.createElement('span');
+        icon.className = 'mt-0.5 text-lg shrink-0';
+        icon.textContent = type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️';
+
+        const content = document.createElement('div');
+        content.className = 'flex-1 leading-snug text-left';
+        const text = document.createElement('p');
+        text.className = 'font-medium';
+        text.textContent = safeMessage;
+        content.appendChild(text);
+
+        const dismissButton = document.createElement('button');
+        dismissButton.type = 'button';
+        dismissButton.className = 'ml-auto inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/5 text-xs font-semibold text-white/80 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60';
+        dismissButton.setAttribute('aria-label', 'Dismiss notification');
+        dismissButton.textContent = '×';
+
+        toast.append(icon, content, dismissButton);
         container.appendChild(toast);
+
         requestAnimationFrame(() => {
           toast.classList.remove('toast-enter');
           toast.classList.add('toast-enter-active');
         });
-        setTimeout(() => {
+
+        let isClosing = false;
+        const removeToast = () => {
+          if (isClosing) return;
+          isClosing = true;
           toast.classList.remove('toast-enter-active');
           toast.classList.add('toast-leave-active');
-          setTimeout(() => {
-            toast.remove();
+          window.setTimeout(() => {
+            if (toast.parentElement) {
+              toast.remove();
+            }
           }, 220);
-        }, 3600);
+        };
 
+        const timeoutId = window.setTimeout(removeToast, 3600);
+        dismissButton.addEventListener('click', () => {
+          window.clearTimeout(timeoutId);
+          removeToast();
+        });
       }
     </script>
   </body>
