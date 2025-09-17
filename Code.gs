@@ -18,7 +18,8 @@ SHEET_HEADERS[SHEET_NAMES.USERS] = [
   'Role',
   'ManagerEmail',
   'IsActive',
-  'CreatedAt'
+  'CreatedAt',
+  'NotificationEmail'
 ];
 SHEET_HEADERS[SHEET_NAMES.TASKS] = [
   'TaskID',
@@ -339,6 +340,98 @@ function resetUserPassword(token, email, newPassword) {
     writeRow_(sheet, headers, userResult.rowNumber, record);
     logActivity_(session, 'user.resetPassword', 'User', record.Email, {});
     return sanitizeUser_(record);
+  });
+}
+
+function getUserSettings(token, email) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensurePermission_(session, 'users:manage');
+
+    var provided = email;
+    if (provided && typeof provided === 'object') {
+      provided = pickFirstDefined_(provided, ['Email', 'email']);
+    }
+    var targetEmail = normalizeEmail_(provided);
+    if (!targetEmail) {
+      throw new Error('Email is required.');
+    }
+
+    var userResult = getUserByEmail_(targetEmail);
+    if (!userResult) {
+      throw new Error('User not found.');
+    }
+
+    var record = userResult.record || {};
+    var settings = {
+      Email: normalizeEmail_(record.Email),
+      NotificationEmail: normalizeEmail_(record.NotificationEmail)
+    };
+
+    logActivity_(session, 'user.settings.view', 'User', settings.Email, {});
+
+    return settings;
+  });
+}
+
+function updateUserSettings(token, emailOrSettings, maybeSettings) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensurePermission_(session, 'users:manage');
+
+    var payload = null;
+    var targetEmail = '';
+    if (maybeSettings !== undefined && maybeSettings !== null) {
+      targetEmail = normalizeEmail_(emailOrSettings);
+      if (!targetEmail) {
+        throw new Error('Email is required.');
+      }
+      payload = typeof maybeSettings === 'string' ? safeParse_(maybeSettings, null) : maybeSettings;
+    } else {
+      payload = typeof emailOrSettings === 'string' ? safeParse_(emailOrSettings, null) : emailOrSettings;
+      if (payload && typeof payload === 'object') {
+        var emailValue = pickFirstDefined_(payload, ['Email', 'email']);
+        targetEmail = normalizeEmail_(emailValue);
+      }
+    }
+
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Settings payload is required.');
+    }
+
+    if (!targetEmail) {
+      throw new Error('Email is required.');
+    }
+
+    var notificationValue = pickFirstDefined_(payload, ['NotificationEmail', 'notificationEmail']);
+    if (notificationValue === undefined) {
+      throw new Error('NotificationEmail is required.');
+    }
+    var notificationString = notificationValue !== null && notificationValue !== undefined ? String(notificationValue).trim() : '';
+    var notificationEmail = notificationString ? normalizeEmail_(notificationString) : '';
+
+    var userResult = getUserByEmail_(targetEmail);
+    if (!userResult) {
+      throw new Error('User not found.');
+    }
+
+    var sheet = ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.USERS];
+    var record = userResult.record;
+    record.NotificationEmail = notificationEmail;
+    writeRow_(sheet, headers, userResult.rowNumber, record);
+
+    var sanitized = {
+      Email: normalizeEmail_(record.Email),
+      NotificationEmail: notificationEmail
+    };
+
+    logActivity_(session, 'user.settings.update', 'User', sanitized.Email, {
+      notificationEmail: notificationEmail,
+      hasNotificationEmail: !!notificationEmail
+    });
+
+    return sanitized;
   });
 }
 
@@ -1051,6 +1144,147 @@ function exportTasksCsv(token, filters) {
   });
 }
 
+function sendDailyDigest() {
+  var timezone = Session.getScriptTimeZone() || 'Etc/UTC';
+  var todayKey = Utilities.formatDate(new Date(), timezone, 'yyyy-MM-dd');
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) {
+    return {
+      date: todayKey,
+      processedUsers: 0,
+      notificationsSent: 0,
+      totalTasks: 0,
+      skippedUsers: 0,
+      locked: true
+    };
+  }
+  try {
+    var usersSheet = ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]);
+    var userRows = sheetObjects_(usersSheet, SHEET_HEADERS[SHEET_NAMES.USERS]);
+    var tasksSheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    var taskRows = sheetObjects_(tasksSheet, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+
+    var tasksByAssignee = {};
+    for (var i = 0; i < taskRows.length; i++) {
+      var taskRecord = taskRows[i];
+      var assigneeEmail = normalizeEmail_(taskRecord.Assignee);
+      if (!assigneeEmail) {
+        continue;
+      }
+      var statusValue = String(taskRecord.Status || '').toLowerCase();
+      if (statusValue === 'completed' || statusValue === 'cancelled') {
+        continue;
+      }
+      var dueDate = parseDateValue_(taskRecord.DueAt);
+      if (!dueDate) {
+        continue;
+      }
+      var dueKey = Utilities.formatDate(dueDate, timezone, 'yyyy-MM-dd');
+      if (dueKey > todayKey) {
+        continue;
+      }
+      if (!tasksByAssignee[assigneeEmail]) {
+        tasksByAssignee[assigneeEmail] = [];
+      }
+      tasksByAssignee[assigneeEmail].push({
+        task: taskRecord,
+        dueDate: dueDate,
+        dueKey: dueKey
+      });
+    }
+
+    var summary = {
+      date: todayKey,
+      processedUsers: 0,
+      notificationsSent: 0,
+      totalTasks: 0,
+      skippedUsers: 0,
+      locked: false
+    };
+
+    for (var j = 0; j < userRows.length; j++) {
+      var userRecord = userRows[j];
+      if (!isTrue_(userRecord.IsActive)) {
+        continue;
+      }
+      summary.processedUsers++;
+      var primaryEmail = normalizeEmail_(userRecord.Email);
+      if (!primaryEmail) {
+        summary.skippedUsers++;
+        continue;
+      }
+      var pendingEntries = tasksByAssignee[primaryEmail] || [];
+      if (!pendingEntries.length) {
+        summary.skippedUsers++;
+        continue;
+      }
+      var notificationEmail = String(userRecord.NotificationEmail || '').trim();
+      var targetEmail = notificationEmail || String(userRecord.Email || '').trim();
+      var normalizedTarget = normalizeEmail_(targetEmail);
+      if (!normalizedTarget) {
+        summary.skippedUsers++;
+        continue;
+      }
+
+      pendingEntries.sort(function (a, b) {
+        var diff = a.dueDate.getTime() - b.dueDate.getTime();
+        if (diff !== 0) {
+          return diff;
+        }
+        var priorityA = String(a.task.Priority || '').toLowerCase();
+        var priorityB = String(b.task.Priority || '').toLowerCase();
+        if (priorityA < priorityB) {
+          return -1;
+        }
+        if (priorityA > priorityB) {
+          return 1;
+        }
+        var nameA = String(a.task.Name || '');
+        var nameB = String(b.task.Name || '');
+        return nameA.localeCompare(nameB);
+      });
+
+      var lines = [];
+      lines.push('Aura Flow Daily Digest — ' + todayKey);
+      lines.push('');
+      lines.push('Pending tasks due today or overdue:');
+      lines.push('');
+      for (var n = 0; n < pendingEntries.length; n++) {
+        var entry = pendingEntries[n];
+        var task = entry.task;
+        var displayId = task.TaskID || 'N/A';
+        var displayName = task.Name || 'Untitled Task';
+        var displayPriority = task.Priority ? String(task.Priority) : 'None';
+        lines.push('- [' + displayId + '] ' + displayName + ' — Due: ' + entry.dueKey + ' — Priority: ' + displayPriority);
+      }
+      lines.push('');
+      lines.push('Total pending: ' + pendingEntries.length);
+
+      var subject = 'Aura Flow — Daily Digest ' + todayKey + ' (' + pendingEntries.length + ' tasks)';
+      MailApp.sendEmail(targetEmail, subject, lines.join('\n'));
+
+      summary.notificationsSent++;
+      summary.totalTasks += pendingEntries.length;
+
+      logActivity_('system', 'notifications.digest.send', 'User', primaryEmail, {
+        taskCount: pendingEntries.length,
+        target: normalizedTarget
+      });
+    }
+
+    logActivity_('system', 'notifications.digest.run', 'Digest', todayKey, {
+      processedUsers: summary.processedUsers,
+      notificationsSent: summary.notificationsSent,
+      totalTasks: summary.totalTasks,
+      skippedUsers: summary.skippedUsers
+    });
+
+    return summary;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function generatePdfReport(token, filters) {
   return handleApi_(function () {
     var session = requireSession_(token);
@@ -1112,7 +1346,15 @@ function generatePdfReport(token, filters) {
     if (normalizedFilters.statuses && normalizedFilters.statuses.length) {
       filterSummaries.push('Statuses: ' + normalizedFilters.statuses.join(', '));
     }
-    if (normalizedFilters.assignee) {
+    if (normalizedFilters.categories && normalizedFilters.categories.length) {
+      filterSummaries.push('Categories: ' + normalizedFilters.categories.join(', '));
+    }
+    if (normalizedFilters.priorities && normalizedFilters.priorities.length) {
+      filterSummaries.push('Priorities: ' + normalizedFilters.priorities.join(', '));
+    }
+    if (normalizedFilters.assignees && normalizedFilters.assignees.length > 1) {
+      filterSummaries.push('Assignees: ' + normalizedFilters.assignees.join(', '));
+    } else if (normalizedFilters.assignee) {
       filterSummaries.push('Assignee: ' + normalizedFilters.assignee);
     }
     if (normalizedFilters.dueAfter) {
@@ -2171,6 +2413,7 @@ function sanitizeUser_(record) {
     Email: normalizeEmail_(record.Email),
     Role: record.Role,
     ManagerEmail: normalizeEmail_(record.ManagerEmail),
+    NotificationEmail: normalizeEmail_(record.NotificationEmail),
 
     IsActive: isTrue_(record.IsActive),
     CreatedAt: record.CreatedAt || ''
@@ -2603,6 +2846,9 @@ function normalizeTaskFilters_(filters, session) {
 
   var normalized = {
     statuses: [],
+    categories: [],
+    priorities: [],
+    assignees: [],
     assignee: '',
     dueAfter: null,
     dueBefore: null
@@ -2611,38 +2857,98 @@ function normalizeTaskFilters_(filters, session) {
   var statusesSource = pickFirstDefined_(source, ['statuses', 'Statuses', 'status', 'Status']);
   if (statusesSource !== undefined && statusesSource !== null && statusesSource !== '') {
     var rawStatuses = Array.isArray(statusesSource) ? statusesSource : String(statusesSource).split(',');
-    var seen = {};
+    var statusSeen = {};
     for (var i = 0; i < rawStatuses.length; i++) {
-      var entry = rawStatuses[i];
-      if (entry === undefined || entry === null) {
+      var statusEntry = rawStatuses[i];
+      if (statusEntry === undefined || statusEntry === null) {
         continue;
       }
-      var trimmed = String(entry).trim();
-      if (!trimmed) {
+      var statusTrimmed = String(statusEntry).trim();
+      if (!statusTrimmed) {
         continue;
       }
-      var normalizedStatus = normalizeStatus_(trimmed);
-      if (!seen[normalizedStatus]) {
+      var normalizedStatus = normalizeStatus_(statusTrimmed);
+      if (!statusSeen[normalizedStatus]) {
         normalized.statuses.push(normalizedStatus);
-        seen[normalizedStatus] = true;
+        statusSeen[normalizedStatus] = true;
       }
     }
   }
 
-  var assigneeValue = pickFirstDefined_(source, ['assignee', 'Assignee']);
-  if (assigneeValue !== undefined && assigneeValue !== null && assigneeValue !== '') {
-    var assigneeString = String(assigneeValue).trim();
-    if (assigneeString) {
+  var categoriesSource = pickFirstDefined_(source, ['categories', 'Categories', 'category', 'Category']);
+  if (categoriesSource !== undefined && categoriesSource !== null && categoriesSource !== '') {
+    var rawCategories = Array.isArray(categoriesSource) ? categoriesSource : String(categoriesSource).split(',');
+    var categorySeen = {};
+    for (var j = 0; j < rawCategories.length; j++) {
+      var categoryEntry = rawCategories[j];
+      if (categoryEntry === undefined || categoryEntry === null) {
+        continue;
+      }
+      var categoryTrimmed = String(categoryEntry).trim();
+      if (!categoryTrimmed) {
+        continue;
+      }
+      var categoryKey = categoryTrimmed.toLowerCase();
+      if (!categorySeen[categoryKey]) {
+        normalized.categories.push(categoryTrimmed);
+        categorySeen[categoryKey] = true;
+      }
+    }
+  }
+
+  var prioritiesSource = pickFirstDefined_(source, ['priorities', 'Priorities', 'priority', 'Priority']);
+  if (prioritiesSource !== undefined && prioritiesSource !== null && prioritiesSource !== '') {
+    var rawPriorities = Array.isArray(prioritiesSource) ? prioritiesSource : String(prioritiesSource).split(',');
+    var prioritySeen = {};
+    for (var k = 0; k < rawPriorities.length; k++) {
+      var priorityEntry = rawPriorities[k];
+      if (priorityEntry === undefined || priorityEntry === null) {
+        continue;
+      }
+      var priorityTrimmed = String(priorityEntry).trim();
+      if (!priorityTrimmed) {
+        continue;
+      }
+      var priorityKey = priorityTrimmed.toLowerCase();
+      if (!prioritySeen[priorityKey]) {
+        normalized.priorities.push(priorityTrimmed);
+        prioritySeen[priorityKey] = true;
+      }
+    }
+  }
+
+  var assigneesSource = pickFirstDefined_(source, ['assignees', 'Assignees', 'assignee', 'Assignee']);
+  if (assigneesSource !== undefined && assigneesSource !== null && assigneesSource !== '') {
+    var rawAssignees = Array.isArray(assigneesSource) ? assigneesSource : String(assigneesSource).split(',');
+    var assigneeSeen = {};
+    var sessionEmail = session ? getSessionEmail_(session) : '';
+    for (var m = 0; m < rawAssignees.length; m++) {
+      var assigneeEntry = rawAssignees[m];
+      if (assigneeEntry === undefined || assigneeEntry === null) {
+        continue;
+      }
+      var assigneeString = String(assigneeEntry).trim();
+      if (!assigneeString) {
+        continue;
+      }
+      var resolvedAssignee = assigneeString;
       if (session && assigneeString.toLowerCase() === 'me') {
-        normalized.assignee = getSessionEmail_(session);
-      } else {
-        normalized.assignee = normalizeEmail_(assigneeString);
+        resolvedAssignee = sessionEmail;
       }
+      var normalizedAssignee = normalizeEmail_(resolvedAssignee);
+      if (!normalizedAssignee || assigneeSeen[normalizedAssignee]) {
+        continue;
+      }
+      normalized.assignees.push(normalizedAssignee);
+      assigneeSeen[normalizedAssignee] = true;
+    }
+    if (normalized.assignees.length) {
+      normalized.assignee = normalized.assignees[0];
     }
   }
 
-  var dueAfterValue = pickFirstDefined_(source, ['dueAfter', 'DueAfter', 'from', 'From', 'start', 'Start']);
-  var dueBeforeValue = pickFirstDefined_(source, ['dueBefore', 'DueBefore', 'to', 'To', 'end', 'End']);
+  var dueAfterValue = pickFirstDefined_(source, ['dueAfter', 'DueAfter', 'from', 'From', 'start', 'Start', 'dateFrom', 'DateFrom']);
+  var dueBeforeValue = pickFirstDefined_(source, ['dueBefore', 'DueBefore', 'to', 'To', 'end', 'End', 'dateTo', 'DateTo']);
   normalized.dueAfter = parseDateValue_(dueAfterValue);
   normalized.dueBefore = parseDateValue_(dueBeforeValue);
 
@@ -2808,10 +3114,24 @@ function taskMatchesFilters_(taskRecord, filters) {
     return true;
   }
   if (filters.statuses && filters.statuses.length) {
-    var recordStatus = String(taskRecord.Status || '');
+    var recordStatusRaw = String(taskRecord.Status || '');
+    var recordStatus = recordStatusRaw;
+    try {
+      recordStatus = normalizeStatus_(recordStatusRaw);
+    } catch (err) {
+      recordStatus = recordStatusRaw;
+    }
     var statusMatch = false;
     for (var i = 0; i < filters.statuses.length; i++) {
-      if (recordStatus === filters.statuses[i]) {
+      var filterStatus = filters.statuses[i];
+      if (!filterStatus) {
+        continue;
+      }
+      if (recordStatus === filterStatus) {
+        statusMatch = true;
+        break;
+      }
+      if (recordStatusRaw && String(filterStatus).toLowerCase() === recordStatusRaw.toLowerCase()) {
         statusMatch = true;
         break;
       }
@@ -2820,7 +3140,53 @@ function taskMatchesFilters_(taskRecord, filters) {
       return false;
     }
   }
-  if (filters.assignee) {
+  if (filters.categories && filters.categories.length) {
+    var recordCategory = String(taskRecord.Category || '').trim().toLowerCase();
+    var categoryMatch = false;
+    for (var j = 0; j < filters.categories.length; j++) {
+      var filterCategory = String(filters.categories[j]).trim().toLowerCase();
+      if (!filterCategory) {
+        continue;
+      }
+      if (recordCategory === filterCategory) {
+        categoryMatch = true;
+        break;
+      }
+    }
+    if (!categoryMatch) {
+      return false;
+    }
+  }
+  if (filters.priorities && filters.priorities.length) {
+    var recordPriority = String(taskRecord.Priority || '').trim().toLowerCase();
+    var priorityMatch = false;
+    for (var k = 0; k < filters.priorities.length; k++) {
+      var filterPriority = String(filters.priorities[k]).trim().toLowerCase();
+      if (!filterPriority) {
+        continue;
+      }
+      if (recordPriority === filterPriority) {
+        priorityMatch = true;
+        break;
+      }
+    }
+    if (!priorityMatch) {
+      return false;
+    }
+  }
+  if (filters.assignees && filters.assignees.length) {
+    var recordAssignee = normalizeEmail_(taskRecord.Assignee);
+    var assigneeMatch = false;
+    for (var m = 0; m < filters.assignees.length; m++) {
+      if (recordAssignee === filters.assignees[m]) {
+        assigneeMatch = true;
+        break;
+      }
+    }
+    if (!assigneeMatch) {
+      return false;
+    }
+  } else if (filters.assignee) {
     if (normalizeEmail_(taskRecord.Assignee) !== filters.assignee) {
       return false;
     }
