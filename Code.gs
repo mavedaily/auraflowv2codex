@@ -4,7 +4,10 @@ var SHEET_NAMES = {
   SUBTASKS: 'Subtasks',
   ACTIVITY_LOG: 'ActivityLog',
   MOODS: 'Moods',
-  ATTACHMENTS: 'Attachments'
+  QUOTES: 'Quotes',
+  ATTACHMENTS: 'Attachments',
+  TEMPLATES: 'Templates',
+
 };
 
 var SHEET_HEADERS = {};
@@ -32,7 +35,8 @@ SHEET_HEADERS[SHEET_NAMES.TASKS] = [
   'Timestamp',
   'DueAt',
   'UpdatedAt',
-  'ParentTaskID'
+  'ParentTaskID',
+  'TimeSpentMins'
 ];
 SHEET_HEADERS[SHEET_NAMES.SUBTASKS] = [
   'SubtaskID',
@@ -59,6 +63,13 @@ SHEET_HEADERS[SHEET_NAMES.MOODS] = [
   'Note',
   'At'
 ];
+SHEET_HEADERS[SHEET_NAMES.QUOTES] = [
+  'QuoteID',
+  'Author',
+  'Text',
+  'SubmittedBy',
+  'Approved'
+];
 SHEET_HEADERS[SHEET_NAMES.ATTACHMENTS] = [
   'AttachmentID',
   'TaskID',
@@ -67,6 +78,11 @@ SHEET_HEADERS[SHEET_NAMES.ATTACHMENTS] = [
   'Url',
   'AddedBy',
   'At'
+];
+SHEET_HEADERS[SHEET_NAMES.TEMPLATES] = [
+  'TemplateID',
+  'Name',
+  'FieldsJSON'
 ];
 
 var ROLE_RANK = {
@@ -83,7 +99,7 @@ var ROLE_PERMISSIONS = {
   'Intern': ['tasks:view:self', 'tasks:manage:self', 'moods:log']
 };
 
-var TASK_STATUSES = ['Planned', 'In-Progress', 'Completed', 'Shifted', 'Cancelled'];
+var TASK_STATUSES = ['New', 'Planned', 'In-Progress', 'Completed', 'Shifted', 'Cancelled'];
 var SESSION_CACHE_PREFIX = 'afv2_session_';
 
 var SESSION_TTL_SECONDS = 6 * 60 * 60; // 6 hours
@@ -146,6 +162,16 @@ function logout(token) {
 }
 
 function whoami(token) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    return {
+      token: session.token,
+      user: session.user
+    };
+  });
+}
+
+function refreshSession(token) {
   return handleApi_(function () {
     var session = requireSession_(token);
     return {
@@ -396,7 +422,8 @@ function createTask(token, taskObj) {
       Timestamp: now,
       DueAt: dueAt,
       UpdatedAt: now,
-      ParentTaskID: parentTaskId
+      ParentTaskID: parentTaskId,
+      TimeSpentMins: 0
     };
 
     if (record.ParentTaskID && record.ParentTaskID === record.TaskID) {
@@ -411,6 +438,129 @@ function createTask(token, taskObj) {
     appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS], record);
     logActivity_(session, 'task.create', 'Task', record.TaskID, { assignee: record.Assignee, status: record.Status });
     return sanitizeTask_(record);
+  });
+}
+
+function bulkUploadTasks(token, rows) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+
+    var role = getSessionRole_(session);
+    if (['Admin', 'Sub-Admin', 'Manager'].indexOf(role) === -1) {
+      throw new Error('Forbidden.');
+    }
+
+    var payload = typeof rows === 'string' ? safeParse_(rows, null) : rows;
+    if (!Array.isArray(payload)) {
+      throw new Error('Rows payload must be an array.');
+    }
+    if (payload.length === 0) {
+      throw new Error('No rows provided.');
+    }
+
+    var assignerEmail = getSessionEmail_(session);
+    if (!assignerEmail) {
+      throw new Error('Unable to resolve session email.');
+    }
+
+    var usersMap = loadUsersMap_();
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.TASKS];
+
+    var inserted = [];
+    var errors = [];
+
+    for (var i = 0; i < payload.length; i++) {
+      try {
+        var rawRow = payload[i];
+        if (!rawRow || typeof rawRow !== 'object') {
+          throw new Error('Row is empty or invalid.');
+        }
+
+        var row = normalizeBulkRow_(rawRow);
+
+        var name = requireNonEmptyString_(pickFirstDefined_(row, ['Task', 'Name', 'Title']), 'Task');
+
+        var durationValue = pickFirstDefined_(row, ['Duration', 'DurationMins', 'Minutes', 'Mins']);
+        if (durationValue === undefined || durationValue === null || durationValue === '') {
+          throw new Error('Duration is required.');
+        }
+        var duration = normalizeDuration_(durationValue, 0);
+
+        var categoryValue = pickFirstDefined_(row, ['Category', 'Stream']);
+        var category = requireNonEmptyString_(categoryValue, 'Category');
+        category = normalizeTaskCategory_(category);
+
+        var priorityValue = pickFirstDefined_(row, ['Priority']);
+        var priority = requireNonEmptyString_(priorityValue, 'Priority');
+
+        var assigneeValue = pickFirstDefined_(row, ['Assignee', 'AssigneeEmail', 'Owner', 'AssignedTo']);
+        var assigneeEmail = normalizeEmail_(assigneeValue);
+        if (!assigneeEmail) {
+          throw new Error('Assignee is required.');
+        }
+        var assigneeRecord = usersMap[assigneeEmail];
+        if (!assigneeRecord) {
+          throw new Error('Assignee not found.');
+        }
+        if (!isTrue_(assigneeRecord.IsActive)) {
+          throw new Error('Assignee is not active.');
+        }
+        if (!ROLE_RANK[assigneeRecord.Role || '']) {
+          throw new Error('Invalid assignee role.');
+        }
+        validateTaskAssignment_(session, assigneeRecord);
+
+        var dateValue = pickFirstDefined_(row, ['Date', 'DueDate', 'DueAt', 'Deadline']);
+        var dueAt = resolveBulkDueDateString_(dateValue);
+
+        var labels = toCsvString_(pickFirstDefined_(row, ['Labels', 'Label', 'Tags', 'Tag']));
+        var notesValue = pickFirstDefined_(row, ['Notes', 'Note', 'Description']);
+        var notes = notesValue !== undefined && notesValue !== null ? String(notesValue) : '';
+        var resources = toCsvString_(pickFirstDefined_(row, ['Resources', 'ResourcesCSV', 'Links', 'Link', 'Url', 'URL']));
+        var statusValue = pickFirstDefined_(row, ['Status']);
+        var status = statusValue ? normalizeStatus_(statusValue) : 'Planned';
+
+        var now = nowIso_();
+        var record = {
+          TaskID: generateId_('TASK'),
+          Name: name,
+          Category: category,
+          Priority: priority,
+          Status: status,
+          DurationMins: duration,
+          Labels: labels,
+          Notes: notes,
+          ResourcesCSV: resources,
+          Assigner: assignerEmail,
+          Assignee: assigneeEmail,
+          Timestamp: now,
+          DueAt: dueAt,
+          UpdatedAt: now,
+          ParentTaskID: ''
+        };
+
+        if (!canManageTask_(session, record, record.Assignee, usersMap)) {
+          throw new Error('Forbidden.');
+        }
+
+        appendRow_(sheet, headers, record);
+        inserted.push(sanitizeTask_(record));
+        logActivity_(session, 'task.bulkUpload', 'Task', record.TaskID, { assignee: record.Assignee, status: record.Status });
+      } catch (rowErr) {
+        errors.push({
+          index: i,
+          message: rowErr && rowErr.message ? rowErr.message : String(rowErr || 'Row failed.')
+        });
+      }
+    }
+
+    return {
+      inserted: inserted.length,
+      tasks: inserted,
+      errors: errors
+    };
   });
 }
 
@@ -516,6 +666,15 @@ function updateTask(token, taskId, updates) {
       }
     }
 
+    var timeSpentValue = pickFirstDefined_(payload, ['TimeSpentMins', 'timeSpentMins', 'TimeSpent', 'timeSpent']);
+    if (timeSpentValue !== undefined) {
+      var timeSpent = normalizeDuration_(timeSpentValue, record.TimeSpentMins);
+      if (record.TimeSpentMins !== timeSpent) {
+        record.TimeSpentMins = timeSpent;
+        updatesApplied = true;
+      }
+    }
+
     var parentValue = pickFirstDefined_(payload, ['ParentTaskID', 'parentTaskId', 'ParentID', 'parentId']);
     if (parentValue !== undefined) {
       var parentTaskId = parentValue ? String(parentValue).trim() : '';
@@ -602,6 +761,180 @@ function updateTask(token, taskId, updates) {
   });
 }
 
+function bulkUpdateTasks(token, taskIds, action) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+
+    var idPayload = typeof taskIds === 'string' ? safeParse_(taskIds, null) : taskIds;
+    var rawIds = [];
+    if (Array.isArray(idPayload)) {
+      rawIds = idPayload;
+    } else if (idPayload && typeof idPayload === 'object') {
+      if (Array.isArray(idPayload.taskIds)) {
+        rawIds = idPayload.taskIds;
+      } else if (Array.isArray(idPayload.ids)) {
+        rawIds = idPayload.ids;
+      }
+    }
+    if (!rawIds.length && typeof taskIds === 'string') {
+      var split = String(taskIds)
+        .split(',')
+        .map(function (part) {
+          return part.trim();
+        })
+        .filter(function (part) {
+          return part;
+        });
+      rawIds = rawIds.concat(split);
+    }
+    var normalizedIds = [];
+    for (var i = 0; i < rawIds.length; i++) {
+      var value = rawIds[i];
+      if (value === undefined || value === null) {
+        continue;
+      }
+      var str = String(value).trim();
+      if (!str) {
+        continue;
+      }
+      if (normalizedIds.indexOf(str) === -1) {
+        normalizedIds.push(str);
+      }
+    }
+    if (!normalizedIds.length) {
+      throw new Error('No task IDs provided.');
+    }
+
+    var actionPayload = action;
+    if (typeof actionPayload === 'string') {
+      var parsedAction = safeParse_(actionPayload, null);
+      if (parsedAction && typeof parsedAction === 'object') {
+        actionPayload = parsedAction;
+      } else {
+        actionPayload = { type: actionPayload };
+      }
+    }
+    if (!actionPayload || typeof actionPayload !== 'object') {
+      throw new Error('Action payload is required.');
+    }
+    var actionTypeValue = pickFirstDefined_(actionPayload, ['type', 'action']);
+    var actionType = actionTypeValue ? String(actionTypeValue).trim().toLowerCase() : '';
+    if (!actionType) {
+      throw new Error('Action type is required.');
+    }
+    if (['complete', 'assign', 'delete'].indexOf(actionType) === -1) {
+      throw new Error('Unsupported action.');
+    }
+
+    var usersMap = loadUsersMap_();
+    var assignContext = null;
+    if (actionType === 'assign') {
+      var assigneeValue = pickFirstDefined_(actionPayload, ['assignee', 'assigneeEmail', 'email', 'user']);
+      if (assigneeValue === undefined || assigneeValue === null || assigneeValue === '') {
+        assigneeValue = getSessionEmail_(session);
+      }
+      var assigneeEmail = normalizeEmail_(assigneeValue);
+      if (!assigneeEmail) {
+        throw new Error('Assignee email is required for assign action.');
+      }
+      var assigneeRecord = usersMap[assigneeEmail];
+      if (!assigneeRecord) {
+        throw new Error('Assignee not found.');
+      }
+      if (!isTrue_(assigneeRecord.IsActive)) {
+        throw new Error('Assignee is not active.');
+      }
+      validateTaskAssignment_(session, assigneeRecord);
+      assignContext = {
+        email: assigneeEmail,
+        record: assigneeRecord
+      };
+    }
+
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.TASKS];
+
+    var updated = [];
+    var deleted = [];
+    var errors = [];
+    var deletions = [];
+
+    for (var j = 0; j < normalizedIds.length; j++) {
+      var taskId = normalizedIds[j];
+      try {
+        var taskResult = getTaskById_(taskId);
+        if (!taskResult) {
+          throw new Error('Task not found.');
+        }
+        var record = taskResult.record;
+        if (!canManageTask_(session, record, actionType === 'assign' && assignContext ? assignContext.email : record.Assignee, usersMap)) {
+          throw new Error('Forbidden.');
+        }
+        if (actionType === 'delete') {
+          deletions.push(taskResult);
+          deleted.push(record.TaskID);
+          continue;
+        }
+        if (actionType === 'complete') {
+          var previousStatus = record.Status || '';
+          var newStatus = normalizeStatus_('Completed');
+          record.Status = newStatus;
+          record.Assignee = normalizeEmail_(record.Assignee);
+          record.Assigner = normalizeEmail_(record.Assigner);
+          record.UpdatedAt = nowIso_();
+          writeRow_(sheet, headers, taskResult.rowNumber, record);
+          var sanitizedComplete = sanitizeTask_(record);
+          updated.push(sanitizedComplete);
+          logActivity_(session, 'task.bulkComplete', 'Task', record.TaskID, {
+            status: sanitizedComplete.Status,
+            previousStatus: previousStatus
+          });
+          continue;
+        }
+        if (actionType === 'assign' && assignContext) {
+          var previousAssignee = normalizeEmail_(record.Assignee);
+          record.Assignee = assignContext.email;
+          record.Assigner = normalizeEmail_(record.Assigner);
+          record.UpdatedAt = nowIso_();
+          writeRow_(sheet, headers, taskResult.rowNumber, record);
+          var sanitizedAssign = sanitizeTask_(record);
+          updated.push(sanitizedAssign);
+          logActivity_(session, 'task.bulkAssign', 'Task', record.TaskID, {
+            assignee: assignContext.email,
+            previousAssignee: previousAssignee
+          });
+          continue;
+        }
+      } catch (err) {
+        errors.push({
+          taskId: String(taskId),
+          message: err && err.message ? err.message : String(err)
+        });
+      }
+    }
+
+    if (deletions.length) {
+      deletions.sort(function (a, b) {
+        return b.rowNumber - a.rowNumber;
+      });
+      for (var k = 0; k < deletions.length; k++) {
+        var deletion = deletions[k];
+        sheet.deleteRow(deletion.rowNumber);
+        deleteSubtasksForTask_(deletion.record.TaskID);
+        logActivity_(session, 'task.bulkDelete', 'Task', deletion.record.TaskID, {});
+      }
+    }
+
+    return {
+      action: actionType,
+      updated: updated,
+      deleted: deleted,
+      errors: errors
+    };
+  });
+}
+
 function listTasks(token, filters) {
   return handleApi_(function () {
     var session = requireSession_(token);
@@ -639,6 +972,323 @@ function listTasks(token, filters) {
   });
 }
 
+function exportTasksCsv(token, filters) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensurePermission_(session, 'reports:generate');
+
+    var usersMap = loadUsersMap_();
+    var normalizedFilters = normalizeTaskFilters_(filters, session);
+
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    var rows = sheetObjects_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+
+    var exportRecords = [];
+    for (var i = 0; i < rows.length; i++) {
+      var record = rows[i];
+      if (!canViewTask_(session, record, usersMap)) {
+        continue;
+      }
+      if (!taskMatchesFilters_(record, normalizedFilters)) {
+        continue;
+      }
+      exportRecords.push(sanitizeTask_(record));
+    }
+
+    exportRecords.sort(function (a, b) {
+      var aKey = (a && a.UpdatedAt) || (a && a.Timestamp) || '';
+      var bKey = (b && b.UpdatedAt) || (b && b.Timestamp) || '';
+      if (aKey === bKey) {
+        return 0;
+      }
+      return aKey < bKey ? 1 : -1;
+    });
+
+    var headers = SHEET_HEADERS[SHEET_NAMES.TASKS];
+    var csvLines = [];
+    var headerValues = [];
+    for (var h = 0; h < headers.length; h++) {
+      headerValues.push(escapeCsvValue_(headers[h]));
+    }
+    csvLines.push(headerValues.join(','));
+
+    for (var j = 0; j < exportRecords.length; j++) {
+      var rowValues = [];
+      var recordObject = exportRecords[j];
+      for (var k = 0; k < headers.length; k++) {
+        var key = headers[k];
+        var rawValue = recordObject[key];
+        if (key === 'Labels') {
+          rawValue = toCsvString_(rawValue);
+        }
+        if (rawValue === undefined || rawValue === null) {
+          rawValue = '';
+        } else if (Object.prototype.toString.call(rawValue) === '[object Date]') {
+          rawValue = rawValue.toISOString();
+        } else if (Array.isArray(rawValue)) {
+          rawValue = toCsvString_(rawValue);
+        }
+        rowValues.push(escapeCsvValue_(rawValue));
+      }
+      csvLines.push(rowValues.join(','));
+    }
+
+    var timezone = Session.getScriptTimeZone() || 'Etc/UTC';
+    var timestamp = Utilities.formatDate(new Date(), timezone, 'yyyyMMdd_HHmmss');
+    var filename = 'aura-flow-tasks-' + timestamp + '.csv';
+    var csvContent = '\ufeff' + csvLines.join('\r\n');
+
+    logActivity_(session, 'report.export.csv', 'Task', '', {
+      count: exportRecords.length,
+      filters: normalizedFilters
+    });
+
+    return {
+      filename: filename,
+      mimeType: 'text/csv',
+      content: csvContent
+    };
+  });
+}
+
+function generatePdfReport(token, filters) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensurePermission_(session, 'reports:generate');
+
+    var usersMap = loadUsersMap_();
+    var normalizedFilters = normalizeTaskFilters_(filters, session);
+
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    var rows = sheetObjects_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+
+    var tasks = [];
+    var taskIdMap = {};
+    for (var i = 0; i < rows.length; i++) {
+      var record = rows[i];
+      if (!canViewTask_(session, record, usersMap)) {
+        continue;
+      }
+      if (!taskMatchesFilters_(record, normalizedFilters)) {
+        continue;
+      }
+      var sanitized = sanitizeTask_(record);
+      tasks.push(sanitized);
+      if (sanitized && sanitized.TaskID) {
+        taskIdMap[sanitized.TaskID] = true;
+      }
+    }
+
+    tasks.sort(function (a, b) {
+      var aKey = (a && a.UpdatedAt) || (a && a.Timestamp) || '';
+      var bKey = (b && b.UpdatedAt) || (b && b.Timestamp) || '';
+      if (aKey === bKey) {
+        return 0;
+      }
+      return aKey < bKey ? 1 : -1;
+    });
+
+    var statusCounts = {};
+    var totalDurationMins = 0;
+    for (var j = 0; j < tasks.length; j++) {
+      var task = tasks[j];
+      var status = (task && task.Status) || 'Planned';
+      if (!statusCounts.hasOwnProperty(status)) {
+        statusCounts[status] = 0;
+      }
+      statusCounts[status]++;
+      var durationNumber = Number(task && task.DurationMins);
+      if (!isNaN(durationNumber)) {
+        totalDurationMins += Math.max(0, durationNumber);
+      }
+    }
+
+    var timezone = Session.getScriptTimeZone() || 'Etc/UTC';
+    var generatedAtDate = new Date();
+    var generatedAt = Utilities.formatDate(generatedAtDate, timezone, 'yyyy-MM-dd HH:mm:ss');
+    var timestamp = Utilities.formatDate(generatedAtDate, timezone, 'yyyyMMdd_HHmmss');
+
+    var filterSummaries = [];
+    if (normalizedFilters.statuses && normalizedFilters.statuses.length) {
+      filterSummaries.push('Statuses: ' + normalizedFilters.statuses.join(', '));
+    }
+    if (normalizedFilters.assignee) {
+      filterSummaries.push('Assignee: ' + normalizedFilters.assignee);
+    }
+    if (normalizedFilters.dueAfter) {
+      filterSummaries.push('Due After: ' + Utilities.formatDate(normalizedFilters.dueAfter, timezone, 'yyyy-MM-dd'));
+    }
+    if (normalizedFilters.dueBefore) {
+      filterSummaries.push('Due Before: ' + Utilities.formatDate(normalizedFilters.dueBefore, timezone, 'yyyy-MM-dd'));
+    }
+
+    var summaryMetrics = [
+      { label: 'Total Tasks', value: String(tasks.length) },
+      { label: 'Completed', value: String(statusCounts['Completed'] || 0) },
+      { label: 'In-Progress', value: String(statusCounts['In-Progress'] || 0) },
+      { label: 'Total Est. Time', value: formatDurationLabel_(totalDurationMins) }
+    ];
+
+    var moodSheet = ensureSheet_(SHEET_NAMES.MOODS, SHEET_HEADERS[SHEET_NAMES.MOODS]);
+    var moodRows = sheetObjects_(moodSheet, SHEET_HEADERS[SHEET_NAMES.MOODS]);
+    var scope = resolveMoodScope_(session, usersMap);
+    var moodCounts = {};
+    var moodTotal = 0;
+    var requireTaskMatch = Object.keys(taskIdMap).length > 0;
+    for (var m = 0; m < moodRows.length; m++) {
+      var moodRecord = sanitizeMood_(moodRows[m]);
+      if (!moodRecord) {
+        continue;
+      }
+      if (!scope[moodRecord.Email]) {
+        continue;
+      }
+      if (requireTaskMatch) {
+        if (!moodRecord.TaskID || !taskIdMap[moodRecord.TaskID]) {
+          continue;
+        }
+      }
+      var moodLabel = moodRecord.Mood ? String(moodRecord.Mood).trim() : '';
+      if (!moodLabel) {
+        moodLabel = 'Unspecified';
+      }
+      var displayMood = moodLabel.charAt(0).toUpperCase() + moodLabel.slice(1);
+      if (!moodCounts.hasOwnProperty(displayMood)) {
+        moodCounts[displayMood] = 0;
+      }
+      moodCounts[displayMood]++;
+      moodTotal++;
+    }
+
+    summaryMetrics.push({ label: 'Mood Entries', value: String(moodTotal) });
+
+    var statusRowsHtml = '';
+    for (var s = 0; s < TASK_STATUSES.length; s++) {
+      var statusKey = TASK_STATUSES[s];
+      var statusCount = statusCounts[statusKey] || 0;
+      statusRowsHtml +=
+        '<tr><td>' +
+        escapeHtml_(statusKey) +
+        '</td><td>' +
+        escapeHtml_(String(statusCount)) +
+        '</td></tr>';
+      if (statusCounts.hasOwnProperty(statusKey)) {
+        delete statusCounts[statusKey];
+      }
+    }
+    for (var remainingStatus in statusCounts) {
+      if (!statusCounts.hasOwnProperty(remainingStatus)) {
+        continue;
+      }
+      statusRowsHtml +=
+        '<tr><td>' +
+        escapeHtml_(remainingStatus) +
+        '</td><td>' +
+        escapeHtml_(String(statusCounts[remainingStatus])) +
+        '</td></tr>';
+    }
+    if (!statusRowsHtml) {
+      statusRowsHtml = '<tr><td colspan="2">No tasks available for the selected filters.</td></tr>';
+    }
+
+    var moodRowsHtml = '';
+    for (var moodName in moodCounts) {
+      if (!moodCounts.hasOwnProperty(moodName)) {
+        continue;
+      }
+      moodRowsHtml +=
+        '<tr><td>' +
+        escapeHtml_(moodName) +
+        '</td><td>' +
+        escapeHtml_(String(moodCounts[moodName])) +
+        '</td></tr>';
+    }
+    if (!moodRowsHtml) {
+      moodRowsHtml = '<tr><td colspan="2">No mood logs associated with the selected tasks.</td></tr>';
+    }
+
+    var summaryHtml = '';
+    for (var q = 0; q < summaryMetrics.length; q++) {
+      var metric = summaryMetrics[q];
+      summaryHtml +=
+        '<div class="summary-item"><strong>' +
+        escapeHtml_(metric.value) +
+        '</strong><span>' +
+        escapeHtml_(metric.label) +
+        '</span></div>';
+    }
+
+    var filtersHtml = '';
+    if (filterSummaries.length) {
+      filtersHtml = '<ul>';
+      for (var f = 0; f < filterSummaries.length; f++) {
+        filtersHtml += '<li>' + escapeHtml_(filterSummaries[f]) + '</li>';
+      }
+      filtersHtml += '</ul>';
+    } else {
+      filtersHtml = '<p>None — full task inventory included.</p>';
+    }
+
+    var generatedFor = '';
+    if (session && session.user && session.user.Email) {
+      generatedFor = session.user.Email;
+    } else {
+      generatedFor = getSessionEmail_(session) || '';
+    }
+
+    var html =
+      '<!DOCTYPE html>' +
+      '<html><head><meta charset="UTF-8" />' +
+      '<style>' +
+      'body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:#0f172a;margin:36px;}' +
+      'h1{font-size:24px;margin:0 0 4px 0;color:#111827;}' +
+      'h2{font-size:18px;margin:24px 0 8px 0;color:#111827;}' +
+      'h3{font-size:16px;margin:18px 0 6px 0;color:#111827;}' +
+      'p,li,span{font-size:12px;line-height:1.6;color:#334155;}' +
+      'ul{padding-left:18px;margin:8px 0;}' +
+      'table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;}' +
+      'th,td{border:1px solid #d1d5db;padding:8px 10px;text-align:left;}' +
+      'th{background:#f3f4f6;font-weight:600;color:#1f2937;}' +
+      '.summary{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;}' +
+      '.summary-item{flex:1 1 160px;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;background:#f8fafc;}' +
+      '.summary-item strong{display:block;font-size:18px;color:#111827;margin-bottom:4px;}' +
+      '.meta{margin:0;color:#64748b;}' +
+      '.footer{margin-top:32px;font-size:11px;color:#64748b;}' +
+      '</style></head><body>' +
+      '<h1>Aura Flow V2 — Task &amp; Mood Report</h1>' +
+      '<p class="meta">Generated for ' + escapeHtml_(generatedFor || 'N/A') + '</p>' +
+      '<p class="meta">Generated at ' + escapeHtml_(generatedAt) + ' (' + escapeHtml_(timezone) + ')</p>' +
+      '<div class="summary">' + summaryHtml + '</div>' +
+      '<div class="section"><h2>Applied Filters</h2>' + filtersHtml + '</div>' +
+      '<div class="section"><h2>Task Status Distribution</h2><table><thead><tr><th>Status</th><th>Count</th></tr></thead><tbody>' +
+      statusRowsHtml +
+      '</tbody></table></div>' +
+      '<div class="section"><h2>Mood Counts</h2><table><thead><tr><th>Mood</th><th>Entries</th></tr></thead><tbody>' +
+      moodRowsHtml +
+      '</tbody></table></div>' +
+      '<p class="footer">Aura Flow V2 automatically aggregates workspace data from Tasks and Mood services. Export generated on ' +
+      escapeHtml_(generatedAt) +
+      '.</p>' +
+      '</body></html>';
+
+    var blob = Utilities.newBlob(html, 'text/html').getAs('application/pdf');
+    var filename = 'aura-flow-report-' + timestamp + '.pdf';
+    blob.setName(filename);
+    var base64 = Utilities.base64Encode(blob.getBytes());
+
+    logActivity_(session, 'report.export.pdf', 'Task', '', {
+      count: tasks.length,
+      filters: normalizedFilters
+    });
+
+    return {
+      filename: filename,
+      mimeType: 'application/pdf',
+      base64: base64
+    };
+  });
+}
+
 function deleteTask(token, taskId) {
   return handleApi_(function () {
     var session = requireSession_(token);
@@ -659,6 +1309,291 @@ function deleteTask(token, taskId) {
     deleteSubtasksForTask_(taskResult.record.TaskID);
     logActivity_(session, 'task.delete', 'Task', taskResult.record.TaskID, {});
     return true;
+  });
+}
+
+function saveTemplate(token, templateObj) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+
+    var payload = typeof templateObj === 'string' ? safeParse_(templateObj, null) : templateObj;
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Template payload is required.');
+    }
+
+    var nameValue = pickFirstDefined_(payload, ['Name', 'name']);
+    var name = requireNonEmptyString_(nameValue, 'Template name');
+    var fieldsValue = pickFirstDefined_(payload, ['Fields', 'fields', 'FieldsJSON', 'fieldsJSON', 'fieldsJson']);
+    var fields = fieldsValue;
+    if (typeof fieldsValue === 'string') {
+      fields = safeParse_(fieldsValue, {});
+    }
+    if (!fields || typeof fields !== 'object') {
+      fields = {};
+    }
+
+    var templateIdValue = pickFirstDefined_(payload, ['TemplateID', 'templateId', 'id']);
+    var templateId = templateIdValue ? String(templateIdValue).trim() : '';
+
+    var sheet = ensureSheet_(SHEET_NAMES.TEMPLATES, SHEET_HEADERS[SHEET_NAMES.TEMPLATES]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.TEMPLATES];
+
+    if (templateId) {
+      var existing = getTemplateById_(templateId);
+      if (existing) {
+        var existingRecord = existing.record;
+        existingRecord.Name = name;
+        existingRecord.FieldsJSON = safeStringify_(fields);
+        writeRow_(sheet, headers, existing.rowNumber, existingRecord);
+        logActivity_(session, 'template.update', 'Template', existingRecord.TemplateID, { name: name });
+        return sanitizeTemplate_(existingRecord);
+      }
+    }
+
+    var record = {
+      TemplateID: templateId || generateId_('TEMPLATE'),
+      Name: name,
+      FieldsJSON: safeStringify_(fields)
+    };
+    appendRow_(sheet, headers, record);
+    logActivity_(session, 'template.create', 'Template', record.TemplateID, { name: name });
+    return sanitizeTemplate_(record);
+  });
+}
+
+function listTemplates(token) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+
+    var sheet = ensureSheet_(SHEET_NAMES.TEMPLATES, SHEET_HEADERS[SHEET_NAMES.TEMPLATES]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.TEMPLATES];
+    var rows = sheetObjects_(sheet, headers);
+    var templates = [];
+    for (var i = 0; i < rows.length; i++) {
+      templates.push(sanitizeTemplate_(rows[i]));
+    }
+    templates.sort(function (a, b) {
+      return String(a.Name || '').localeCompare(String(b.Name || ''));
+    });
+    return templates;
+  });
+}
+
+function applyTemplate(token, templateId) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+    if (!templateId) {
+      throw new Error('Template ID is required.');
+    }
+    var templateResult = getTemplateById_(String(templateId));
+    if (!templateResult) {
+      throw new Error('Template not found.');
+    }
+    logActivity_(session, 'template.apply', 'Template', templateResult.record.TemplateID, {});
+    return sanitizeTemplate_(templateResult.record);
+  });
+}
+
+function duplicateTask(token, taskId) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+    if (!taskId) {
+      throw new Error('Task ID is required.');
+    }
+
+    var taskResult = getTaskById_(String(taskId));
+    if (!taskResult) {
+      throw new Error('Task not found.');
+    }
+
+    var task = taskResult.record;
+    var newId = generateId_('TASK');
+    var duplicated = Object.assign({}, task, {
+      TaskID: newId,
+      Name: task.Name + ' (Copy)',
+      Timestamp: nowIso_(),
+      UpdatedAt: nowIso_()
+    });
+
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS], duplicated);
+
+    logActivity_(session, 'task.duplicate', 'Task', newId, { source: task.TaskID });
+    return sanitizeTask_(duplicated);
+  });
+}
+
+function logTime(token, taskId, minutes) {
+  // ... Codex’s logTime implementation continues here ...
+}
+
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+    if (!taskId) {
+      throw new Error('Task ID is required.');
+    }
+function logTaskTime(token, taskId, minutes) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+
+    var taskResult = getTaskById_(String(taskId));
+    if (!taskResult) {
+      throw new Error('Task not found.');
+    }
+    var usersMap = loadUsersMap_();
+    if (!canManageTask_(session, taskResult.record, taskResult.record.Assignee, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+    var additionalMinutes = normalizeDuration_(minutes, 0);
+    if (additionalMinutes <= 0) {
+      throw new Error('Minutes must be greater than zero.');
+    }
+    var currentSpent = normalizeDuration_(taskResult.record.TimeSpentMins, 0);
+    var updatedSpent = normalizeDuration_(currentSpent + additionalMinutes, currentSpent);
+    taskResult.record.TimeSpentMins = updatedSpent;
+    taskResult.record.UpdatedAt = nowIso_();
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    writeRow_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS], taskResult.rowNumber, taskResult.record);
+    logActivity_(session, 'task.time.log', 'Task', taskResult.record.TaskID, {
+      addedMinutes: additionalMinutes,
+      totalMinutes: updatedSpent
+    });
+    return sanitizeTask_(taskResult.record);
+  });
+}
+
+function scheduleReminder(token, taskId, dateTime) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+    if (!taskId) {
+      throw new Error('Task ID is required.');
+    }
+    var taskResult = getTaskById_(String(taskId));
+    if (!taskResult) {
+      throw new Error('Task not found.');
+    }
+    var usersMap = loadUsersMap_();
+    if (!canManageTask_(session, taskResult.record, taskResult.record.Assignee, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+    var reminderDate = parseDateValue_(dateTime);
+    if (!reminderDate) {
+      throw new Error('Invalid reminder date/time.');
+    }
+    var now = new Date();
+    if (reminderDate.getTime() <= now.getTime()) {
+      throw new Error('Reminder must be scheduled in the future.');
+    }
+    var calendar;
+    try {
+      calendar = CalendarApp.getDefaultCalendar();
+    } catch (err) {
+      throw new Error('Unable to access calendar.');
+    }
+    if (!calendar) {
+      throw new Error('Calendar service unavailable.');
+    }
+    var endTime = new Date(reminderDate.getTime() + 30 * 60000);
+    var taskName = taskResult.record.Name || taskResult.record.TaskID;
+    var descriptionLines = [
+      'Aura Flow reminder generated automatically.',
+      'Task: ' + taskName,
+      'Assignee: ' + (taskResult.record.Assignee || 'Unassigned'),
+      'Status: ' + (taskResult.record.Status || 'Planned')
+    ];
+    var options = {
+      description: descriptionLines.join('\n')
+    };
+    var assigneeEmail = normalizeEmail_(taskResult.record.Assignee);
+    if (assigneeEmail) {
+      options.guests = assigneeEmail;
+      options.sendInvites = false;
+    }
+    var event = calendar.createEvent('Aura Flow Reminder: ' + taskName, reminderDate, endTime, options);
+    var response = {
+      eventId: event.getId(),
+      start: event.getStartTime() ? event.getStartTime().toISOString() : reminderDate.toISOString(),
+      end: event.getEndTime() ? event.getEndTime().toISOString() : endTime.toISOString(),
+      url: typeof event.getUrl === 'function' ? event.getUrl() : ''
+    };
+    logActivity_(session, 'task.reminder.schedule', 'Task', taskResult.record.TaskID, {
+      reminderAt: response.start,
+      eventId: response.eventId
+    });
+    return response;
+  });
+}
+
+function duplicateTask(token, taskId) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+
+    var originalResult = getTaskById_(String(taskId));
+    if (!originalResult) {
+      throw new Error('Task not found.');
+    }
+    var usersMap = loadUsersMap_();
+    var originalRecord = originalResult.record;
+    if (!canManageTask_(session, originalRecord, originalRecord.Assignee, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+
+    var sessionEmail = getSessionEmail_(session);
+    if (!sessionEmail) {
+      throw new Error('Unable to resolve session email.');
+    }
+
+    var assigneeEmail = normalizeEmail_(originalRecord.Assignee);
+    if (assigneeEmail) {
+      var assigneeRecord = usersMap[assigneeEmail];
+      if (!assigneeRecord) {
+        throw new Error('Assignee not found.');
+      }
+      if (!isTrue_(assigneeRecord.IsActive)) {
+        throw new Error('Assignee is not active.');
+      }
+      validateTaskAssignment_(session, assigneeRecord);
+    }
+
+    var now = nowIso_();
+    var clonedRecord = {
+      TaskID: generateId_('TASK'),
+      Name: originalRecord.Name || '',
+      Category: originalRecord.Category || '',
+      Priority: originalRecord.Priority || '',
+      Status: normalizeStatus_('New'),
+      DurationMins: originalRecord.DurationMins,
+      Labels: originalRecord.Labels || '',
+      Notes: originalRecord.Notes || '',
+      ResourcesCSV: originalRecord.ResourcesCSV || '',
+      Assigner: sessionEmail,
+      Assignee: assigneeEmail,
+      Timestamp: now,
+      DueAt: originalRecord.DueAt || '',
+      UpdatedAt: now,
+      ParentTaskID: originalRecord.ParentTaskID || ''
+    };
+
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS], clonedRecord);
+
+    logActivity_(session, 'task.duplicate', 'Task', clonedRecord.TaskID, {
+      sourceTaskId: originalRecord.TaskID,
+      status: clonedRecord.Status
+    });
+
+    return sanitizeTask_(clonedRecord);
+  });
+}
+
   });
 }
 
@@ -966,6 +1901,83 @@ function listMoods(token, filters) {
   });
 }
 
+function addQuote(token, text) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    var payload = text;
+    if (typeof payload === 'string') {
+      var parsed = safeParse_(payload, null);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        payload = parsed;
+      }
+    }
+
+    var textCandidate = null;
+    var authorCandidate = '';
+    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+      textCandidate = pickFirstDefined_(payload, ['text', 'Text', 'quote', 'value']);
+      var authorValue = pickFirstDefined_(payload, ['author', 'Author', 'by']);
+      if (authorValue !== undefined && authorValue !== null) {
+        authorCandidate = String(authorValue).trim();
+      }
+    }
+    if (textCandidate === null || textCandidate === undefined) {
+      if (typeof text === 'string') {
+        textCandidate = text;
+      }
+    }
+    if (textCandidate === null || textCandidate === undefined) {
+      throw new Error('Quote text is required.');
+    }
+    var quoteText = String(textCandidate).trim();
+    if (!quoteText) {
+      throw new Error('Quote text is required.');
+    }
+    var quoteAuthor = authorCandidate || '';
+
+    var submittedBy = getSessionEmail_(session);
+    if (!submittedBy) {
+      throw new Error('Unable to resolve session email.');
+    }
+
+    var approved = getSessionRole_(session) === 'Admin';
+    var record = {
+      QuoteID: generateId_('QUOTE'),
+      Author: quoteAuthor,
+      Text: quoteText,
+      SubmittedBy: submittedBy,
+      Approved: approved ? 'TRUE' : 'FALSE'
+    };
+
+    var sheet = ensureSheet_(SHEET_NAMES.QUOTES, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
+    appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.QUOTES], record);
+
+    logActivity_(session, 'quote.add', 'Quote', record.QuoteID, {
+      approved: approved,
+      length: quoteText.length
+    });
+
+    return sanitizeQuote_(record);
+  });
+}
+
+function listQuotes(token) {
+  return handleApi_(function () {
+    requireSession_(token);
+
+    var sheet = ensureSheet_(SHEET_NAMES.QUOTES, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
+    var rows = sheetObjects_(sheet, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
+    var results = [];
+    for (var i = 0; i < rows.length; i++) {
+      if (!isTrue_(rows[i].Approved)) {
+        continue;
+      }
+      results.push(sanitizeQuote_(rows[i]));
+    }
+    return results;
+  });
+}
+
 function firstRunInit() {
   var lock = LockService.getScriptLock();
   try {
@@ -1049,17 +2061,30 @@ function ensureSheet_(name, headers) {
     sheet = ss.insertSheet(name);
   }
   if (headers && headers.length) {
-    var existingHeaders = sheet.getRange(1, 1, 1, sheet.getMaxColumns()).getValues()[0];
-    var needsReset = false;
+    if (sheet.getMaxColumns() < headers.length) {
+      sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
+    }
+    var headerRange = sheet.getRange(1, 1, 1, headers.length);
+    var existingHeaders = headerRange.getValues()[0];
+    var requiresReset = false;
+    var needsRewrite = false;
     for (var i = 0; i < headers.length; i++) {
-      if (existingHeaders[i] !== headers[i]) {
-        needsReset = true;
+      var expected = headers[i];
+      var current = existingHeaders[i];
+      if (!current && expected) {
+        needsRewrite = true;
+        continue;
+      }
+      if (current && current !== expected) {
+        requiresReset = true;
         break;
       }
     }
-    if (needsReset || sheet.getLastRow() === 0) {
+    if (requiresReset || sheet.getLastRow() === 0) {
       sheet.clearContents();
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    } else if (needsRewrite || (sheet.getLastRow() === 1 && existingHeaders.join('').trim() === '')) {
+      headerRange.setValues([headers]);
     }
   }
   return sheet;
@@ -1647,6 +2672,137 @@ function parseDateValue_(value) {
   return null;
 }
 
+function resolveBulkDueDateString_(value) {
+  if (value === undefined || value === null || value === '') {
+    throw new Error('Date is required.');
+  }
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    if (!isNaN(value.getTime())) {
+      return value.toISOString().slice(0, 10);
+    }
+    throw new Error('Invalid date.');
+  }
+  if (typeof value === 'number') {
+    var excelDate = convertExcelSerialToDate_(value);
+    if (excelDate) {
+      return excelDate.toISOString().slice(0, 10);
+    }
+  }
+  var str = String(value).trim();
+  if (!str) {
+    throw new Error('Date is required.');
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
+  }
+  var parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+  var numeric = Number(str);
+  if (!isNaN(numeric)) {
+    var fromNumeric = convertExcelSerialToDate_(numeric);
+    if (fromNumeric) {
+      return fromNumeric.toISOString().slice(0, 10);
+    }
+  }
+  throw new Error('Invalid date.');
+}
+
+function convertExcelSerialToDate_(value) {
+  var serial = Number(value);
+  if (isNaN(serial)) {
+    return null;
+  }
+  if (serial <= 0) {
+    return null;
+  }
+  if (serial > 59) {
+    serial -= 1; // Excel's fictitious 1900 leap day
+  }
+  var millis = Math.round((serial - 25569) * 86400 * 1000);
+  var date = new Date(millis);
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+}
+
+function normalizeBulkRow_(row) {
+  var normalized = {};
+  for (var key in row) {
+    if (!row.hasOwnProperty(key)) {
+      continue;
+    }
+    var canonical = canonicalizeBulkKey_(key);
+    if (canonical) {
+      if (normalized[canonical] === undefined) {
+        normalized[canonical] = row[key];
+      }
+    } else {
+      if (normalized[key] === undefined) {
+        normalized[key] = row[key];
+      }
+    }
+  }
+  return normalized;
+}
+
+function canonicalizeBulkKey_(key) {
+  if (!key && key !== 0) {
+    return null;
+  }
+  var normalized = String(key)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+  if (!normalized) {
+    return null;
+  }
+  var map = {
+    task: 'Task',
+    taskname: 'Task',
+    name: 'Task',
+    title: 'Task',
+    workitem: 'Task',
+    duration: 'Duration',
+    durationmins: 'Duration',
+    durationminutes: 'Duration',
+    minutes: 'Duration',
+    mins: 'Duration',
+    category: 'Category',
+    type: 'Category',
+    stream: 'Category',
+    priority: 'Priority',
+    assignee: 'Assignee',
+    assigneeemail: 'Assignee',
+    owner: 'Assignee',
+    assignedto: 'Assignee',
+    collaborator: 'Assignee',
+    date: 'Date',
+    duedate: 'Date',
+    due: 'Date',
+    dueat: 'Date',
+    deadline: 'Date',
+    labels: 'Labels',
+    label: 'Labels',
+    tags: 'Labels',
+    tag: 'Labels',
+    notes: 'Notes',
+    note: 'Notes',
+    description: 'Notes',
+    summary: 'Notes',
+    resources: 'Resources',
+    resource: 'Resources',
+    links: 'Resources',
+    link: 'Resources',
+    url: 'Resources',
+    urls: 'Resources',
+    status: 'Status'
+  };
+  return map.hasOwnProperty(normalized) ? map[normalized] : null;
+}
+
 function taskMatchesFilters_(taskRecord, filters) {
   if (!filters) {
     return true;
@@ -1775,6 +2931,17 @@ function toCsvString_(value) {
   return String(value);
 }
 
+function escapeCsvValue_(value) {
+  if (value === undefined || value === null) {
+    return '""';
+  }
+  var stringValue = String(value);
+  if (stringValue.indexOf('"') !== -1 || stringValue.indexOf(',') !== -1 || /[\r\n]/.test(stringValue)) {
+    return '"' + stringValue.replace(/"/g, '""') + '"';
+  }
+  return stringValue;
+}
+
 function parseLabels_(value) {
   if (value === undefined || value === null || value === '') {
     return [];
@@ -1819,6 +2986,22 @@ function normalizeDuration_(value, fallback) {
   return Math.round(num * 100) / 100;
 }
 
+function formatDurationLabel_(minutes) {
+  var total = Math.round(Number(minutes) || 0);
+  if (!total) {
+    return '0m';
+  }
+  var hours = Math.floor(total / 60);
+  var remainder = total % 60;
+  if (hours && remainder) {
+    return hours + 'h ' + remainder + 'm';
+  }
+  if (hours) {
+    return hours + 'h';
+  }
+  return remainder + 'm';
+}
+
 function normalizeTaskCategory_(value) {
   var category = value !== undefined && value !== null ? String(value).trim() : '';
   if (!category) {
@@ -1852,6 +3035,7 @@ function sanitizeTask_(record) {
     Priority: record.Priority || '',
     Status: record.Status || 'Planned',
     DurationMins: normalizeDuration_(record.DurationMins, 0),
+    TimeSpentMins: normalizeDuration_(record.TimeSpentMins, 0),
     Labels: parseLabels_(record.Labels),
     Notes: record.Notes || '',
     ResourcesCSV: record.ResourcesCSV || '',
@@ -1879,6 +3063,17 @@ function sanitizeSubtask_(record) {
   };
 }
 
+function sanitizeTemplate_(record) {
+  if (!record) {
+    return null;
+  }
+  return {
+    TemplateID: record.TemplateID,
+    Name: record.Name || '',
+    Fields: safeParse_(record.FieldsJSON, {})
+  };
+}
+
 function sanitizeMood_(record) {
   if (!record) {
     return null;
@@ -1891,6 +3086,31 @@ function sanitizeMood_(record) {
     Note: record.Note || '',
     At: record.At || ''
   };
+}
+
+function sanitizeQuote_(record) {
+  if (!record) {
+    return null;
+  }
+  return {
+    QuoteID: record.QuoteID,
+    Author: record.Author || '',
+    Text: record.Text || '',
+    SubmittedBy: normalizeEmail_(record.SubmittedBy),
+    Approved: isTrue_(record.Approved)
+  };
+}
+
+function escapeHtml_(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function getTaskById_(taskId) {
@@ -1910,6 +3130,34 @@ function getTaskById_(taskId) {
   var range = sheet.getRange(2, 1, lastRow - 1, headers.length);
   var values = range.getValues();
   var searchId = String(taskId);
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][idIndex]) === searchId) {
+      return {
+        rowNumber: i + 2,
+        record: arrayToObject_(headers, values[i])
+      };
+    }
+  }
+  return null;
+}
+
+function getTemplateById_(templateId) {
+  if (!templateId) {
+    return null;
+  }
+  var sheet = ensureSheet_(SHEET_NAMES.TEMPLATES, SHEET_HEADERS[SHEET_NAMES.TEMPLATES]);
+  var headers = SHEET_HEADERS[SHEET_NAMES.TEMPLATES];
+  var idIndex = headers.indexOf('TemplateID');
+  if (idIndex === -1) {
+    throw new Error('Templates sheet missing TemplateID column.');
+  }
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return null;
+  }
+  var range = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  var values = range.getValues();
+  var searchId = String(templateId);
   for (var i = 0; i < values.length; i++) {
     if (String(values[i][idIndex]) === searchId) {
       return {
