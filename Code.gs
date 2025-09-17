@@ -569,6 +569,323 @@ function listTasks(token, filters) {
   });
 }
 
+function exportTasksCsv(token, filters) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensurePermission_(session, 'reports:generate');
+
+    var usersMap = loadUsersMap_();
+    var normalizedFilters = normalizeTaskFilters_(filters, session);
+
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    var rows = sheetObjects_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+
+    var exportRecords = [];
+    for (var i = 0; i < rows.length; i++) {
+      var record = rows[i];
+      if (!canViewTask_(session, record, usersMap)) {
+        continue;
+      }
+      if (!taskMatchesFilters_(record, normalizedFilters)) {
+        continue;
+      }
+      exportRecords.push(sanitizeTask_(record));
+    }
+
+    exportRecords.sort(function (a, b) {
+      var aKey = (a && a.UpdatedAt) || (a && a.Timestamp) || '';
+      var bKey = (b && b.UpdatedAt) || (b && b.Timestamp) || '';
+      if (aKey === bKey) {
+        return 0;
+      }
+      return aKey < bKey ? 1 : -1;
+    });
+
+    var headers = SHEET_HEADERS[SHEET_NAMES.TASKS];
+    var csvLines = [];
+    var headerValues = [];
+    for (var h = 0; h < headers.length; h++) {
+      headerValues.push(escapeCsvValue_(headers[h]));
+    }
+    csvLines.push(headerValues.join(','));
+
+    for (var j = 0; j < exportRecords.length; j++) {
+      var rowValues = [];
+      var recordObject = exportRecords[j];
+      for (var k = 0; k < headers.length; k++) {
+        var key = headers[k];
+        var rawValue = recordObject[key];
+        if (key === 'Labels') {
+          rawValue = toCsvString_(rawValue);
+        }
+        if (rawValue === undefined || rawValue === null) {
+          rawValue = '';
+        } else if (Object.prototype.toString.call(rawValue) === '[object Date]') {
+          rawValue = rawValue.toISOString();
+        } else if (Array.isArray(rawValue)) {
+          rawValue = toCsvString_(rawValue);
+        }
+        rowValues.push(escapeCsvValue_(rawValue));
+      }
+      csvLines.push(rowValues.join(','));
+    }
+
+    var timezone = Session.getScriptTimeZone() || 'Etc/UTC';
+    var timestamp = Utilities.formatDate(new Date(), timezone, 'yyyyMMdd_HHmmss');
+    var filename = 'aura-flow-tasks-' + timestamp + '.csv';
+    var csvContent = '\ufeff' + csvLines.join('\r\n');
+
+    logActivity_(session, 'report.export.csv', 'Task', '', {
+      count: exportRecords.length,
+      filters: normalizedFilters
+    });
+
+    return {
+      filename: filename,
+      mimeType: 'text/csv',
+      content: csvContent
+    };
+  });
+}
+
+function generatePdfReport(token, filters) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensurePermission_(session, 'reports:generate');
+
+    var usersMap = loadUsersMap_();
+    var normalizedFilters = normalizeTaskFilters_(filters, session);
+
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    var rows = sheetObjects_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+
+    var tasks = [];
+    var taskIdMap = {};
+    for (var i = 0; i < rows.length; i++) {
+      var record = rows[i];
+      if (!canViewTask_(session, record, usersMap)) {
+        continue;
+      }
+      if (!taskMatchesFilters_(record, normalizedFilters)) {
+        continue;
+      }
+      var sanitized = sanitizeTask_(record);
+      tasks.push(sanitized);
+      if (sanitized && sanitized.TaskID) {
+        taskIdMap[sanitized.TaskID] = true;
+      }
+    }
+
+    tasks.sort(function (a, b) {
+      var aKey = (a && a.UpdatedAt) || (a && a.Timestamp) || '';
+      var bKey = (b && b.UpdatedAt) || (b && b.Timestamp) || '';
+      if (aKey === bKey) {
+        return 0;
+      }
+      return aKey < bKey ? 1 : -1;
+    });
+
+    var statusCounts = {};
+    var totalDurationMins = 0;
+    for (var j = 0; j < tasks.length; j++) {
+      var task = tasks[j];
+      var status = (task && task.Status) || 'Planned';
+      if (!statusCounts.hasOwnProperty(status)) {
+        statusCounts[status] = 0;
+      }
+      statusCounts[status]++;
+      var durationNumber = Number(task && task.DurationMins);
+      if (!isNaN(durationNumber)) {
+        totalDurationMins += Math.max(0, durationNumber);
+      }
+    }
+
+    var timezone = Session.getScriptTimeZone() || 'Etc/UTC';
+    var generatedAtDate = new Date();
+    var generatedAt = Utilities.formatDate(generatedAtDate, timezone, 'yyyy-MM-dd HH:mm:ss');
+    var timestamp = Utilities.formatDate(generatedAtDate, timezone, 'yyyyMMdd_HHmmss');
+
+    var filterSummaries = [];
+    if (normalizedFilters.statuses && normalizedFilters.statuses.length) {
+      filterSummaries.push('Statuses: ' + normalizedFilters.statuses.join(', '));
+    }
+    if (normalizedFilters.assignee) {
+      filterSummaries.push('Assignee: ' + normalizedFilters.assignee);
+    }
+    if (normalizedFilters.dueAfter) {
+      filterSummaries.push('Due After: ' + Utilities.formatDate(normalizedFilters.dueAfter, timezone, 'yyyy-MM-dd'));
+    }
+    if (normalizedFilters.dueBefore) {
+      filterSummaries.push('Due Before: ' + Utilities.formatDate(normalizedFilters.dueBefore, timezone, 'yyyy-MM-dd'));
+    }
+
+    var summaryMetrics = [
+      { label: 'Total Tasks', value: String(tasks.length) },
+      { label: 'Completed', value: String(statusCounts['Completed'] || 0) },
+      { label: 'In-Progress', value: String(statusCounts['In-Progress'] || 0) },
+      { label: 'Total Est. Time', value: formatDurationLabel_(totalDurationMins) }
+    ];
+
+    var moodSheet = ensureSheet_(SHEET_NAMES.MOODS, SHEET_HEADERS[SHEET_NAMES.MOODS]);
+    var moodRows = sheetObjects_(moodSheet, SHEET_HEADERS[SHEET_NAMES.MOODS]);
+    var scope = resolveMoodScope_(session, usersMap);
+    var moodCounts = {};
+    var moodTotal = 0;
+    var requireTaskMatch = Object.keys(taskIdMap).length > 0;
+    for (var m = 0; m < moodRows.length; m++) {
+      var moodRecord = sanitizeMood_(moodRows[m]);
+      if (!moodRecord) {
+        continue;
+      }
+      if (!scope[moodRecord.Email]) {
+        continue;
+      }
+      if (requireTaskMatch) {
+        if (!moodRecord.TaskID || !taskIdMap[moodRecord.TaskID]) {
+          continue;
+        }
+      }
+      var moodLabel = moodRecord.Mood ? String(moodRecord.Mood).trim() : '';
+      if (!moodLabel) {
+        moodLabel = 'Unspecified';
+      }
+      var displayMood = moodLabel.charAt(0).toUpperCase() + moodLabel.slice(1);
+      if (!moodCounts.hasOwnProperty(displayMood)) {
+        moodCounts[displayMood] = 0;
+      }
+      moodCounts[displayMood]++;
+      moodTotal++;
+    }
+
+    summaryMetrics.push({ label: 'Mood Entries', value: String(moodTotal) });
+
+    var statusRowsHtml = '';
+    for (var s = 0; s < TASK_STATUSES.length; s++) {
+      var statusKey = TASK_STATUSES[s];
+      var statusCount = statusCounts[statusKey] || 0;
+      statusRowsHtml +=
+        '<tr><td>' +
+        escapeHtml_(statusKey) +
+        '</td><td>' +
+        escapeHtml_(String(statusCount)) +
+        '</td></tr>';
+      if (statusCounts.hasOwnProperty(statusKey)) {
+        delete statusCounts[statusKey];
+      }
+    }
+    for (var remainingStatus in statusCounts) {
+      if (!statusCounts.hasOwnProperty(remainingStatus)) {
+        continue;
+      }
+      statusRowsHtml +=
+        '<tr><td>' +
+        escapeHtml_(remainingStatus) +
+        '</td><td>' +
+        escapeHtml_(String(statusCounts[remainingStatus])) +
+        '</td></tr>';
+    }
+    if (!statusRowsHtml) {
+      statusRowsHtml = '<tr><td colspan="2">No tasks available for the selected filters.</td></tr>';
+    }
+
+    var moodRowsHtml = '';
+    for (var moodName in moodCounts) {
+      if (!moodCounts.hasOwnProperty(moodName)) {
+        continue;
+      }
+      moodRowsHtml +=
+        '<tr><td>' +
+        escapeHtml_(moodName) +
+        '</td><td>' +
+        escapeHtml_(String(moodCounts[moodName])) +
+        '</td></tr>';
+    }
+    if (!moodRowsHtml) {
+      moodRowsHtml = '<tr><td colspan="2">No mood logs associated with the selected tasks.</td></tr>';
+    }
+
+    var summaryHtml = '';
+    for (var q = 0; q < summaryMetrics.length; q++) {
+      var metric = summaryMetrics[q];
+      summaryHtml +=
+        '<div class="summary-item"><strong>' +
+        escapeHtml_(metric.value) +
+        '</strong><span>' +
+        escapeHtml_(metric.label) +
+        '</span></div>';
+    }
+
+    var filtersHtml = '';
+    if (filterSummaries.length) {
+      filtersHtml = '<ul>';
+      for (var f = 0; f < filterSummaries.length; f++) {
+        filtersHtml += '<li>' + escapeHtml_(filterSummaries[f]) + '</li>';
+      }
+      filtersHtml += '</ul>';
+    } else {
+      filtersHtml = '<p>None — full task inventory included.</p>';
+    }
+
+    var generatedFor = '';
+    if (session && session.user && session.user.Email) {
+      generatedFor = session.user.Email;
+    } else {
+      generatedFor = getSessionEmail_(session) || '';
+    }
+
+    var html =
+      '<!DOCTYPE html>' +
+      '<html><head><meta charset="UTF-8" />' +
+      '<style>' +
+      'body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:#0f172a;margin:36px;}' +
+      'h1{font-size:24px;margin:0 0 4px 0;color:#111827;}' +
+      'h2{font-size:18px;margin:24px 0 8px 0;color:#111827;}' +
+      'h3{font-size:16px;margin:18px 0 6px 0;color:#111827;}' +
+      'p,li,span{font-size:12px;line-height:1.6;color:#334155;}' +
+      'ul{padding-left:18px;margin:8px 0;}' +
+      'table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;}' +
+      'th,td{border:1px solid #d1d5db;padding:8px 10px;text-align:left;}' +
+      'th{background:#f3f4f6;font-weight:600;color:#1f2937;}' +
+      '.summary{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;}' +
+      '.summary-item{flex:1 1 160px;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;background:#f8fafc;}' +
+      '.summary-item strong{display:block;font-size:18px;color:#111827;margin-bottom:4px;}' +
+      '.meta{margin:0;color:#64748b;}' +
+      '.footer{margin-top:32px;font-size:11px;color:#64748b;}' +
+      '</style></head><body>' +
+      '<h1>Aura Flow V2 — Task &amp; Mood Report</h1>' +
+      '<p class="meta">Generated for ' + escapeHtml_(generatedFor || 'N/A') + '</p>' +
+      '<p class="meta">Generated at ' + escapeHtml_(generatedAt) + ' (' + escapeHtml_(timezone) + ')</p>' +
+      '<div class="summary">' + summaryHtml + '</div>' +
+      '<div class="section"><h2>Applied Filters</h2>' + filtersHtml + '</div>' +
+      '<div class="section"><h2>Task Status Distribution</h2><table><thead><tr><th>Status</th><th>Count</th></tr></thead><tbody>' +
+      statusRowsHtml +
+      '</tbody></table></div>' +
+      '<div class="section"><h2>Mood Counts</h2><table><thead><tr><th>Mood</th><th>Entries</th></tr></thead><tbody>' +
+      moodRowsHtml +
+      '</tbody></table></div>' +
+      '<p class="footer">Aura Flow V2 automatically aggregates workspace data from Tasks and Mood services. Export generated on ' +
+      escapeHtml_(generatedAt) +
+      '.</p>' +
+      '</body></html>';
+
+    var blob = Utilities.newBlob(html, 'text/html').getAs('application/pdf');
+    var filename = 'aura-flow-report-' + timestamp + '.pdf';
+    blob.setName(filename);
+    var base64 = Utilities.base64Encode(blob.getBytes());
+
+    logActivity_(session, 'report.export.pdf', 'Task', '', {
+      count: tasks.length,
+      filters: normalizedFilters
+    });
+
+    return {
+      filename: filename,
+      mimeType: 'application/pdf',
+      base64: base64
+    };
+  });
+}
+
 function deleteTask(token, taskId) {
   return handleApi_(function () {
     var session = requireSession_(token);
@@ -1705,6 +2022,17 @@ function toCsvString_(value) {
   return String(value);
 }
 
+function escapeCsvValue_(value) {
+  if (value === undefined || value === null) {
+    return '""';
+  }
+  var stringValue = String(value);
+  if (stringValue.indexOf('"') !== -1 || stringValue.indexOf(',') !== -1 || /[\r\n]/.test(stringValue)) {
+    return '"' + stringValue.replace(/"/g, '""') + '"';
+  }
+  return stringValue;
+}
+
 function parseLabels_(value) {
   if (value === undefined || value === null || value === '') {
     return [];
@@ -1747,6 +2075,22 @@ function normalizeDuration_(value, fallback) {
     return 0;
   }
   return Math.round(num * 100) / 100;
+}
+
+function formatDurationLabel_(minutes) {
+  var total = Math.round(Number(minutes) || 0);
+  if (!total) {
+    return '0m';
+  }
+  var hours = Math.floor(total / 60);
+  var remainder = total % 60;
+  if (hours && remainder) {
+    return hours + 'h ' + remainder + 'm';
+  }
+  if (hours) {
+    return hours + 'h';
+  }
+  return remainder + 'm';
 }
 
 function normalizeTaskCategory_(value) {
@@ -1821,6 +2165,18 @@ function sanitizeMood_(record) {
     Note: record.Note || '',
     At: record.At || ''
   };
+}
+
+function escapeHtml_(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function getTaskById_(taskId) {

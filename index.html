@@ -437,6 +437,37 @@
                   Log a focus session to begin charting team sentiment.
                 </div>
               </div>
+
+              <div class="rounded-3xl border border-white/5 bg-slate-900/70 p-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Reports</p>
+                    <h4 class="mt-1 text-lg font-semibold text-white">Exports</h4>
+                    <p class="mt-3 text-sm text-slate-400">
+                      Download your filtered task grid or a leadership-ready PDF snapshot.
+                    </p>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <button
+                      id="reportExportCsv"
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                    >
+                      <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-transparent"></span>
+                      <span data-role="label">Export CSV</span>
+                    </button>
+                    <button
+                      id="reportExportPdf"
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-xl bg-aura-primary/90 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                    >
+                      <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-transparent"></span>
+                      <span data-role="label">Export PDF</span>
+                    </button>
+                  </div>
+                </div>
+                <p class="mt-4 text-xs text-slate-500">Reports respect task visibility and any filters in play.</p>
+              </div>
             </div>
           </section>
 
@@ -753,6 +784,8 @@
           elements.analytics.moodCanvas = document.getElementById('moodTrendChart');
           elements.analytics.moodEmpty = document.getElementById('moodChartEmpty');
           elements.analytics.moodMetric = document.getElementById('moodMetric');
+          elements.analytics.exportCsvButton = document.getElementById('reportExportCsv');
+          elements.analytics.exportPdfButton = document.getElementById('reportExportPdf');
           elements.focus.statusBadge = document.getElementById('focusStatusBadge');
           if (elements.focus.statusBadge) {
             elements.focus.statusDot = elements.focus.statusBadge.querySelector('[data-role="focus-status-dot"]');
@@ -832,6 +865,12 @@
           if (elements.analytics.refreshButton) {
             elements.analytics.refreshButton.addEventListener('click', () => refreshWorkspaceData({ silent: false }));
           }
+          if (elements.analytics.exportCsvButton) {
+            elements.analytics.exportCsvButton.addEventListener('click', handleExportCsvClick);
+          }
+          if (elements.analytics.exportPdfButton) {
+            elements.analytics.exportPdfButton.addEventListener('click', handleExportPdfClick);
+          }
           if (elements.focus.startButton) {
             elements.focus.startButton.addEventListener('click', startFocusTimer);
           }
@@ -893,6 +932,66 @@
             }
           }
           showToast('You are signed out.', 'success');
+        }
+
+        function buildReportFilters() {
+          return {};
+        }
+
+        async function handleExportCsvClick() {
+          if (!state.token) {
+            showToast('Sign in to export reports.', 'error');
+            return;
+          }
+          const button = elements.analytics.exportCsvButton;
+          setButtonLoading(button, true);
+          try {
+            const filters = buildReportFilters();
+            const result = await server.exportTasksCsv(state.token, filters);
+            const content = result && typeof result === 'object' && 'content' in result ? result.content : result;
+            if (!content) {
+              throw new Error('No CSV data was generated.');
+            }
+            const filename = (result && result.filename) || `aura-flow-tasks-${Date.now()}.csv`;
+            const mimeType = (result && result.mimeType) || 'text/csv';
+            const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+            downloadBlob(blob, filename);
+            showToast('Tasks CSV export ready.', 'success');
+          } catch (err) {
+            console.error('CSV export failed:', err);
+            showToast(err && err.message ? err.message : 'Failed to export CSV.', 'error');
+          } finally {
+            setButtonLoading(button, false);
+          }
+        }
+
+        async function handleExportPdfClick() {
+          if (!state.token) {
+            showToast('Sign in to export reports.', 'error');
+            return;
+          }
+          const button = elements.analytics.exportPdfButton;
+          setButtonLoading(button, true);
+          try {
+            const filters = buildReportFilters();
+            const result = await server.generatePdfReport(state.token, filters);
+            if (!result || !result.base64) {
+              throw new Error('No PDF data was generated.');
+            }
+            const filename = result.filename || `aura-flow-report-${Date.now()}.pdf`;
+            const mimeType = result.mimeType || 'application/pdf';
+            const blob = base64ToBlob(result.base64, mimeType);
+            if (!blob || !blob.size) {
+              throw new Error('Unable to prepare PDF download.');
+            }
+            downloadBlob(blob, filename);
+            showToast('PDF report generated.', 'success');
+          } catch (err) {
+            console.error('PDF export failed:', err);
+            showToast(err && err.message ? err.message : 'Failed to export PDF.', 'error');
+          } finally {
+            setButtonLoading(button, false);
+          }
         }
 
         function setButtonLoading(button, isLoading) {
@@ -1701,6 +1800,39 @@
           if (hours && mins) return `${hours}h ${mins}m`;
           if (hours) return `${hours}h`;
           return `${mins}m`;
+        }
+
+        function downloadBlob(blob, filename) {
+          if (!blob) {
+            throw new Error('Nothing to download.');
+          }
+          if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+            throw new Error('Download not supported in this environment.');
+          }
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = url;
+          anchor.download = filename || 'download';
+          document.body.appendChild(anchor);
+          anchor.click();
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+            anchor.remove();
+          }, 0);
+        }
+
+        function base64ToBlob(base64, mimeType = 'application/octet-stream') {
+          const cleaned = typeof base64 === 'string' ? base64.replace(/\s/g, '') : '';
+          if (!cleaned) {
+            return new Blob([], { type: mimeType });
+          }
+          const byteCharacters = atob(cleaned);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i += 1) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          return new Blob([byteArray], { type: mimeType });
         }
 
         function resolveMoodScore(label) {
