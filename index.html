@@ -319,6 +319,82 @@
             </div>
 
             <div
+              id="dashboardQuoteCard"
+              class="mt-8 rounded-3xl border border-white/10 bg-slate-900/70 p-6"
+            >
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div class="space-y-3">
+                  <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+                    Team Inspiration
+                  </p>
+                  <p
+                    id="dashboardQuoteText"
+                    class="text-lg font-semibold leading-relaxed text-white"
+                  >
+                    Sign in to unlock inspiration curated by your team.
+                  </p>
+                  <p
+                    id="dashboardQuoteAuthor"
+                    class="text-sm italic text-slate-400 hidden"
+                  ></p>
+                </div>
+                <button
+                  id="quoteRefreshButton"
+                  type="button"
+                  class="inline-flex items-center justify-center gap-2 self-start rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-slate-300 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                  aria-label="Refresh inspirational quote"
+                >
+                  <span
+                    data-role="spinner"
+                    class="hidden h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-transparent animate-spin"
+                  ></span>
+                  <span data-role="label">Refresh</span>
+                </button>
+              </div>
+              <form
+                id="quoteSubmitForm"
+                class="mt-6 grid gap-3 md:grid-cols-[minmax(0,2fr),minmax(0,1fr),auto]"
+              >
+                <label class="grid gap-2">
+                  <span class="text-xs font-medium uppercase tracking-[0.3em] text-slate-300">Quote</span>
+                  <textarea
+                    id="quoteTextInput"
+                    rows="2"
+                    class="h-full min-h-[3.25rem] rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                    placeholder="Deliver something inspiring to the crew."
+                    aria-label="Quote text"
+                  ></textarea>
+                </label>
+                <label class="grid gap-2">
+                  <span class="text-xs font-medium uppercase tracking-[0.3em] text-slate-300">Author (optional)</span>
+                  <input
+                    id="quoteAuthorInput"
+                    type="text"
+                    class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                    placeholder="Attribution"
+                    aria-label="Quote author"
+                  />
+                </label>
+                <div class="flex items-end">
+                  <button
+                    id="quoteSubmitButton"
+                    type="submit"
+                    class="inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                  >
+                    <span
+                      data-role="spinner"
+                      class="hidden h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"
+                    ></span>
+                    <span data-role="label">Share Quote</span>
+                  </button>
+                </div>
+              </form>
+              <p class="mt-3 text-xs text-slate-500">
+                Admins publish instantly. Other roles submit for approval before the quote rotates onto the dashboard.
+              </p>
+            </div>
+
+            <div
               id="dashboardEmpty"
               class="mt-8 hidden flex flex-col items-center gap-4 rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-8 text-center"
             >
@@ -1261,6 +1337,7 @@
             tasks: [],
             moods: [],
             templates: [],
+            quotes: [],
           },
           charts: {
             velocity: null,
@@ -1282,6 +1359,9 @@ bulkUpload: {
   records: [],
   errors: [],
   isParsing: false,
+},
+quote: {
+  currentQuoteId: '',
 },
 isWorkspaceLoading: false,
 
@@ -1366,6 +1446,7 @@ kanban: {
           if (isInitialized) return;
           isInitialized = true;
           cacheElements();
+          updateDashboardQuote();
           resetBulkUploadState();
           enhanceTabButtons();
           setupKanbanBoard();
@@ -1452,6 +1533,14 @@ function cacheElements() {
     time: document.getElementById('metric-time'),
     overdue: document.getElementById('metric-overdue'),
   };
+  elements.dashboard.quoteCard = document.getElementById('dashboardQuoteCard');
+  elements.dashboard.quoteText = document.getElementById('dashboardQuoteText');
+  elements.dashboard.quoteAuthor = document.getElementById('dashboardQuoteAuthor');
+  elements.dashboard.quoteForm = document.getElementById('quoteSubmitForm');
+  elements.dashboard.quoteTextInput = document.getElementById('quoteTextInput');
+  elements.dashboard.quoteAuthorInput = document.getElementById('quoteAuthorInput');
+  elements.dashboard.quoteSubmitButton = document.getElementById('quoteSubmitButton');
+  elements.dashboard.quoteRefreshButton = document.getElementById('quoteRefreshButton');
 
   // Kanban
   elements.kanban.board = document.getElementById('kanbanBoard');
@@ -1637,6 +1726,25 @@ if (elements.admin.modalCloseButtons) {
       event.preventDefault();
       closeAdminUserModal();
     });
+  });
+}
+
+// Dashboard quote interactions
+if (elements.dashboard.quoteForm) {
+  elements.dashboard.quoteForm.addEventListener('submit', handleQuoteSubmit);
+}
+if (elements.dashboard.quoteRefreshButton) {
+  elements.dashboard.quoteRefreshButton.addEventListener('click', async () => {
+    if (!state.token) {
+      showToast('Sign in to refresh inspiration.', 'error');
+      return;
+    }
+    setButtonLoading(elements.dashboard.quoteRefreshButton, true);
+    try {
+      await refreshDashboardQuote({ silent: true, force: true });
+    } finally {
+      setButtonLoading(elements.dashboard.quoteRefreshButton, false);
+    }
   });
 }
 
@@ -1863,6 +1971,241 @@ function resetKanbanState() { /* keep Main logic */ }
           const label = button.querySelector('[data-role="label"]');
           if (spinner) spinner.classList.toggle('hidden', !isLoading);
           if (label) label.classList.toggle('opacity-0', isLoading);
+        }
+
+        function selectQuoteForDisplay(quotes, previousId) {
+          if (!Array.isArray(quotes) || !quotes.length) {
+            return null;
+          }
+          if (quotes.length === 1) {
+            return quotes[0];
+          }
+          const withIds = quotes.filter((quote) => quote && quote.QuoteID);
+          if (!withIds.length) {
+            return null;
+          }
+          const pool = withIds.filter((quote) => quote.QuoteID !== previousId);
+          const candidates = pool.length ? pool : withIds;
+          const index = Math.floor(Math.random() * candidates.length);
+          return candidates[index];
+        }
+
+        async function refreshDashboardQuote(options = {}) {
+          const { silent = false, force = false } = options;
+          if (!elements.dashboard.quoteCard) {
+            return [];
+          }
+          if (!state.token) {
+            if (force) {
+              state.data.quotes = [];
+              state.quote.currentQuoteId = '';
+            }
+            updateDashboardQuote();
+            return [];
+          }
+          if (!force && state.data.quotes.length) {
+            updateDashboardQuote();
+            return state.data.quotes.slice();
+          }
+          try {
+            const quotes = await server.listQuotes(state.token, { approvedOnly: true });
+            state.data.quotes = Array.isArray(quotes) ? quotes.filter((quote) => quote && quote.Text) : [];
+            if (!state.data.quotes.length) {
+              state.quote.currentQuoteId = '';
+            }
+            updateDashboardQuote();
+            return state.data.quotes;
+          } catch (err) {
+            console.error('Quote refresh failed:', err);
+            if (!silent) {
+              showToast(err && err.message ? err.message : 'Unable to load quotes.', 'error');
+            }
+            updateDashboardQuote();
+            return [];
+          }
+        }
+
+        function updateDashboardQuote() {
+          const card = elements.dashboard.quoteCard;
+          if (!card) {
+            return;
+          }
+          const textEl = elements.dashboard.quoteText;
+          const authorEl = elements.dashboard.quoteAuthor;
+          const isAuthenticated = Boolean(state.token && state.user);
+          const quotes = Array.isArray(state.data.quotes) ? state.data.quotes.filter((quote) => quote && quote.Text) : [];
+          const quote = isAuthenticated ? selectQuoteForDisplay(quotes, state.quote.currentQuoteId) : null;
+          state.quote.currentQuoteId = quote && quote.QuoteID ? quote.QuoteID : '';
+
+          if (textEl) {
+            if (!isAuthenticated) {
+              textEl.textContent = 'Sign in to unlock inspiration curated by your team.';
+            } else if (!quote) {
+              textEl.textContent = 'No approved quotes yet. Share your first insight below.';
+            } else {
+              textEl.textContent = quote.Text;
+            }
+          }
+
+          if (authorEl) {
+            if (quote && quote.Author) {
+              authorEl.textContent = `— ${quote.Author}`;
+              authorEl.classList.remove('hidden');
+            } else if (quote) {
+              authorEl.textContent = '— Anonymous';
+              authorEl.classList.remove('hidden');
+            } else {
+              authorEl.textContent = '';
+              authorEl.classList.add('hidden');
+            }
+          }
+
+          const refreshButton = elements.dashboard.quoteRefreshButton;
+          if (refreshButton) {
+            refreshButton.disabled = !isAuthenticated;
+            refreshButton.classList.toggle('opacity-60', !isAuthenticated);
+          }
+
+          const textInput = elements.dashboard.quoteTextInput;
+          const authorInput = elements.dashboard.quoteAuthorInput;
+          const submitButton = elements.dashboard.quoteSubmitButton;
+          const inputs = [textInput, authorInput];
+          inputs.forEach((input) => {
+            if (!input) return;
+            input.disabled = !isAuthenticated;
+            input.classList.toggle('opacity-60', !isAuthenticated);
+          });
+          if (submitButton) {
+            submitButton.disabled = !isAuthenticated;
+            submitButton.classList.toggle('opacity-60', !isAuthenticated);
+          }
+        }
+
+        async function handleQuoteSubmit(event) {
+          event.preventDefault();
+          if (!state.token) {
+            showToast('Sign in to share a quote.', 'error');
+            return;
+          }
+          const textInput = elements.dashboard.quoteTextInput;
+          const authorInput = elements.dashboard.quoteAuthorInput;
+          const submitButton = elements.dashboard.quoteSubmitButton;
+          const textValue = textInput ? String(textInput.value || '').trim() : '';
+          const authorValue = authorInput ? String(authorInput.value || '').trim() : '';
+          if (!textValue) {
+            showToast('Add a quote before submitting.', 'error');
+            return;
+          }
+          setButtonLoading(submitButton, true);
+          try {
+            const result = await server.addQuote(state.token, textValue, authorValue || undefined);
+            if (textInput) {
+              textInput.value = '';
+            }
+            if (authorInput) {
+              authorInput.value = '';
+            }
+            const approvedMessage =
+              result && result.Approved
+                ? 'Quote published to the dashboard.'
+                : 'Quote submitted for approval.';
+            showToast(approvedMessage, 'success');
+            await refreshDashboardQuote({ silent: true, force: true });
+            return result;
+          } catch (err) {
+            console.error('Quote submission failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to submit quote.', 'error');
+          } finally {
+            setButtonLoading(submitButton, false);
+          }
+        }
+
+        async function handleBulkTaskAction(actionType, taskIds, actionOptions = {}, requestOptions = {}) {
+          if (!state.token) {
+            showToast('Sign in to manage tasks in bulk.', 'error');
+            return null;
+          }
+          const source = Array.isArray(taskIds) ? taskIds : [taskIds];
+          const normalizedIds = source
+            .map((value) => String(value || '').trim())
+            .filter((value, index, array) => value && array.indexOf(value) === index);
+          if (!normalizedIds.length) {
+            showToast('Select at least one task before running a bulk action.', 'error');
+            return null;
+          }
+          let actionPayload = actionOptions;
+          if (typeof actionPayload === 'string') {
+            actionPayload = actionPayload || actionType;
+          } else if (actionPayload && typeof actionPayload === 'object' && !Array.isArray(actionPayload)) {
+            actionPayload = Object.assign({}, actionPayload);
+            if (!actionPayload.type) {
+              actionPayload.type = actionType;
+            }
+          } else {
+            actionPayload = { type: actionType };
+          }
+          try {
+            const result = await server.bulkUpdateTasks(state.token, normalizedIds, actionPayload, requestOptions);
+            const updatedCount = Array.isArray(result && result.updated) ? result.updated.length : 0;
+            const deletedCount = Array.isArray(result && result.deleted) ? result.deleted.length : 0;
+            const successCount = updatedCount + deletedCount;
+            const errorCount = Array.isArray(result && result.errors) ? result.errors.length : 0;
+            const actionKey = typeof actionType === 'string' ? actionType.toLowerCase() : '';
+            const actionLabels = { complete: 'completed', assign: 'assigned', delete: 'deleted' };
+            if (successCount) {
+              const label = actionLabels[actionKey] || 'updated';
+              showToast(
+                `Bulk action ${label} ${successCount} task${successCount === 1 ? '' : 's'}.`,
+                'success'
+              );
+            } else if (!errorCount) {
+              showToast('No tasks were updated.', 'info');
+            }
+            if (errorCount) {
+              const firstError = result.errors[0];
+              const message =
+                errorCount === 1 && firstError && firstError.message
+                  ? firstError.message
+                  : `${errorCount} tasks failed. ${
+                      firstError && firstError.message ? firstError.message : 'Check permissions.'
+                    }`;
+              showToast(message, 'error');
+            }
+            if (Array.isArray(result && result.updated)) {
+              result.updated.forEach((task) => mergeTaskIntoState(task));
+            }
+            await refreshWorkspaceData({ silent: true });
+            return result;
+          } catch (err) {
+            console.error('Bulk action failed:', err);
+            showToast(err && err.message ? err.message : 'Bulk action failed.', 'error');
+            throw err;
+          }
+        }
+
+        async function handleTaskDuplicate(taskId) {
+          if (!state.token) {
+            showToast('Sign in to duplicate tasks.', 'error');
+            return null;
+          }
+          const normalizedId = String(taskId || '').trim();
+          if (!normalizedId) {
+            showToast('Select a task to duplicate.', 'error');
+            return null;
+          }
+          try {
+            const duplicated = await server.duplicateTask(state.token, normalizedId);
+            if (duplicated) {
+              mergeTaskIntoState(duplicated);
+              showToast('Task duplicated.', 'success');
+            }
+            await refreshWorkspaceData({ silent: true });
+            return duplicated;
+          } catch (err) {
+            console.error('Duplicate task failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to duplicate task.', 'error');
+            throw err;
+          }
         }
 
         function openBulkUploadModal() {
@@ -2395,6 +2738,7 @@ function resetKanbanState() { /* keep Main logic */ }
 renderAdminPanel();
 updateBulkUploadAvailability();
 updateIdentityBadges(isAuthenticated);
+updateDashboardQuote();
 
           renderKanbanBoard();
           updateDashboardMetrics();
@@ -2490,6 +2834,7 @@ updateIdentityBadges(isAuthenticated);
             renderKanbanBoard();
             renderAnalyticsCharts();
             cacheTasksSnapshot(state.data.tasks);
+            await refreshDashboardQuote({ silent: true, force: true });
           } catch (err) {
             console.error('Failed to refresh workspace data:', err);
             showToast(err && err.message ? err.message : 'Unable to refresh analytics.', 'error');
@@ -2503,6 +2848,7 @@ updateIdentityBadges(isAuthenticated);
               renderKanbanBoard();
               renderAnalyticsCharts();
             }
+            await refreshDashboardQuote({ silent: true, force: true });
           } finally {
             analyticsState.isLoading = false;
             if (elements.analytics.refreshButton && !silent) {
@@ -3457,6 +3803,8 @@ updateIdentityBadges(isAuthenticated);
           state.data.tasks = [];
           state.data.moods = [];
           state.data.templates = [];
+          state.data.quotes = [];
+          state.quote.currentQuoteId = '';
           analyticsState.lastUpdated = null;
           updateAnalyticsTimestamp();
           destroyChart('velocity');
@@ -3503,6 +3851,7 @@ updateIdentityBadges(isAuthenticated);
           updateFocusStatus('ready');
           updateFocusControls();
           updateFocusHistoryUi();
+          updateDashboardQuote();
 if (taskModalState.isOpen) {
   closeTaskModal();
 } else {
@@ -3671,6 +4020,14 @@ setWorkspaceLoading(false);
         function clampNumber(value, min, max) {
           return Math.min(Math.max(value, min), max);
 
+        }
+
+        if (typeof window !== 'undefined') {
+          window.AuraFlow = Object.assign(window.AuraFlow || {}, {
+            bulkAction: handleBulkTaskAction,
+            duplicateTask: handleTaskDuplicate,
+            refreshQuote: refreshDashboardQuote,
+          });
         }
       })();
 
