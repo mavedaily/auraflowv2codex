@@ -46,6 +46,7 @@
       };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
       :root {
         color-scheme: dark;
@@ -768,9 +769,38 @@
                   <p class="font-medium text-slate-300">Team Directory</p>
                   <p class="mt-3 text-sm text-slate-500">View and manage role-based access across the org.</p>
                 </div>
-                <div class="rounded-2xl border border-dashed border-white/10 p-6">
-                  <p class="font-medium text-slate-300">Bulk Ops</p>
-                  <p class="mt-3 text-sm text-slate-500">Upload CSVs/XLSX to seed large workstreams in a flash.</p>
+                <div id="adminBulkCard" class="rounded-2xl border border-white/10 bg-slate-950/40 p-6">
+                  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p class="font-medium text-slate-300">Bulk Ops</p>
+                      <p class="mt-1 text-sm text-slate-500">
+                        Upload CSV or XLSX files with Task, Duration, Category, Priority, Assignee, and Date columns.
+                      </p>
+                    </div>
+                    <button
+                      id="bulkUploadTrigger"
+                      type="button"
+                      class="inline-flex items-center justify-center rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Launch Bulk Upload
+                    </button>
+                  </div>
+                  <ul class="mt-4 space-y-2 text-xs text-slate-400">
+                    <li class="flex items-start gap-2">
+                      <span class="mt-0.5 text-aura-primary">•</span>
+                      <span>
+                        Required columns:
+                        <span class="font-medium text-slate-200">Task, Duration, Category, Priority, Assignee, Date</span>.
+                      </span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="mt-0.5 text-aura-primary">•</span>
+                      <span>Optional: Labels, Notes, Resources, Status.</span>
+                    </li>
+                  </ul>
+                  <p id="bulkUploadRestrictionNotice" class="mt-4 text-xs text-slate-500">
+                    Bulk upload is available for Admin, Sub-Admin, or Manager roles.
+                  </p>
                 </div>
               </div>
             </div>
@@ -783,6 +813,94 @@
         Aura Flow V2 — Rare Aura Media Group
       </div>
     </footer>
+
+    <div
+      id="bulkUploadModal"
+      class="fixed inset-0 z-50 hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+    >
+      <div id="bulkUploadModalOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
+      <div class="relative z-10 flex min-h-full items-center justify-center px-4 py-10">
+        <div class="w-full max-w-4xl rounded-3xl border border-white/10 bg-slate-900/90 p-8 shadow-2xl">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h4 class="text-xl font-semibold text-white">Bulk Upload Tasks</h4>
+              <p class="mt-2 text-sm text-slate-400">
+                Preview parsed rows before importing. Required headers: Task, Duration, Category, Priority, Assignee, Date.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+              data-role="bulk-upload-close"
+              aria-label="Close bulk upload modal"
+            >
+              ✕
+            </button>
+          </div>
+          <div class="mt-6 space-y-6">
+            <div>
+              <label class="block text-sm font-medium text-slate-300">
+                Upload file
+                <input
+                  id="bulkUploadFileInput"
+                  type="file"
+                  accept=".csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  class="mt-2 block w-full cursor-pointer rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200 file:mr-4 file:rounded-lg file:border-0 file:bg-aura-primary file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-aura-primary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary/60"
+                />
+              </label>
+              <p id="bulkUploadFileName" class="mt-2 text-xs text-slate-500">No file selected.</p>
+            </div>
+            <div>
+              <div
+                id="bulkUploadPreviewEmpty"
+                class="rounded-2xl border border-dashed border-white/10 bg-slate-950/50 p-6 text-sm text-slate-400"
+              >
+                Select a CSV or XLSX file to preview tasks.
+              </div>
+              <div
+                id="bulkUploadPreviewWrapper"
+                class="hidden max-h-80 overflow-auto rounded-2xl border border-white/10 bg-slate-950/30"
+              >
+                <table id="bulkUploadPreviewTable" class="min-w-full divide-y divide-white/10 text-sm text-slate-200">
+                  <thead id="bulkUploadPreviewHead" class="bg-white/5 text-xs uppercase tracking-wide text-slate-400"></thead>
+                  <tbody id="bulkUploadPreviewBody" class="divide-y divide-white/10"></tbody>
+                </table>
+              </div>
+              <p id="bulkUploadPreviewSummary" class="mt-3 text-xs text-slate-500"></p>
+              <div
+                id="bulkUploadErrorsContainer"
+                class="mt-4 hidden rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-rose-100"
+              >
+                <p class="text-sm font-medium">Rows skipped</p>
+                <ul id="bulkUploadErrorsList" class="mt-3 space-y-2 text-xs leading-relaxed"></ul>
+              </div>
+            </div>
+          </div>
+          <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              id="bulkUploadCancelButton"
+              type="button"
+              data-role="bulk-upload-close"
+              class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+            >
+              Cancel
+            </button>
+            <button
+              id="bulkUploadConfirmButton"
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-500/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled
+            >
+              <span data-role="spinner" class="hidden h-5 w-5 rounded-full border-2 border-white/40 border-t-white animate-spin"></span>
+              <span data-role="label">Import Tasks</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script>
       const server = new Proxy(
@@ -848,6 +966,9 @@
           'ring-offset-2',
           'ring-offset-slate-950'
         ];
+        const BULK_PREVIEW_LIMIT = 50;
+        const BULK_REQUIRED_COLUMNS = ['Task', 'Duration', 'Category', 'Priority', 'Assignee', 'Date'];
+
         const state = {
           token: null,
           user: null,
@@ -861,7 +982,16 @@
             category: null,
             mood: null,
           },
-          isWorkspaceLoading: false,
+bulkUpload: {
+  fileName: '',
+  headers: [],
+  previewRows: [],
+  records: [],
+  errors: [],
+  isParsing: false,
+},
+isWorkspaceLoading: false,
+
         };
         const focusState = {
           durationMinutes: 25,
@@ -883,6 +1013,7 @@
         const elements = {
           analytics: {},
           focus: {},
+          bulk: {},
           dashboard: {},
           kanban: {
             columns: {},
@@ -935,6 +1066,7 @@
           if (isInitialized) return;
           isInitialized = true;
           cacheElements();
+          resetBulkUploadState();
           enhanceTabButtons();
           setupKanbanBoard();
           bindEvents();
@@ -983,33 +1115,56 @@
           elements.focus.historyList = document.getElementById('focusHistoryList');
           elements.focus.historyEmpty = document.getElementById('focusHistoryEmpty');
           elements.focus.clearHistoryButton = document.getElementById('focusClearHistoryButton');
-          elements.dashboard.section = document.querySelector('[data-tab-panel="dashboard"]');
-          elements.dashboard.skeleton = document.getElementById('dashboardSkeleton');
-          elements.dashboard.metricsContainer = document.getElementById('dashboardMetrics');
-          elements.dashboard.empty = document.getElementById('dashboardEmpty');
-          elements.dashboard.metrics = {
-            today: document.getElementById('metric-today'),
-            complete: document.getElementById('metric-complete'),
-            time: document.getElementById('metric-time'),
-            overdue: document.getElementById('metric-overdue'),
-          };
-          elements.kanban.board = document.getElementById('kanbanBoard');
-          elements.kanban.loading = document.getElementById('kanbanLoading');
-          elements.kanban.empty = document.getElementById('kanbanEmpty');
-          elements.kanban.columns = {};
-          elements.kanban.lists = {};
-          elements.kanban.counts = {};
-          if (elements.kanban.board) {
-            elements.kanban.board.querySelectorAll('[data-kanban-column]').forEach((column) => {
-              const columnId = column.getAttribute('data-kanban-column');
-              if (!columnId) return;
-              elements.kanban.columns[columnId] = column;
-              elements.kanban.lists[columnId] = column.querySelector('[data-kanban-list]');
-              elements.kanban.counts[columnId] = column.querySelector('[data-kanban-count]');
-            });
-          }
-          elements.kanbanBoard = elements.kanban.board;
-          elements.kanbanColumns = elements.kanban.columns;
+// Dashboard elements
+elements.dashboard.section = document.querySelector('[data-tab-panel="dashboard"]');
+elements.dashboard.skeleton = document.getElementById('dashboardSkeleton');
+elements.dashboard.metricsContainer = document.getElementById('dashboardMetrics');
+elements.dashboard.empty = document.getElementById('dashboardEmpty');
+elements.dashboard.metrics = {
+  today: document.getElementById('metric-today'),
+  complete: document.getElementById('metric-complete'),
+  time: document.getElementById('metric-time'),
+  overdue: document.getElementById('metric-overdue'),
+};
+
+// Kanban elements
+elements.kanban.board = document.getElementById('kanbanBoard');
+elements.kanban.loading = document.getElementById('kanbanLoading');
+elements.kanban.empty = document.getElementById('kanbanEmpty');
+elements.kanban.columns = {};
+elements.kanban.lists = {};
+elements.kanban.counts = {};
+if (elements.kanban.board) {
+  elements.kanban.board.querySelectorAll('[data-kanban-column]').forEach((column) => {
+    const columnId = column.getAttribute('data-kanban-column');
+    if (!columnId) return;
+    elements.kanban.columns[columnId] = column;
+    elements.kanban.lists[columnId] = column.querySelector('[data-kanban-list]');
+    elements.kanban.counts[columnId] = column.querySelector('[data-kanban-count]');
+  });
+}
+elements.kanbanBoard = elements.kanban.board;
+elements.kanbanColumns = elements.kanban.columns;
+
+// Bulk Upload elements
+elements.bulk.trigger = document.getElementById('bulkUploadTrigger');
+elements.bulk.modal = document.getElementById('bulkUploadModal');
+elements.bulk.overlay = document.getElementById('bulkUploadModalOverlay');
+elements.bulk.fileInput = document.getElementById('bulkUploadFileInput');
+elements.bulk.fileName = document.getElementById('bulkUploadFileName');
+elements.bulk.previewWrapper = document.getElementById('bulkUploadPreviewWrapper');
+elements.bulk.previewEmpty = document.getElementById('bulkUploadPreviewEmpty');
+elements.bulk.previewTable = document.getElementById('bulkUploadPreviewTable');
+elements.bulk.previewHead = document.getElementById('bulkUploadPreviewHead');
+elements.bulk.previewBody = document.getElementById('bulkUploadPreviewBody');
+elements.bulk.previewSummary = document.getElementById('bulkUploadPreviewSummary');
+elements.bulk.confirmButton = document.getElementById('bulkUploadConfirmButton');
+elements.bulk.cancelButton = document.getElementById('bulkUploadCancelButton');
+elements.bulk.closeButtons = document.querySelectorAll('[data-role="bulk-upload-close"]');
+elements.bulk.errorsContainer = document.getElementById('bulkUploadErrorsContainer');
+elements.bulk.errorsList = document.getElementById('bulkUploadErrorsList');
+elements.bulk.restrictionNotice = document.getElementById('bulkUploadRestrictionNotice');
+
         }
 
         function enhanceTabButtons() {
@@ -1104,6 +1259,23 @@
           }
           if (elements.focus.clearHistoryButton) {
             elements.focus.clearHistoryButton.addEventListener('click', clearFocusHistory);
+          }
+          if (elements.bulk.trigger) {
+            elements.bulk.trigger.addEventListener('click', openBulkUploadModal);
+          }
+          if (elements.bulk.fileInput) {
+            elements.bulk.fileInput.addEventListener('change', handleBulkFileChange);
+          }
+          if (elements.bulk.closeButtons && elements.bulk.closeButtons.length) {
+            elements.bulk.closeButtons.forEach((btn) => {
+              btn.addEventListener('click', closeBulkUploadModal);
+            });
+          }
+          if (elements.bulk.overlay) {
+            elements.bulk.overlay.addEventListener('click', closeBulkUploadModal);
+          }
+          if (elements.bulk.confirmButton) {
+            elements.bulk.confirmButton.addEventListener('click', handleBulkUploadConfirm);
           }
         }
 
@@ -1533,6 +1705,465 @@
           if (label) label.classList.toggle('opacity-0', isLoading);
         }
 
+        function openBulkUploadModal() {
+          if (!state.token) {
+            showToast('Sign in to use bulk upload.', 'error');
+            return;
+          }
+          if (!canCurrentUserBulkUpload()) {
+            showToast('Bulk upload is available for Admin, Sub-Admin, or Manager roles.', 'error');
+            return;
+          }
+          resetBulkUploadState();
+          if (elements.bulk.modal) {
+            elements.bulk.modal.classList.remove('hidden');
+            elements.bulk.modal.setAttribute('aria-hidden', 'false');
+          }
+          if (elements.bulk.fileInput) {
+            elements.bulk.fileInput.focus();
+          }
+          document.addEventListener('keydown', handleBulkUploadKeydown);
+        }
+
+        function closeBulkUploadModal() {
+          if (elements.bulk.confirmButton && elements.bulk.confirmButton.getAttribute('aria-busy') === 'true') {
+            return;
+          }
+          if (elements.bulk.modal) {
+            elements.bulk.modal.classList.add('hidden');
+            elements.bulk.modal.setAttribute('aria-hidden', 'true');
+          }
+          document.removeEventListener('keydown', handleBulkUploadKeydown);
+          resetBulkUploadState();
+        }
+
+        function resetBulkUploadState() {
+          state.bulkUpload.fileName = '';
+          state.bulkUpload.headers = [];
+          state.bulkUpload.previewRows = [];
+          state.bulkUpload.records = [];
+          state.bulkUpload.errors = [];
+          state.bulkUpload.isParsing = false;
+          if (elements.bulk.fileInput) {
+            elements.bulk.fileInput.value = '';
+          }
+          if (elements.bulk.fileName) {
+            elements.bulk.fileName.textContent = 'No file selected.';
+          }
+          renderBulkUploadPreview();
+          renderBulkUploadErrors();
+          updateBulkUploadActions();
+        }
+
+        async function handleBulkFileChange(event) {
+          const input = event && event.target;
+          const files = input && input.files;
+          const file = files && files[0];
+          state.bulkUpload.errors = [];
+          renderBulkUploadErrors();
+          if (!file) {
+            state.bulkUpload.fileName = '';
+            state.bulkUpload.headers = [];
+            state.bulkUpload.previewRows = [];
+            state.bulkUpload.records = [];
+            state.bulkUpload.isParsing = false;
+            if (elements.bulk.fileName) {
+              elements.bulk.fileName.textContent = 'No file selected.';
+            }
+            renderBulkUploadPreview();
+            updateBulkUploadActions();
+            return;
+          }
+          state.bulkUpload.isParsing = true;
+          state.bulkUpload.fileName = file.name || '';
+          if (elements.bulk.fileName) {
+            elements.bulk.fileName.textContent = file.name || 'Parsing…';
+          }
+          renderBulkUploadPreview();
+          updateBulkUploadActions();
+          try {
+            const parsed = await parseBulkUploadFile(file);
+            state.bulkUpload.headers = parsed.headers;
+            state.bulkUpload.previewRows = parsed.previewRows;
+            state.bulkUpload.records = parsed.records;
+            state.bulkUpload.isParsing = false;
+            renderBulkUploadPreview();
+            updateBulkUploadActions();
+            if (!parsed.records.length) {
+              showToast('No rows detected. Check the header row.', 'error');
+            }
+          } catch (err) {
+            console.error('Bulk upload parse error:', err);
+            state.bulkUpload.headers = [];
+            state.bulkUpload.previewRows = [];
+            state.bulkUpload.records = [];
+            state.bulkUpload.isParsing = false;
+            if (elements.bulk.fileName) {
+              elements.bulk.fileName.textContent = 'No file selected.';
+            }
+            renderBulkUploadPreview();
+            updateBulkUploadActions();
+            showToast(err && err.message ? err.message : 'Unable to parse file.', 'error');
+          }
+        }
+
+        async function parseBulkUploadFile(file) {
+          if (!file) {
+            return { headers: [], previewRows: [], records: [] };
+          }
+          if (typeof XLSX === 'undefined' || !XLSX || typeof XLSX.read !== 'function') {
+            throw new Error('Bulk upload parser is unavailable.');
+          }
+          const arrayBuffer = await file.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const sheetName = workbook.SheetNames && workbook.SheetNames[0];
+          if (!sheetName) {
+            throw new Error('File has no sheets.');
+          }
+          const worksheet = workbook.Sheets[sheetName];
+          const raw = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+          if (!raw.length) {
+            throw new Error('File is empty.');
+          }
+          const headerRow = raw[0].map((cell, index) => {
+            const label = cell !== undefined && cell !== null ? String(cell).trim() : '';
+            return label || `Column ${index + 1}`;
+          });
+          const canonicalKeys = headerRow.map((header) => determineBulkCanonicalKey(header));
+          const previewRows = [];
+          const records = [];
+          for (let rowIndex = 1; rowIndex < raw.length; rowIndex++) {
+            const row = raw[rowIndex];
+            if (!row || !Array.isArray(row)) {
+              continue;
+            }
+            let hasValue = false;
+            const previewRow = [];
+            const record = {};
+            for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
+              const value = row[colIndex];
+              if (value !== undefined && value !== null && value !== '') {
+                hasValue = true;
+              }
+              previewRow.push(value);
+              const canonicalKey = canonicalKeys[colIndex];
+              if (canonicalKey) {
+                if (record[canonicalKey] === undefined) {
+                  record[canonicalKey] = value;
+                }
+              } else {
+                const originalHeader = headerRow[colIndex];
+                if (originalHeader && record[originalHeader] === undefined) {
+                  record[originalHeader] = value;
+                }
+              }
+            }
+            if (hasValue) {
+              previewRows.push(previewRow);
+              records.push(record);
+            }
+          }
+          return { headers: headerRow, previewRows, records };
+        }
+
+        function determineBulkCanonicalKey(header) {
+          if (header === undefined || header === null) {
+            return '';
+          }
+          const normalized = String(header).trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+          if (!normalized) {
+            return '';
+          }
+          const map = {
+            task: 'Task',
+            taskname: 'Task',
+            name: 'Task',
+            title: 'Task',
+            workitem: 'Task',
+            duration: 'Duration',
+            durationmins: 'Duration',
+            durationminutes: 'Duration',
+            minutes: 'Duration',
+            mins: 'Duration',
+            category: 'Category',
+            type: 'Category',
+            stream: 'Category',
+            priority: 'Priority',
+            assignee: 'Assignee',
+            assigneeemail: 'Assignee',
+            owner: 'Assignee',
+            assignedto: 'Assignee',
+            collaborator: 'Assignee',
+            date: 'Date',
+            duedate: 'Date',
+            due: 'Date',
+            dueat: 'Date',
+            deadline: 'Date',
+            labels: 'Labels',
+            label: 'Labels',
+            tags: 'Labels',
+            tag: 'Labels',
+            notes: 'Notes',
+            note: 'Notes',
+            description: 'Notes',
+            summary: 'Notes',
+            resources: 'Resources',
+            resource: 'Resources',
+            links: 'Resources',
+            link: 'Resources',
+            url: 'Resources',
+            urls: 'Resources',
+            status: 'Status',
+          };
+          return map[normalized] || '';
+        }
+
+        function renderBulkUploadPreview() {
+          const emptyState = elements.bulk.previewEmpty;
+          const wrapper = elements.bulk.previewWrapper;
+          const head = elements.bulk.previewHead;
+          const body = elements.bulk.previewBody;
+          const summary = elements.bulk.previewSummary;
+          if (!head || !body) {
+            if (emptyState) {
+              emptyState.textContent = state.bulkUpload.isParsing
+                ? 'Parsing file…'
+                : 'Select a CSV or XLSX file to preview tasks.';
+            }
+            if (summary && !state.bulkUpload.records.length) {
+              summary.textContent = '';
+            }
+            return;
+          }
+          head.innerHTML = '';
+          body.innerHTML = '';
+          if (!state.bulkUpload.records.length) {
+            if (emptyState) {
+              emptyState.classList.remove('hidden');
+              emptyState.textContent = state.bulkUpload.isParsing
+                ? 'Parsing file…'
+                : 'Select a CSV or XLSX file to preview tasks.';
+            }
+            if (wrapper) {
+              wrapper.classList.add('hidden');
+            }
+            if (summary) {
+              summary.textContent = state.bulkUpload.isParsing
+                ? ''
+                : `Accepted columns: ${BULK_REQUIRED_COLUMNS.join(', ')}.`;
+            }
+            return;
+          }
+          if (emptyState) {
+            emptyState.classList.add('hidden');
+          }
+          if (wrapper) {
+            wrapper.classList.remove('hidden');
+          }
+          const headerRow = document.createElement('tr');
+          state.bulkUpload.headers.forEach((header) => {
+            const th = document.createElement('th');
+            th.scope = 'col';
+            th.className = 'px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400';
+            th.textContent = header;
+            headerRow.appendChild(th);
+          });
+          head.appendChild(headerRow);
+          const previewRows = state.bulkUpload.previewRows.slice(0, BULK_PREVIEW_LIMIT);
+          previewRows.forEach((row) => {
+            const tr = document.createElement('tr');
+            row.forEach((value) => {
+              const td = document.createElement('td');
+              td.className = 'px-4 py-2 text-sm text-slate-200/90';
+              td.textContent = formatBulkPreviewValue(value);
+              tr.appendChild(td);
+            });
+            body.appendChild(tr);
+          });
+          if (summary) {
+            const total = state.bulkUpload.previewRows.length;
+            const shown = previewRows.length;
+            const remaining = total - shown;
+            summary.textContent = remaining > 0
+              ? `Prepared ${total} row${total === 1 ? '' : 's'}. Showing first ${shown}. ${remaining} more row${remaining === 1 ? '' : 's'} off-screen.`
+              : `Prepared ${total} row${total === 1 ? '' : 's'} for import.`;
+          }
+        }
+
+        function formatBulkPreviewValue(value) {
+          if (value === null || value === undefined) {
+            return '';
+          }
+          if (Object.prototype.toString.call(value) === '[object Date]') {
+            return Number.isNaN(value.getTime()) ? '' : value.toISOString().slice(0, 10);
+          }
+          if (typeof value === 'number') {
+            if (!Number.isFinite(value)) {
+              return '';
+            }
+            return String(value);
+          }
+          return String(value);
+        }
+
+        function renderBulkUploadErrors() {
+          const container = elements.bulk.errorsContainer;
+          const list = elements.bulk.errorsList;
+          if (!container || !list) {
+            return;
+          }
+          list.innerHTML = '';
+          if (!state.bulkUpload.errors.length) {
+            container.classList.add('hidden');
+            return;
+          }
+          container.classList.remove('hidden');
+          const limit = 10;
+          state.bulkUpload.errors.slice(0, limit).forEach((error) => {
+            const li = document.createElement('li');
+            const rowNumber =
+              typeof error.index === 'number' && !Number.isNaN(error.index)
+                ? error.index + 1
+                : null;
+            li.textContent = rowNumber ? `Row ${rowNumber}: ${error.message}` : error.message || 'Row failed.';
+            list.appendChild(li);
+          });
+          if (state.bulkUpload.errors.length > limit) {
+            const extra = document.createElement('li');
+            extra.className = 'opacity-80';
+            extra.textContent = `+${state.bulkUpload.errors.length - limit} more issue(s) not shown.`;
+            list.appendChild(extra);
+          }
+        }
+
+        function updateBulkUploadActions() {
+          const confirmButton = elements.bulk.confirmButton;
+          if (!confirmButton) {
+            return;
+          }
+          const isLoading = confirmButton.getAttribute('aria-busy') === 'true';
+          if (isLoading) {
+            confirmButton.classList.remove('opacity-60');
+            return;
+          }
+          const ready = state.bulkUpload.records.length > 0 && !state.bulkUpload.isParsing;
+          confirmButton.disabled = !ready;
+          confirmButton.classList.toggle('opacity-60', !ready);
+        }
+
+        async function handleBulkUploadConfirm(event) {
+          if (event) {
+            event.preventDefault();
+          }
+          if (!state.token) {
+            showToast('Sign in to use bulk upload.', 'error');
+            return;
+          }
+          if (!canCurrentUserBulkUpload()) {
+            showToast('Bulk upload is available for Admin, Sub-Admin, or Manager roles.', 'error');
+            return;
+          }
+          if (!state.bulkUpload.records.length) {
+            showToast('Select a CSV or XLSX file before importing.', 'error');
+            return;
+          }
+          const confirmButton = elements.bulk.confirmButton;
+          const cancelButton = elements.bulk.cancelButton;
+          try {
+            setButtonLoading(confirmButton, true);
+            if (cancelButton) {
+              cancelButton.disabled = true;
+              cancelButton.classList.add('opacity-60');
+            }
+            const result = await server.bulkUploadTasks(state.token, state.bulkUpload.records);
+            const inserted = result && typeof result.inserted === 'number' ? result.inserted : 0;
+            const errors = Array.isArray(result && result.errors) ? result.errors : [];
+            state.bulkUpload.errors = errors;
+            renderBulkUploadErrors();
+            if (errors.length) {
+              const failedIndices = new Set(
+                errors
+                  .map((error) => error.index)
+                  .filter((index) => typeof index === 'number' && !Number.isNaN(index))
+              );
+              if (failedIndices.size) {
+                state.bulkUpload.records = state.bulkUpload.records.filter((_, index) => failedIndices.has(index));
+                state.bulkUpload.previewRows = state.bulkUpload.previewRows.filter((_, index) => failedIndices.has(index));
+              } else {
+                state.bulkUpload.records = [];
+                state.bulkUpload.previewRows = [];
+              }
+            } else {
+              state.bulkUpload.records = [];
+              state.bulkUpload.previewRows = [];
+            }
+            renderBulkUploadPreview();
+            updateBulkUploadActions();
+            if (inserted > 0) {
+              if (errors.length) {
+                showToast(`Imported ${inserted} task${inserted === 1 ? '' : 's'}. ${errors.length} row(s) need attention.`, 'info');
+              } else {
+                showToast(`Imported ${inserted} task${inserted === 1 ? '' : 's'} successfully.`, 'success');
+              }
+              await refreshWorkspaceData({ silent: true });
+              if (!errors.length) {
+                closeBulkUploadModal();
+              }
+            } else if (errors.length) {
+              showToast(`No tasks imported. ${errors.length} row(s) need fixes.`, 'error');
+            } else {
+              showToast('No tasks were imported.', 'error');
+            }
+          } catch (err) {
+            console.error('Bulk upload failed:', err);
+            showToast(err && err.message ? err.message : 'Bulk upload failed.', 'error');
+          } finally {
+            setButtonLoading(confirmButton, false);
+            if (cancelButton) {
+              cancelButton.disabled = false;
+              cancelButton.classList.remove('opacity-60');
+            }
+            updateBulkUploadActions();
+          }
+        }
+
+        function handleBulkUploadKeydown(event) {
+          if (event.key === 'Escape') {
+            if (elements.bulk.modal && elements.bulk.modal.classList.contains('hidden')) {
+              return;
+            }
+            event.preventDefault();
+            closeBulkUploadModal();
+          }
+        }
+
+        function canCurrentUserBulkUpload() {
+          const role = state.user && state.user.Role ? String(state.user.Role) : '';
+          return role === 'Admin' || role === 'Sub-Admin' || role === 'Manager';
+        }
+
+        function updateBulkUploadAvailability() {
+          const trigger = elements.bulk.trigger;
+          const notice = elements.bulk.restrictionNotice;
+          const isAuthenticated = Boolean(state.token && state.user);
+          const allowed = isAuthenticated && canCurrentUserBulkUpload();
+          if (trigger) {
+            trigger.disabled = !allowed;
+            trigger.classList.toggle('opacity-60', !allowed);
+            trigger.classList.toggle('cursor-not-allowed', !allowed);
+            trigger.setAttribute('aria-disabled', !allowed ? 'true' : 'false');
+          }
+          if (notice) {
+            if (!isAuthenticated) {
+              notice.textContent = 'Sign in with an Admin, Sub-Admin, or Manager account to enable bulk upload.';
+            } else if (allowed) {
+              notice.textContent = `Signed in as ${state.user.Role}. Include ${BULK_REQUIRED_COLUMNS.join(', ')} in your header row.`;
+            } else {
+              notice.textContent = 'Bulk upload is available for Admin, Sub-Admin, or Manager roles.';
+            }
+          }
+        }
+
         function setActiveTab(tabId) {
           if (!tabs.includes(tabId)) {
             return;
@@ -1588,6 +2219,13 @@
           if (elements.appView) {
             elements.appView.classList.toggle('hidden', !isAuthenticated);
           }
+          if (elements.userBadge) {
+            elements.userBadge.textContent = isAuthenticated ? state.user.Email : 'Not authenticated';
+          }
+          if (elements.roleBadge) {
+            elements.roleBadge.textContent = isAuthenticated && state.user.Role ? state.user.Role : '';
+          }
+          updateBulkUploadAvailability();
           updateIdentityBadges(isAuthenticated);
           renderKanbanBoard();
           updateDashboardMetrics();
@@ -1608,6 +2246,8 @@
           state.token = null;
           state.user = null;
           resetWorkspaceData();
+          resetBulkUploadState();
+          updateBulkUploadAvailability();
           try {
             localStorage.removeItem(STORAGE_KEY);
           } catch (err) {
