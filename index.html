@@ -228,42 +228,215 @@
           </section>
 
           <section data-tab-panel="analytics" class="tab-panel hidden">
-            <div class="rounded-3xl bg-slate-900/70 border border-white/5 p-8">
-              <h3 class="text-2xl font-semibold text-white">Analytics &amp; Insights</h3>
-              <p class="mt-4 text-sm text-slate-400">
-                Chart.js visualizations for completion velocity, time distribution, and mood trends will activate once task and mood datasets flow in.
-              </p>
-              <div class="mt-10 grid gap-6 lg:grid-cols-2">
-                <div class="aspect-[4/3] rounded-2xl border border-dashed border-white/10 bg-slate-950/60 flex items-center justify-center text-slate-500">
-                  Completion Rate Chart Placeholder
+            <div class="space-y-8">
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div class="space-y-2">
+                  <h3 class="text-2xl font-semibold text-white">Analytics &amp; Insights</h3>
+                  <p class="text-sm text-slate-400">
+                    Track throughput, time allocation, and sentiment with live dashboards sourced from Tasks and Moods services.
+                  </p>
                 </div>
-                <div class="aspect-[4/3] rounded-2xl border border-dashed border-white/10 bg-slate-950/60 flex items-center justify-center text-slate-500">
-                  Time by Category Chart Placeholder
+                <div class="flex items-center gap-3">
+                  <span id="analyticsRefreshTime" class="text-xs text-slate-500">Awaiting data…</span>
+                  <button
+                    id="analyticsRefreshButton"
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                  >
+                    <span data-role="spinner" class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-transparent"></span>
+                    <span data-role="label">Refresh</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid gap-6 xl:grid-cols-2">
+                <div class="relative overflow-hidden rounded-3xl border border-white/5 bg-slate-900/70 p-6">
+                  <div class="flex items-center justify-between gap-2">
+                    <div>
+                      <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Delivery</p>
+                      <h4 class="mt-1 text-lg font-semibold text-white">Completion Velocity</h4>
+                    </div>
+                    <span id="velocityMetric" class="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">—</span>
+                  </div>
+                  <p class="mt-3 text-sm text-slate-400">Closed tasks across the last 14 days.</p>
+                  <div class="mt-6 h-64">
+                    <canvas id="completionVelocityChart" role="img" aria-label="Completion velocity line chart"></canvas>
+                  </div>
+                  <div
+                    id="velocityChartEmpty"
+                    class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-slate-950/75 px-8 text-center text-sm font-medium text-slate-400 backdrop-blur-sm"
+                  >
+                    No completed tasks yet — close work to unlock velocity insights.
+                  </div>
+                </div>
+
+                <div class="relative overflow-hidden rounded-3xl border border-white/5 bg-slate-900/70 p-6">
+                  <div class="flex items-center justify-between gap-2">
+                    <div>
+                      <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Time</p>
+                      <h4 class="mt-1 text-lg font-semibold text-white">Time by Category</h4>
+                    </div>
+                    <span id="categoryMetric" class="rounded-full bg-aura-primary/10 px-3 py-1 text-xs font-medium text-aura-primary/90">—</span>
+                  </div>
+                  <p class="mt-3 text-sm text-slate-400">Aggregated duration estimates grouped by task category.</p>
+                  <div class="mt-6 h-64">
+                    <canvas id="timeByCategoryChart" role="img" aria-label="Time by category doughnut chart"></canvas>
+                  </div>
+                  <div
+                    id="categoryChartEmpty"
+                    class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-slate-950/75 px-8 text-center text-sm font-medium text-slate-400 backdrop-blur-sm"
+                  >
+                    Add duration estimates to your tasks to visualize category distribution.
+                  </div>
+                </div>
+              </div>
+
+              <div class="relative overflow-hidden rounded-3xl border border-white/5 bg-slate-900/70 p-6">
+                <div class="flex items-center justify-between gap-2">
+                  <div>
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Sentiment</p>
+                    <h4 class="mt-1 text-lg font-semibold text-white">Mood Trends</h4>
+                  </div>
+                  <span id="moodMetric" class="rounded-full bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300">—</span>
+                </div>
+                <p class="mt-3 text-sm text-slate-400">Average mood intensity recorded from focus sessions.</p>
+                <div class="mt-6 h-64">
+                  <canvas id="moodTrendChart" role="img" aria-label="Mood trends line chart"></canvas>
+                </div>
+                <div
+                  id="moodChartEmpty"
+                  class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-slate-950/75 px-8 text-center text-sm font-medium text-slate-400 backdrop-blur-sm"
+                >
+                  Log a focus session to begin charting team sentiment.
                 </div>
               </div>
             </div>
           </section>
 
           <section data-tab-panel="focus" class="tab-panel hidden">
-            <div class="rounded-3xl bg-slate-900/70 border border-white/5 p-8">
-              <h3 class="text-2xl font-semibold text-white">Focus Mode</h3>
-              <p class="mt-4 text-sm text-slate-400">
-                Pomodoro timers, ambient soundscapes, and session summaries will arrive shortly to keep momentum tight.
-              </p>
-              <div class="mt-8 grid gap-6 md:grid-cols-3">
-                <div class="rounded-2xl border border-dashed border-white/10 p-6">
-                  <p class="font-medium text-slate-300">Timer Controls</p>
-                  <p class="mt-3 text-sm text-slate-500">Quick-start focus blocks with break reminders.</p>
+            <div class="grid gap-8 xl:grid-cols-[2fr,1fr]">
+              <div class="space-y-8 rounded-3xl border border-white/5 bg-slate-900/70 p-8">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 class="text-2xl font-semibold text-white">Focus Mode</h3>
+                    <p class="mt-2 text-sm text-slate-400">Run structured Pomodoro sessions that automatically sync activity and mood analytics.</p>
+                  </div>
+                  <span
+                    id="focusStatusBadge"
+                    class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-slate-200"
+                  >
+                    <span data-role="focus-status-dot" class="h-2.5 w-2.5 rounded-full bg-emerald-400/70"></span>
+                    <span data-role="focus-status-text">Ready</span>
+                  </span>
                 </div>
-                <div class="rounded-2xl border border-dashed border-white/10 p-6">
-                  <p class="font-medium text-slate-300">Mood Log</p>
-                  <p class="mt-3 text-sm text-slate-500">Capture how each session felt to sharpen retrospectives.</p>
+
+                <div class="rounded-2xl border border-white/5 bg-slate-950/60 p-8 text-center">
+                  <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Current Session</p>
+                  <p id="focusTimerDisplay" class="mt-4 text-6xl font-semibold tracking-tight text-white tabular-nums">25:00</p>
+                  <p id="focusTimerSubtitle" class="mt-2 text-sm text-slate-400">Default Pomodoro — 25 minutes</p>
+                  <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      id="focusStartButton"
+                      type="button"
+                      class="inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
+                    >
+                      Start
+                    </button>
+                    <button
+                      id="focusPauseButton"
+                      type="button"
+                      class="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+                    >
+                      Pause
+                    </button>
+                    <button
+                      id="focusResetButton"
+                      type="button"
+                      class="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+                    >
+                      Reset
+                    </button>
+                  </div>
                 </div>
-                <div class="rounded-2xl border border-dashed border-white/10 p-6">
-                  <p class="font-medium text-slate-300">Activity Sync</p>
-                  <p class="mt-3 text-sm text-slate-500">Automatically update activity logs as sessions start and end.</p>
+
+                <div class="grid gap-6 md:grid-cols-2">
+                  <label class="grid gap-2">
+                    <span class="text-sm font-medium text-slate-200">Session Length (minutes)</span>
+                    <input
+                      id="focusDurationInput"
+                      type="number"
+                      min="5"
+                      max="90"
+                      step="5"
+                      value="25"
+                      class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                    />
+                    <span class="text-xs text-slate-500">Default Pomodoro cadence. Adjust before you start.</span>
+                  </label>
+                  <label class="grid gap-2">
+                    <span class="text-sm font-medium text-slate-200">Anchor Task</span>
+                    <select
+                      id="focusTaskSelect"
+                      class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                    >
+                      <option value="">Select a task</option>
+                    </select>
+                    <span class="text-xs text-slate-500">Link your focus block to a task for logging.</span>
+                  </label>
+                  <label class="grid gap-2 md:col-span-2">
+                    <span class="text-sm font-medium text-slate-200">How are you arriving to this session?</span>
+                    <select
+                      id="focusMoodSelect"
+                      class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                    >
+                      <option value="focused">Focused</option>
+                      <option value="energized">Energized</option>
+                      <option value="neutral" selected>Neutral</option>
+                      <option value="calm">Calm</option>
+                      <option value="stressed">Stressed</option>
+                      <option value="drained">Drained</option>
+                    </select>
+                    <span class="text-xs text-slate-500">We’ll record this mood when the timer completes.</span>
+                  </label>
+                </div>
+
+                <div>
+                  <div class="flex items-center justify-between gap-2">
+                    <h4 class="text-sm font-semibold text-white">Recent Sessions</h4>
+                    <button id="focusClearHistoryButton" type="button" class="text-xs text-slate-500 transition hover:text-slate-300">
+                      Clear
+                    </button>
+                  </div>
+                  <div
+                    id="focusHistoryEmpty"
+                    class="mt-4 rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-6 text-center text-sm text-slate-500"
+                  >
+                    Completed focus sessions will appear here.
+                  </div>
+                  <ul id="focusHistoryList" class="mt-4 hidden space-y-3 text-sm text-slate-300"></ul>
                 </div>
               </div>
+
+              <aside class="space-y-6 rounded-3xl border border-white/5 bg-slate-900/50 p-8">
+                <div>
+                  <h4 class="text-lg font-semibold text-white">Flow Tips</h4>
+                  <p class="mt-2 text-sm text-slate-400">Prime your environment, celebrate each win, and recharge between cycles.</p>
+                </div>
+                <div class="grid gap-4 text-sm text-slate-400">
+                  <div class="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                    <p class="font-medium text-slate-200">Cycle cadence</p>
+                    <p class="mt-1 text-slate-400">Run four Pomodoros with short breaks for sustained momentum.</p>
+                  </div>
+                  <div class="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                    <p class="font-medium text-slate-200">Data sync</p>
+                    <p class="mt-1 text-slate-400">Session completions automatically trigger mood and activity logging.</p>
+                  </div>
+                  <div class="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                    <p class="font-medium text-slate-200">Break rituals</p>
+                    <p class="mt-1 text-slate-400">Stretch, hydrate, or capture a quick insight before diving back in.</p>
+                  </div>
+                </div>
+              </aside>
             </div>
           </section>
 
@@ -341,9 +514,67 @@
           token: null,
           user: null,
           activeTab: 'dashboard',
+          data: {
+            tasks: [],
+            moods: [],
+          },
+          charts: {
+            velocity: null,
+            category: null,
+            mood: null,
+          },
         };
-        const elements = {};
+        const focusState = {
+          durationMinutes: 25,
+          remainingSeconds: 25 * 60,
+          intervalId: null,
+          isRunning: false,
+          selectedTaskId: '',
+          selectedMood: 'neutral',
+          history: [],
+        };
+        const analyticsState = {
+          isLoading: false,
+          lastUpdated: null,
+        };
+        const elements = {
+          analytics: {},
+          focus: {},
+        };
         const tabs = ['dashboard', 'kanban', 'analytics', 'focus', 'admin'];
+        const STATUS_ORDER = {
+          'In-Progress': 0,
+          Planned: 1,
+          Completed: 2,
+          Shifted: 3,
+          Cancelled: 4,
+        };
+        const CHART_PALETTE = ['#7f5af0', '#2cb1bc', '#f2a359', '#38bdf8', '#f472b6', '#22d3ee', '#f97316', '#94a3b8'];
+        const MOOD_SCORES = {
+          energized: 5,
+          inspired: 5,
+          excited: 5,
+          motivated: 4,
+          positive: 4,
+          happy: 4,
+          proud: 4,
+          confident: 4,
+          focused: 4,
+          calm: 3,
+          balanced: 3,
+          neutral: 3,
+          okay: 3,
+          tired: 2,
+          weary: 2,
+          meh: 2,
+          drained: 1,
+          stressed: 1,
+          overwhelmed: 1,
+          anxious: 1,
+          frustrated: 1,
+          burnt: 1,
+          burntout: 1,
+        };
         let isInitialized = false;
 
         document.addEventListener('DOMContentLoaded', init);
@@ -354,6 +585,7 @@
           cacheElements();
           enhanceTabButtons();
           bindEvents();
+          initializeFocusMode();
           updateShell();
           restoreSession();
         }
@@ -368,6 +600,33 @@
           elements.logoutButton = document.getElementById('logoutButton');
           elements.tabButtons = document.querySelectorAll('[data-tab-button]');
           elements.tabPanels = document.querySelectorAll('[data-tab-panel]');
+          elements.analytics.refreshButton = document.getElementById('analyticsRefreshButton');
+          elements.analytics.refreshTime = document.getElementById('analyticsRefreshTime');
+          elements.analytics.velocityCanvas = document.getElementById('completionVelocityChart');
+          elements.analytics.velocityEmpty = document.getElementById('velocityChartEmpty');
+          elements.analytics.velocityMetric = document.getElementById('velocityMetric');
+          elements.analytics.categoryCanvas = document.getElementById('timeByCategoryChart');
+          elements.analytics.categoryEmpty = document.getElementById('categoryChartEmpty');
+          elements.analytics.categoryMetric = document.getElementById('categoryMetric');
+          elements.analytics.moodCanvas = document.getElementById('moodTrendChart');
+          elements.analytics.moodEmpty = document.getElementById('moodChartEmpty');
+          elements.analytics.moodMetric = document.getElementById('moodMetric');
+          elements.focus.statusBadge = document.getElementById('focusStatusBadge');
+          if (elements.focus.statusBadge) {
+            elements.focus.statusDot = elements.focus.statusBadge.querySelector('[data-role="focus-status-dot"]');
+            elements.focus.statusText = elements.focus.statusBadge.querySelector('[data-role="focus-status-text"]');
+          }
+          elements.focus.timerDisplay = document.getElementById('focusTimerDisplay');
+          elements.focus.timerSubtitle = document.getElementById('focusTimerSubtitle');
+          elements.focus.startButton = document.getElementById('focusStartButton');
+          elements.focus.pauseButton = document.getElementById('focusPauseButton');
+          elements.focus.resetButton = document.getElementById('focusResetButton');
+          elements.focus.durationInput = document.getElementById('focusDurationInput');
+          elements.focus.taskSelect = document.getElementById('focusTaskSelect');
+          elements.focus.moodSelect = document.getElementById('focusMoodSelect');
+          elements.focus.historyList = document.getElementById('focusHistoryList');
+          elements.focus.historyEmpty = document.getElementById('focusHistoryEmpty');
+          elements.focus.clearHistoryButton = document.getElementById('focusClearHistoryButton');
         }
 
         function enhanceTabButtons() {
@@ -393,7 +652,7 @@
           });
           elements.tabPanels.forEach((panel) => {
             panel.setAttribute('role', 'tabpanel');
-
+            panel.setAttribute('aria-hidden', panel.classList.contains('hidden') ? 'true' : 'false');
           });
         }
 
@@ -410,6 +669,30 @@
               setActiveTab(targetTab);
             });
           });
+          if (elements.analytics.refreshButton) {
+            elements.analytics.refreshButton.addEventListener('click', () => refreshWorkspaceData({ silent: false }));
+          }
+          if (elements.focus.startButton) {
+            elements.focus.startButton.addEventListener('click', startFocusTimer);
+          }
+          if (elements.focus.pauseButton) {
+            elements.focus.pauseButton.addEventListener('click', pauseFocusTimer);
+          }
+          if (elements.focus.resetButton) {
+            elements.focus.resetButton.addEventListener('click', resetFocusTimer);
+          }
+          if (elements.focus.durationInput) {
+            elements.focus.durationInput.addEventListener('change', handleFocusDurationChange);
+          }
+          if (elements.focus.taskSelect) {
+            elements.focus.taskSelect.addEventListener('change', handleFocusTaskChange);
+          }
+          if (elements.focus.moodSelect) {
+            elements.focus.moodSelect.addEventListener('change', handleFocusMoodChange);
+          }
+          if (elements.focus.clearHistoryButton) {
+            elements.focus.clearHistoryButton.addEventListener('click', clearFocusHistory);
+          }
         }
 
         async function handleLoginSubmit(event) {
@@ -456,6 +739,7 @@
           if (!button) return;
           button.disabled = isLoading;
           button.classList.toggle('opacity-70', isLoading);
+          button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
           const spinner = button.querySelector('[data-role="spinner"]');
           const label = button.querySelector('[data-role="label"]');
           if (spinner) spinner.classList.toggle('hidden', !isLoading);
@@ -478,14 +762,28 @@
           elements.tabPanels.forEach((panel) => {
             const isActive = panel.getAttribute('data-tab-panel') === tabId;
             panel.classList.toggle('hidden', !isActive);
-
+            panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
           });
+          if (tabId === 'analytics') {
+            renderAnalyticsCharts();
+            requestAnimationFrame(() => {
+              Object.values(state.charts).forEach((chart) => {
+                if (chart && typeof chart.resize === 'function') {
+                  chart.resize();
+                }
+              });
+            });
+          }
+          if (tabId === 'focus') {
+            updateFocusControls();
+          }
         }
 
         function applySession(token, user) {
           state.token = token;
           state.user = user || null;
           updateShell();
+          refreshWorkspaceData({ silent: true });
         }
 
         function updateShell() {
@@ -517,6 +815,7 @@
         function clearSession() {
           state.token = null;
           state.user = null;
+          resetWorkspaceData();
           try {
             localStorage.removeItem(STORAGE_KEY);
           } catch (err) {
@@ -552,6 +851,728 @@
             clearSession();
             updateShell();
           }
+        }
+
+        async function refreshWorkspaceData(options = {}) {
+          const { silent = false } = options;
+          if (!state.token) {
+            resetWorkspaceData();
+            return;
+          }
+          if (analyticsState.isLoading) {
+            return;
+          }
+          analyticsState.isLoading = true;
+          if (elements.analytics.refreshButton && !silent) {
+            setButtonLoading(elements.analytics.refreshButton, true);
+          }
+          try {
+            const [tasks, moods] = await Promise.all([
+              server.listTasks(state.token, {}),
+              server.listMoods(state.token, {}),
+            ]);
+            state.data.tasks = Array.isArray(tasks) ? tasks : [];
+            state.data.moods = Array.isArray(moods) ? moods : [];
+            analyticsState.lastUpdated = new Date();
+            updateAnalyticsTimestamp();
+            populateFocusTaskSelect();
+            renderAnalyticsCharts();
+          } catch (err) {
+            console.error('Failed to refresh workspace data:', err);
+            showToast(err && err.message ? err.message : 'Unable to refresh analytics.', 'error');
+            renderAnalyticsCharts();
+          } finally {
+            analyticsState.isLoading = false;
+            if (elements.analytics.refreshButton && !silent) {
+              setButtonLoading(elements.analytics.refreshButton, false);
+            }
+          }
+        }
+
+        function updateAnalyticsTimestamp() {
+          if (!elements.analytics.refreshTime) return;
+          if (!analyticsState.lastUpdated) {
+            elements.analytics.refreshTime.textContent = 'Awaiting data…';
+            return;
+          }
+          const formatted = analyticsState.lastUpdated.toLocaleString(undefined, {
+            hour: '2-digit',
+            minute: '2-digit',
+            month: 'short',
+            day: 'numeric',
+          });
+          elements.analytics.refreshTime.textContent = `Updated ${formatted}`;
+        }
+
+        function renderAnalyticsCharts() {
+          updateCompletionVelocityChart();
+          updateTimeByCategoryChart();
+          updateMoodTrendChart();
+        }
+
+        function updateCompletionVelocityChart() {
+          const canvas = elements.analytics.velocityCanvas;
+          const emptyState = elements.analytics.velocityEmpty;
+          const metric = elements.analytics.velocityMetric;
+          if (!canvas) return;
+          const windowDays = 14;
+          const now = new Date();
+          now.setHours(0, 0, 0, 0);
+          const dayKeys = [];
+          for (let offset = windowDays - 1; offset >= 0; offset--) {
+            const day = new Date(now);
+            day.setDate(now.getDate() - offset);
+            dayKeys.push(formatDateKey(day));
+          }
+          const completions = new Map();
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          tasks.forEach((task) => {
+            if (!task || task.Status !== 'Completed') return;
+            const key = formatDateKey(task.UpdatedAt || task.Timestamp);
+            if (!key) return;
+            completions.set(key, (completions.get(key) || 0) + 1);
+          });
+          const values = dayKeys.map((key) => completions.get(key) || 0);
+          const labels = dayKeys.map((key) => formatDisplayDate(key));
+          const totalCompleted = values.reduce((sum, value) => sum + value, 0);
+          if (metric) {
+            metric.textContent = totalCompleted ? `${totalCompleted} / ${windowDays} days` : '—';
+          }
+          const hasData = totalCompleted > 0;
+          toggleEmptyState(emptyState, !hasData);
+          if (!hasData) {
+            destroyChart('velocity');
+            return;
+          }
+          const config = {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Tasks completed',
+                  data: values,
+                  borderColor: '#7f5af0',
+                  backgroundColor: 'rgba(127, 90, 240, 0.25)',
+                  borderWidth: 2,
+                  tension: 0.35,
+                  fill: true,
+                  pointRadius: 3,
+                  pointBackgroundColor: '#7f5af0',
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label(context) {
+                      return `${context.parsed.y} completed`;
+                    },
+                  },
+                },
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: { precision: 0 },
+                  grid: { color: 'rgba(148, 163, 184, 0.12)' },
+                },
+                x: {
+                  grid: { display: false },
+                },
+              },
+            },
+          };
+          applyChartInstance('velocity', canvas, config);
+        }
+
+        function updateTimeByCategoryChart() {
+          const canvas = elements.analytics.categoryCanvas;
+          const emptyState = elements.analytics.categoryEmpty;
+          const metric = elements.analytics.categoryMetric;
+          if (!canvas) return;
+          const categoryTotals = new Map();
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          tasks.forEach((task) => {
+            if (!task) return;
+            const category = String(task.Category || '').trim() || 'Uncategorized';
+            const minutes = Number(task.DurationMins || 0);
+            if (!minutes) return;
+            categoryTotals.set(category, (categoryTotals.get(category) || 0) + minutes);
+          });
+          const sorted = Array.from(categoryTotals.entries()).sort((a, b) => b[1] - a[1]);
+          const labels = sorted.map(([category]) => category);
+          const values = sorted.map(([, minutes]) => minutes);
+          const totalMinutes = values.reduce((sum, value) => sum + value, 0);
+          if (metric) {
+            metric.textContent = totalMinutes ? formatMinutes(totalMinutes) : '—';
+          }
+          const hasData = values.length > 0;
+          toggleEmptyState(emptyState, !hasData);
+          if (!hasData) {
+            destroyChart('category');
+            return;
+          }
+          const colors = labels.map((_, index) => CHART_PALETTE[index % CHART_PALETTE.length]);
+          const config = {
+            type: 'doughnut',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Minutes',
+                  data: values,
+                  backgroundColor: colors,
+                  borderWidth: 0,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: true,
+                  position: 'bottom',
+                  labels: { color: '#cbd5f5' },
+                },
+                tooltip: {
+                  callbacks: {
+                    label(context) {
+                      const value = context.parsed;
+                      return `${context.label}: ${formatMinutes(value)}`;
+                    },
+                  },
+                },
+              },
+              cutout: '58%',
+            },
+          };
+          applyChartInstance('category', canvas, config);
+        }
+
+        function updateMoodTrendChart() {
+          const canvas = elements.analytics.moodCanvas;
+          const emptyState = elements.analytics.moodEmpty;
+          const metric = elements.analytics.moodMetric;
+          if (!canvas) return;
+          const entries = Array.isArray(state.data.moods) ? state.data.moods : [];
+          const dayBuckets = new Map();
+          entries.forEach((entry) => {
+            if (!entry) return;
+            const key = formatDateKey(entry.At);
+            if (!key) return;
+            const score = resolveMoodScore(entry.Mood);
+            const bucket = dayBuckets.get(key) || { total: 0, count: 0 };
+            bucket.total += score;
+            bucket.count += 1;
+            dayBuckets.set(key, bucket);
+          });
+          const sortedKeys = Array.from(dayBuckets.keys()).sort();
+          const labels = sortedKeys.map((key) => formatDisplayDate(key));
+          const values = sortedKeys.map((key) => {
+            const bucket = dayBuckets.get(key);
+            if (!bucket || !bucket.count) return 0;
+            return Number((bucket.total / bucket.count).toFixed(2));
+          });
+          const hasData = values.length > 0;
+          if (metric) {
+            metric.textContent = hasData ? `${values[values.length - 1].toFixed(1)} / 5` : '—';
+          }
+          toggleEmptyState(emptyState, !hasData);
+          if (!hasData) {
+            destroyChart('mood');
+            return;
+          }
+          const config = {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Average mood',
+                  data: values,
+                  borderColor: '#2cb1bc',
+                  backgroundColor: 'rgba(44, 177, 188, 0.25)',
+                  borderWidth: 2,
+                  tension: 0.35,
+                  fill: true,
+                  pointRadius: 3,
+                  pointBackgroundColor: '#2cb1bc',
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                y: {
+                  suggestedMin: 1,
+                  suggestedMax: 5,
+                  ticks: { stepSize: 1 },
+                  grid: { color: 'rgba(148, 163, 184, 0.12)' },
+                },
+                x: {
+                  grid: { display: false },
+                },
+              },
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label(context) {
+                      return `Mood score: ${context.parsed.y.toFixed(2)}`;
+                    },
+                  },
+                },
+              },
+            },
+          };
+          applyChartInstance('mood', canvas, config);
+        }
+
+        function applyChartInstance(key, canvas, config) {
+          if (!canvas) return;
+          const existing = state.charts[key];
+          if (existing) {
+            existing.data = config.data;
+            existing.options = config.options;
+            existing.update();
+            return;
+          }
+          const ctx = canvas.getContext('2d');
+          state.charts[key] = new Chart(ctx, config);
+        }
+
+        function destroyChart(key) {
+          const chart = state.charts[key];
+          if (chart && typeof chart.destroy === 'function') {
+            chart.destroy();
+          }
+          state.charts[key] = null;
+        }
+
+        function populateFocusTaskSelect() {
+          const select = elements.focus.taskSelect;
+          if (!select) return;
+          const currentValue = focusState.selectedTaskId || select.value || '';
+          while (select.options.length > 1) {
+            select.remove(1);
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks.slice() : [];
+          tasks.sort((a, b) => {
+            const aScore = STATUS_ORDER[a.Status] ?? 99;
+            const bScore = STATUS_ORDER[b.Status] ?? 99;
+            if (aScore === bScore) {
+              return (a.Name || '').localeCompare(b.Name || '');
+            }
+            return aScore - bScore;
+          });
+          tasks.forEach((task) => {
+            const option = document.createElement('option');
+            option.value = task.TaskID;
+            const statusBadge = task.Status && task.Status !== 'Completed' ? ` • ${task.Status}` : '';
+            option.textContent = `${task.Name || task.TaskID}${statusBadge}`;
+            select.appendChild(option);
+          });
+          if (currentValue && tasks.some((task) => task.TaskID === currentValue)) {
+            select.value = currentValue;
+            focusState.selectedTaskId = currentValue;
+          } else {
+            select.value = '';
+            focusState.selectedTaskId = '';
+          }
+          updateFocusControls();
+        }
+
+        function initializeFocusMode() {
+          if (elements.focus.durationInput) {
+            const initial = Number(elements.focus.durationInput.value) || 25;
+            focusState.durationMinutes = clampNumber(initial, 5, 90);
+            elements.focus.durationInput.value = focusState.durationMinutes;
+          }
+          focusState.remainingSeconds = focusState.durationMinutes * 60;
+          focusState.selectedTaskId = elements.focus.taskSelect ? elements.focus.taskSelect.value || '' : '';
+          focusState.selectedMood = elements.focus.moodSelect ? elements.focus.moodSelect.value || 'neutral' : 'neutral';
+          focusState.history = [];
+          updateFocusTimerDisplay();
+          updateFocusSubtitle();
+          updateFocusStatus('ready');
+          updateFocusControls();
+          updateFocusHistoryUi();
+        }
+
+        function startFocusTimer() {
+          if (!state.token) {
+            showToast('Sign in to start a focus session.', 'error');
+            return;
+          }
+          if (!focusState.selectedTaskId) {
+            showToast('Select a task to anchor your session.', 'error');
+            return;
+          }
+          if (focusState.isRunning) {
+            return;
+          }
+          if (focusState.remainingSeconds <= 0) {
+            focusState.remainingSeconds = focusState.durationMinutes * 60;
+          }
+          focusState.isRunning = true;
+          focusState.intervalId = window.setInterval(handleFocusTick, 1000);
+          updateFocusStatus('running');
+          updateFocusControls();
+          updateFocusSubtitle();
+        }
+
+        function pauseFocusTimer() {
+          if (!focusState.isRunning) {
+            return;
+          }
+          focusState.isRunning = false;
+          if (focusState.intervalId) {
+            clearInterval(focusState.intervalId);
+            focusState.intervalId = null;
+          }
+          updateFocusStatus('paused');
+          updateFocusControls();
+          updateFocusSubtitle();
+        }
+
+        function resetFocusTimer() {
+          if (focusState.intervalId) {
+            clearInterval(focusState.intervalId);
+            focusState.intervalId = null;
+          }
+          focusState.isRunning = false;
+          focusState.remainingSeconds = focusState.durationMinutes * 60;
+          updateFocusTimerDisplay();
+          updateFocusStatus('ready');
+          updateFocusControls();
+          updateFocusSubtitle();
+        }
+
+        function handleFocusDurationChange(event) {
+          const value = Number(event.target.value);
+          if (!Number.isFinite(value)) {
+            event.target.value = focusState.durationMinutes;
+            return;
+          }
+          focusState.durationMinutes = clampNumber(Math.round(value), 5, 90);
+          event.target.value = focusState.durationMinutes;
+          if (!focusState.isRunning) {
+            focusState.remainingSeconds = focusState.durationMinutes * 60;
+            updateFocusTimerDisplay();
+            updateFocusSubtitle();
+          }
+        }
+
+        function handleFocusTaskChange(event) {
+          focusState.selectedTaskId = event.target.value || '';
+          updateFocusControls();
+        }
+
+        function handleFocusMoodChange(event) {
+          focusState.selectedMood = event.target.value || 'neutral';
+        }
+
+        function handleFocusTick() {
+          if (!focusState.isRunning) {
+            return;
+          }
+          focusState.remainingSeconds = Math.max(0, focusState.remainingSeconds - 1);
+          updateFocusTimerDisplay();
+          if (focusState.remainingSeconds <= 0) {
+            handleFocusSessionComplete();
+          }
+        }
+
+        async function handleFocusSessionComplete() {
+          if (focusState.intervalId) {
+            clearInterval(focusState.intervalId);
+            focusState.intervalId = null;
+          }
+          focusState.isRunning = false;
+          focusState.remainingSeconds = 0;
+          updateFocusTimerDisplay();
+          updateFocusStatus('completed');
+          updateFocusControls();
+          updateFocusSubtitle();
+
+          const taskId = focusState.selectedTaskId;
+          const mood = focusState.selectedMood || 'neutral';
+          const taskName = getTaskNameById(taskId) || taskId || 'Focus session';
+          const duration = focusState.durationMinutes;
+          focusState.history.unshift({
+            id: String(Date.now()),
+            taskId,
+            taskName,
+            mood,
+            duration,
+            completedAt: new Date(),
+          });
+          focusState.history = focusState.history.slice(0, 6);
+          updateFocusHistoryUi();
+
+          if (!state.token || !taskId) {
+            showToast('Session complete — assign a task to sync analytics next time.', 'info');
+            focusState.remainingSeconds = focusState.durationMinutes * 60;
+            updateFocusTimerDisplay();
+            updateFocusStatus('ready');
+            updateFocusControls();
+            updateFocusSubtitle();
+            return;
+          }
+
+          const note = `Focus session (${duration} min) completed via Aura Flow Focus Mode.`;
+          const logPromises = [
+            server.logMood(state.token, taskId, mood, note),
+          ];
+          if (state.user && state.user.Email) {
+            logPromises.push(
+              server.logActivity_(state.user.Email, 'focus.session.complete', 'Task', taskId, {
+                durationMinutes: duration,
+                mood,
+              })
+            );
+          }
+
+          const results = await Promise.allSettled(logPromises);
+          const failed = results.find((result) => result.status === 'rejected');
+          if (failed) {
+            const reason = failed.reason && failed.reason.message ? failed.reason.message : String(failed.reason || 'Unable to record focus session.');
+            showToast(reason, 'error');
+          } else {
+            showToast('Focus session captured. Mood & activity logged.', 'success');
+          }
+          focusState.remainingSeconds = focusState.durationMinutes * 60;
+          updateFocusTimerDisplay();
+          updateFocusStatus('ready');
+          updateFocusControls();
+          updateFocusSubtitle();
+          refreshWorkspaceData({ silent: true });
+        }
+
+        function clearFocusHistory() {
+          focusState.history = [];
+          updateFocusHistoryUi();
+          showToast('Focus session history cleared.', 'success');
+        }
+
+        function updateFocusHistoryUi() {
+          const list = elements.focus.historyList;
+          const empty = elements.focus.historyEmpty;
+          if (!list || !empty) return;
+          if (!focusState.history.length) {
+            empty.classList.remove('hidden');
+            list.classList.add('hidden');
+            list.innerHTML = '';
+            return;
+          }
+          empty.classList.add('hidden');
+          list.classList.remove('hidden');
+          list.innerHTML = focusState.history
+            .map((entry) => {
+              const moodLabel = entry.mood ? entry.mood.charAt(0).toUpperCase() + entry.mood.slice(1) : 'Neutral';
+              return `<li class="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <p class="font-medium text-slate-100">${escapeHtml(entry.taskName)}</p>
+                  <span class="rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-slate-300">${escapeHtml(moodLabel)}</span>
+                </div>
+                <p class="mt-2 text-xs text-slate-500">${escapeHtml(formatHistoryTimestamp(entry.completedAt))} • ${entry.duration} min</p>
+              </li>`;
+            })
+            .join('');
+        }
+
+        function updateFocusTimerDisplay() {
+          if (!elements.focus.timerDisplay) return;
+          const totalSeconds = Math.max(0, Math.round(focusState.remainingSeconds));
+          const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+          const seconds = String(totalSeconds % 60).padStart(2, '0');
+          elements.focus.timerDisplay.textContent = `${minutes}:${seconds}`;
+        }
+
+        function updateFocusSubtitle() {
+          if (!elements.focus.timerSubtitle) return;
+          if (focusState.isRunning) {
+            elements.focus.timerSubtitle.textContent = 'Focus in progress — stay in flow until the timer completes.';
+            return;
+          }
+          const defaultSeconds = focusState.durationMinutes * 60;
+          if (focusState.remainingSeconds !== defaultSeconds && focusState.remainingSeconds > 0) {
+            const minutesLeft = Math.ceil(focusState.remainingSeconds / 60);
+            elements.focus.timerSubtitle.textContent = `Paused with ${minutesLeft} minute${minutesLeft === 1 ? '' : 's'} remaining.`;
+            return;
+          }
+          elements.focus.timerSubtitle.textContent = `Default Pomodoro — ${focusState.durationMinutes} minutes`;
+        }
+
+        function updateFocusStatus(status) {
+          const badge = elements.focus.statusBadge;
+          if (!badge) return;
+          const dot = elements.focus.statusDot;
+          const text = elements.focus.statusText;
+          const palette = {
+            ready: 'bg-emerald-400/70',
+            running: 'bg-emerald-400',
+            paused: 'bg-amber-400',
+            completed: 'bg-sky-400',
+          };
+          const label = {
+            ready: 'Ready',
+            running: 'In progress',
+            paused: 'Paused',
+            completed: 'Completed',
+          };
+          if (dot) {
+            dot.className = `h-2.5 w-2.5 rounded-full ${palette[status] || palette.ready}`;
+          }
+          if (text) {
+            text.textContent = label[status] || label.ready;
+          }
+        }
+
+        function updateFocusControls() {
+          const startButton = elements.focus.startButton;
+          const pauseButton = elements.focus.pauseButton;
+          const resetButton = elements.focus.resetButton;
+          if (startButton) {
+            const disabled = focusState.isRunning || !state.token || !focusState.selectedTaskId;
+            startButton.disabled = disabled;
+            startButton.classList.toggle('opacity-60', disabled);
+          }
+          if (pauseButton) {
+            const disabled = !focusState.isRunning;
+            pauseButton.disabled = disabled;
+            pauseButton.classList.toggle('opacity-60', disabled);
+          }
+          if (resetButton) {
+            resetButton.disabled = false;
+          }
+        }
+
+        function resetWorkspaceData() {
+          state.data.tasks = [];
+          state.data.moods = [];
+          analyticsState.lastUpdated = null;
+          updateAnalyticsTimestamp();
+          destroyChart('velocity');
+          destroyChart('category');
+          destroyChart('mood');
+          toggleEmptyState(elements.analytics.velocityEmpty, true);
+          toggleEmptyState(elements.analytics.categoryEmpty, true);
+          toggleEmptyState(elements.analytics.moodEmpty, true);
+          if (elements.analytics.velocityMetric) {
+            elements.analytics.velocityMetric.textContent = '—';
+          }
+          if (elements.analytics.categoryMetric) {
+            elements.analytics.categoryMetric.textContent = '—';
+          }
+          if (elements.analytics.moodMetric) {
+            elements.analytics.moodMetric.textContent = '—';
+          }
+          if (elements.focus.taskSelect) {
+            while (elements.focus.taskSelect.options.length > 1) {
+              elements.focus.taskSelect.remove(1);
+            }
+            elements.focus.taskSelect.value = '';
+          }
+          focusState.selectedTaskId = '';
+          focusState.history = [];
+          if (elements.focus.moodSelect) {
+            elements.focus.moodSelect.value = 'neutral';
+          }
+          focusState.selectedMood = 'neutral';
+          focusState.durationMinutes = elements.focus.durationInput
+            ? clampNumber(Number(elements.focus.durationInput.value) || 25, 5, 90)
+            : 25;
+          if (elements.focus.durationInput) {
+            elements.focus.durationInput.value = focusState.durationMinutes;
+          }
+          focusState.remainingSeconds = focusState.durationMinutes * 60;
+          if (focusState.intervalId) {
+            clearInterval(focusState.intervalId);
+            focusState.intervalId = null;
+          }
+          focusState.isRunning = false;
+          updateFocusTimerDisplay();
+          updateFocusSubtitle();
+          updateFocusStatus('ready');
+          updateFocusControls();
+          updateFocusHistoryUi();
+        }
+
+        function toggleEmptyState(element, shouldShow) {
+          if (!element) return;
+          element.classList.toggle('hidden', !shouldShow);
+          element.classList.toggle('flex', shouldShow);
+        }
+
+        function formatDateKey(value) {
+          const date = value instanceof Date ? value : new Date(value);
+          if (Number.isNaN(date.getTime())) {
+            return '';
+          }
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        }
+
+        function formatDisplayDate(key) {
+          const [year, month, day] = key.split('-');
+          const date = new Date(Number(year), Number(month) - 1, Number(day));
+          return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        }
+
+        function formatMinutes(total) {
+          const minutes = Math.round(Number(total) || 0);
+          if (!minutes) return '0m';
+          const hours = Math.floor(minutes / 60);
+          const mins = minutes % 60;
+          if (hours && mins) return `${hours}h ${mins}m`;
+          if (hours) return `${hours}h`;
+          return `${mins}m`;
+        }
+
+        function resolveMoodScore(label) {
+          if (!label) return 3;
+          const normalized = String(label).trim().toLowerCase();
+          return MOOD_SCORES[normalized] || 3;
+        }
+
+        function getTaskNameById(taskId) {
+          if (!taskId) return '';
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          const match = tasks.find((task) => task.TaskID === taskId);
+          return match ? match.Name || match.TaskID : '';
+        }
+
+        function formatHistoryTimestamp(date) {
+          if (!(date instanceof Date)) return '';
+          return new Intl.DateTimeFormat(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }).format(date);
+        }
+
+        function escapeHtml(value) {
+          return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        }
+
+        function clampNumber(value, min, max) {
+          return Math.min(Math.max(value, min), max);
         }
       })();
 
