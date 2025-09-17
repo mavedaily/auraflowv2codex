@@ -84,8 +84,8 @@ var ROLE_PERMISSIONS = {
 };
 
 var TASK_STATUSES = ['Planned', 'In-Progress', 'Completed', 'Shifted', 'Cancelled'];
-
 var SESSION_CACHE_PREFIX = 'afv2_session_';
+
 var SESSION_TTL_SECONDS = 6 * 60 * 60; // 6 hours
 var DEFAULT_ADMIN_PASSWORD = 'ChangeMeNow!1';
 
@@ -104,6 +104,7 @@ function login(email, password) {
     }
     firstRunInit();
     var userResult = getUserByEmail_(email);
+
     if (!userResult) {
       throw new Error('Invalid credentials.');
     }
@@ -117,6 +118,7 @@ function login(email, password) {
     var expected = user.PasswordHash;
     var provided = hashPassword_(password, user.Salt);
     if (expected !== provided) {
+
       throw new Error('Invalid credentials.');
     }
     var session = createSessionForUser_(user);
@@ -124,6 +126,7 @@ function login(email, password) {
     return {
       token: session.token,
       user: sanitizeUser_(user)
+
     };
   });
 }
@@ -136,6 +139,7 @@ function logout(token) {
         logActivity_(session.email, 'logout', 'User', session.email, {});
       }
       destroySession_(token);
+
     }
     return true;
   });
@@ -180,6 +184,7 @@ function upsertUser(token, userObj) {
     if (!ROLE_RANK[desiredRole]) {
       throw new Error('Invalid role.');
     }
+
     var sheet = ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]);
     var headers = SHEET_HEADERS[SHEET_NAMES.USERS];
     var userResult = getUserByEmail_(normalizedEmail);
@@ -214,6 +219,7 @@ function upsertUser(token, userObj) {
     };
     appendRow_(sheet, headers, newRecord);
     logActivity_(session, 'user.create', 'User', email, {});
+
     return sanitizeUser_(newRecord);
   });
 }
@@ -226,12 +232,14 @@ function disableUser(token, email) {
       throw new Error('Email is required.');
     }
     var userResult = getUserByEmail_((email));
+
     if (!userResult) {
       throw new Error('User not found.');
     }
     var record = userResult.record;
     record.IsActive = 'FALSE';
     writeRow_(ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]), SHEET_HEADERS[SHEET_NAMES.USERS], userResult.rowNumber, record);
+
     logActivity_(session, 'user.disable', 'User', record.Email, {});
     return sanitizeUser_(record);
   });
@@ -624,6 +632,7 @@ function logMood(token, taskId, mood, note) {
     appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.MOODS], record);
     logActivity_(session, 'mood.log', 'Task', normalizedTaskId, { mood: moodValue });
     return sanitizeMood_(record);
+
   });
 }
 
@@ -681,6 +690,7 @@ function ensureDefaultAdmin_() {
       var salt = generateSalt_();
       existingRecord.Salt = salt;
       existingRecord.PasswordHash = hashPassword_(DEFAULT_ADMIN_PASSWORD, salt);
+
     }
     writeRow_(sheet, headers, existing.rowNumber, existingRecord);
     logActivity_('system', 'bootstrap.admin.promote', 'User', defaultEmail, {});
@@ -789,6 +799,7 @@ function getUserByEmail_(email) {
       return {
         rowNumber: i + 2,
         record: arrayToObject_(headers, rowValue)
+
       };
     }
   }
@@ -803,6 +814,7 @@ function sanitizeUser_(record) {
     Email: record.Email,
     Role: record.Role,
     ManagerEmail: record.ManagerEmail || '',
+
     IsActive: isTrue_(record.IsActive),
     CreatedAt: record.CreatedAt || ''
   };
@@ -817,6 +829,7 @@ function hashPassword_(password, salt) {
     throw new Error('Missing password salt.');
   }
   var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, salt + '::' + password);
+
   return Utilities.base64Encode(digest);
 }
 
@@ -831,6 +844,7 @@ function createSessionForUser_(userRecord) {
     email: userRecord.Email,
     role: userRecord.Role || 'Intern',
     createdAt: nowIso_()
+
   };
   persistSession_(session);
   session.user = sanitizeUser_(userRecord);
@@ -846,6 +860,7 @@ function persistSession_(session) {
     createdAt: session.createdAt
   });
   cache.put(SESSION_CACHE_PREFIX + session.token, payload, SESSION_TTL_SECONDS);
+
 }
 
 function destroySession_(token) {
@@ -853,6 +868,7 @@ function destroySession_(token) {
     return;
   }
   CacheService.getScriptCache().remove(SESSION_CACHE_PREFIX + token);
+
 }
 
 function getSession_(token) {
@@ -861,15 +877,18 @@ function getSession_(token) {
   }
   var cache = CacheService.getScriptCache();
   var payload = cache.get(SESSION_CACHE_PREFIX + token);
+
   if (!payload) {
     return null;
   }
   var base = safeParse_(payload, null);
   if (!base) {
+
     return null;
   }
   var userResult = getUserByEmail_(base.email);
   if (!userResult) {
+
     return null;
   }
   var record = userResult.record;
@@ -878,12 +897,14 @@ function getSession_(token) {
   }
   base.role = record.Role || base.role || 'Intern';
   base.user = sanitizeUser_(record);
+
   persistSession_(base);
   return base;
 }
 
 function requireSession_(token) {
   var session = getSession_(token);
+
   if (!session) {
     throw new Error('Unauthorized.');
   }
@@ -891,6 +912,7 @@ function requireSession_(token) {
 }
 
 function sessionHasPermission_(session, perm) {
+
   if (!session) {
     return false;
   }
@@ -907,6 +929,7 @@ function ensurePermission_(session, perm) {
     throw new Error('Unauthorized.');
   }
   if (!sessionHasPermission_(session, perm)) {
+
     throw new Error('Forbidden.');
   }
   return true;
@@ -923,6 +946,7 @@ function logActivity_(sessionOrEmail, action, targetType, targetId, meta) {
         actorEmail = sessionOrEmail.email;
       } else if (sessionOrEmail.user && sessionOrEmail.user.Email) {
         actorEmail = sessionOrEmail.user.Email;
+
       }
     }
     var record = {
@@ -950,6 +974,7 @@ function handleApi_(callback) {
     return {
       success: true,
       data: data
+
     };
   } catch (err) {
     Logger.log('API error: ' + (err && err.stack ? err.stack : err));
@@ -996,6 +1021,7 @@ function pickFirstDefined_(obj, keys) {
   }
   return undefined;
 }
+
 
 function normalizeEmail_(email) {
   if (email === null || email === undefined) {
@@ -1482,6 +1508,7 @@ function deleteSubtasksForTask_(taskId) {
   for (var i = values.length - 1; i >= 0; i--) {
     if (String(values[i][idIndex]) === searchId) {
       sheet.deleteRow(i + 2);
+
     }
   }
 }

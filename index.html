@@ -43,6 +43,7 @@
         -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
         -webkit-mask-composite: xor;
         mask-composite: exclude;
+
       }
       .toast-enter {
         transform: translateY(16px);
@@ -77,6 +78,7 @@
         <div class="login-card relative isolate bg-slate-950/70 backdrop-blur-xl border border-white/10 rounded-3xl shadow-brand max-w-xl w-full">
           <div class="absolute inset-x-0 -top-20 mx-auto w-40 h-40 rounded-full bg-gradient-to-br from-aura-primary to-aura-secondary blur-3xl opacity-40"></div>
           <div class="p-10 space-y-10">
+
             <div>
               <p class="text-sm uppercase tracking-[0.3em] text-slate-400 mb-2">Welcome to</p>
               <h1 class="text-3xl sm:text-4xl font-semibold text-white leading-tight">
@@ -97,6 +99,7 @@
                   required
                   autocomplete="email"
                   class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+
                 />
               </div>
               <div class="grid gap-2">
@@ -109,6 +112,7 @@
                   required
                   autocomplete="current-password"
                   class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+
                 />
               </div>
               <button
@@ -368,6 +372,7 @@
 
         function enhanceTabButtons() {
           elements.tabButtons.forEach((btn) => {
+
             btn.classList.add(
               'whitespace-nowrap',
               'rounded-full',
@@ -388,6 +393,7 @@
           });
           elements.tabPanels.forEach((panel) => {
             panel.setAttribute('role', 'tabpanel');
+
           });
         }
 
@@ -472,6 +478,7 @@
           elements.tabPanels.forEach((panel) => {
             const isActive = panel.getAttribute('data-tab-panel') === tabId;
             panel.classList.toggle('hidden', !isActive);
+
           });
         }
 
@@ -554,6 +561,7 @@
         const toast = document.createElement('div');
         const baseClasses = [
           'pointer-events-auto',
+
           'rounded-2xl',
           'border',
           'border-white/10',
@@ -581,6 +589,7 @@
           </div>
         `;
         toast.classList.add(...(palette[type] || palette.info).split(' '));
+
         container.appendChild(toast);
         requestAnimationFrame(() => {
           toast.classList.remove('toast-enter');
@@ -593,6 +602,7 @@
             toast.remove();
           }, 220);
         }, 3600);
+
       }
     </script>
   </body>
