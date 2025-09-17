@@ -4,7 +4,8 @@ var SHEET_NAMES = {
   SUBTASKS: 'Subtasks',
   ACTIVITY_LOG: 'ActivityLog',
   MOODS: 'Moods',
-  ATTACHMENTS: 'Attachments'
+  ATTACHMENTS: 'Attachments',
+  TEMPLATES: 'Templates'
 };
 
 var SHEET_HEADERS = {};
@@ -32,7 +33,8 @@ SHEET_HEADERS[SHEET_NAMES.TASKS] = [
   'Timestamp',
   'DueAt',
   'UpdatedAt',
-  'ParentTaskID'
+  'ParentTaskID',
+  'TimeSpentMins'
 ];
 SHEET_HEADERS[SHEET_NAMES.SUBTASKS] = [
   'SubtaskID',
@@ -67,6 +69,11 @@ SHEET_HEADERS[SHEET_NAMES.ATTACHMENTS] = [
   'Url',
   'AddedBy',
   'At'
+];
+SHEET_HEADERS[SHEET_NAMES.TEMPLATES] = [
+  'TemplateID',
+  'Name',
+  'FieldsJSON'
 ];
 
 var ROLE_RANK = {
@@ -326,7 +333,8 @@ function createTask(token, taskObj) {
       Timestamp: now,
       DueAt: dueAt,
       UpdatedAt: now,
-      ParentTaskID: parentTaskId
+      ParentTaskID: parentTaskId,
+      TimeSpentMins: 0
     };
 
     if (record.ParentTaskID && record.ParentTaskID === record.TaskID) {
@@ -442,6 +450,15 @@ function updateTask(token, taskId, updates) {
       var dueAt = dueValue !== null && dueValue !== undefined ? String(dueValue).trim() : '';
       if (record.DueAt !== dueAt) {
         record.DueAt = dueAt;
+        updatesApplied = true;
+      }
+    }
+
+    var timeSpentValue = pickFirstDefined_(payload, ['TimeSpentMins', 'timeSpentMins', 'TimeSpent', 'timeSpent']);
+    if (timeSpentValue !== undefined) {
+      var timeSpent = normalizeDuration_(timeSpentValue, record.TimeSpentMins);
+      if (record.TimeSpentMins !== timeSpent) {
+        record.TimeSpentMins = timeSpent;
         updatesApplied = true;
       }
     }
@@ -589,6 +606,187 @@ function deleteTask(token, taskId) {
     deleteSubtasksForTask_(taskResult.record.TaskID);
     logActivity_(session, 'task.delete', 'Task', taskResult.record.TaskID, {});
     return true;
+  });
+}
+
+function saveTemplate(token, templateObj) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+
+    var payload = typeof templateObj === 'string' ? safeParse_(templateObj, null) : templateObj;
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Template payload is required.');
+    }
+
+    var nameValue = pickFirstDefined_(payload, ['Name', 'name']);
+    var name = requireNonEmptyString_(nameValue, 'Template name');
+    var fieldsValue = pickFirstDefined_(payload, ['Fields', 'fields', 'FieldsJSON', 'fieldsJSON', 'fieldsJson']);
+    var fields = fieldsValue;
+    if (typeof fieldsValue === 'string') {
+      fields = safeParse_(fieldsValue, {});
+    }
+    if (!fields || typeof fields !== 'object') {
+      fields = {};
+    }
+
+    var templateIdValue = pickFirstDefined_(payload, ['TemplateID', 'templateId', 'id']);
+    var templateId = templateIdValue ? String(templateIdValue).trim() : '';
+
+    var sheet = ensureSheet_(SHEET_NAMES.TEMPLATES, SHEET_HEADERS[SHEET_NAMES.TEMPLATES]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.TEMPLATES];
+
+    if (templateId) {
+      var existing = getTemplateById_(templateId);
+      if (existing) {
+        var existingRecord = existing.record;
+        existingRecord.Name = name;
+        existingRecord.FieldsJSON = safeStringify_(fields);
+        writeRow_(sheet, headers, existing.rowNumber, existingRecord);
+        logActivity_(session, 'template.update', 'Template', existingRecord.TemplateID, { name: name });
+        return sanitizeTemplate_(existingRecord);
+      }
+    }
+
+    var record = {
+      TemplateID: templateId || generateId_('TEMPLATE'),
+      Name: name,
+      FieldsJSON: safeStringify_(fields)
+    };
+    appendRow_(sheet, headers, record);
+    logActivity_(session, 'template.create', 'Template', record.TemplateID, { name: name });
+    return sanitizeTemplate_(record);
+  });
+}
+
+function listTemplates(token) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+
+    var sheet = ensureSheet_(SHEET_NAMES.TEMPLATES, SHEET_HEADERS[SHEET_NAMES.TEMPLATES]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.TEMPLATES];
+    var rows = sheetObjects_(sheet, headers);
+    var templates = [];
+    for (var i = 0; i < rows.length; i++) {
+      templates.push(sanitizeTemplate_(rows[i]));
+    }
+    templates.sort(function (a, b) {
+      return String(a.Name || '').localeCompare(String(b.Name || ''));
+    });
+    return templates;
+  });
+}
+
+function applyTemplate(token, templateId) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+    if (!templateId) {
+      throw new Error('Template ID is required.');
+    }
+    var templateResult = getTemplateById_(String(templateId));
+    if (!templateResult) {
+      throw new Error('Template not found.');
+    }
+    logActivity_(session, 'template.apply', 'Template', templateResult.record.TemplateID, {});
+    return sanitizeTemplate_(templateResult.record);
+  });
+}
+
+function logTime(token, taskId, minutes) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+    if (!taskId) {
+      throw new Error('Task ID is required.');
+    }
+    var taskResult = getTaskById_(String(taskId));
+    if (!taskResult) {
+      throw new Error('Task not found.');
+    }
+    var usersMap = loadUsersMap_();
+    if (!canManageTask_(session, taskResult.record, taskResult.record.Assignee, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+    var additionalMinutes = normalizeDuration_(minutes, 0);
+    if (additionalMinutes <= 0) {
+      throw new Error('Minutes must be greater than zero.');
+    }
+    var currentSpent = normalizeDuration_(taskResult.record.TimeSpentMins, 0);
+    var updatedSpent = normalizeDuration_(currentSpent + additionalMinutes, currentSpent);
+    taskResult.record.TimeSpentMins = updatedSpent;
+    taskResult.record.UpdatedAt = nowIso_();
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    writeRow_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS], taskResult.rowNumber, taskResult.record);
+    logActivity_(session, 'task.time.log', 'Task', taskResult.record.TaskID, {
+      addedMinutes: additionalMinutes,
+      totalMinutes: updatedSpent
+    });
+    return sanitizeTask_(taskResult.record);
+  });
+}
+
+function scheduleReminder(token, taskId, dateTime) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+    if (!taskId) {
+      throw new Error('Task ID is required.');
+    }
+    var taskResult = getTaskById_(String(taskId));
+    if (!taskResult) {
+      throw new Error('Task not found.');
+    }
+    var usersMap = loadUsersMap_();
+    if (!canManageTask_(session, taskResult.record, taskResult.record.Assignee, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+    var reminderDate = parseDateValue_(dateTime);
+    if (!reminderDate) {
+      throw new Error('Invalid reminder date/time.');
+    }
+    var now = new Date();
+    if (reminderDate.getTime() <= now.getTime()) {
+      throw new Error('Reminder must be scheduled in the future.');
+    }
+    var calendar;
+    try {
+      calendar = CalendarApp.getDefaultCalendar();
+    } catch (err) {
+      throw new Error('Unable to access calendar.');
+    }
+    if (!calendar) {
+      throw new Error('Calendar service unavailable.');
+    }
+    var endTime = new Date(reminderDate.getTime() + 30 * 60000);
+    var taskName = taskResult.record.Name || taskResult.record.TaskID;
+    var descriptionLines = [
+      'Aura Flow reminder generated automatically.',
+      'Task: ' + taskName,
+      'Assignee: ' + (taskResult.record.Assignee || 'Unassigned'),
+      'Status: ' + (taskResult.record.Status || 'Planned')
+    ];
+    var options = {
+      description: descriptionLines.join('\n')
+    };
+    var assigneeEmail = normalizeEmail_(taskResult.record.Assignee);
+    if (assigneeEmail) {
+      options.guests = assigneeEmail;
+      options.sendInvites = false;
+    }
+    var event = calendar.createEvent('Aura Flow Reminder: ' + taskName, reminderDate, endTime, options);
+    var response = {
+      eventId: event.getId(),
+      start: event.getStartTime() ? event.getStartTime().toISOString() : reminderDate.toISOString(),
+      end: event.getEndTime() ? event.getEndTime().toISOString() : endTime.toISOString(),
+      url: typeof event.getUrl === 'function' ? event.getUrl() : ''
+    };
+    logActivity_(session, 'task.reminder.schedule', 'Task', taskResult.record.TaskID, {
+      reminderAt: response.start,
+      eventId: response.eventId
+    });
+    return response;
   });
 }
 
@@ -979,17 +1177,30 @@ function ensureSheet_(name, headers) {
     sheet = ss.insertSheet(name);
   }
   if (headers && headers.length) {
-    var existingHeaders = sheet.getRange(1, 1, 1, sheet.getMaxColumns()).getValues()[0];
-    var needsReset = false;
+    if (sheet.getMaxColumns() < headers.length) {
+      sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
+    }
+    var headerRange = sheet.getRange(1, 1, 1, headers.length);
+    var existingHeaders = headerRange.getValues()[0];
+    var requiresReset = false;
+    var needsRewrite = false;
     for (var i = 0; i < headers.length; i++) {
-      if (existingHeaders[i] !== headers[i]) {
-        needsReset = true;
+      var expected = headers[i];
+      var current = existingHeaders[i];
+      if (!current && expected) {
+        needsRewrite = true;
+        continue;
+      }
+      if (current && current !== expected) {
+        requiresReset = true;
         break;
       }
     }
-    if (needsReset || sheet.getLastRow() === 0) {
+    if (requiresReset || sheet.getLastRow() === 0) {
       sheet.clearContents();
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    } else if (needsRewrite || (sheet.getLastRow() === 1 && existingHeaders.join('').trim() === '')) {
+      headerRange.setValues([headers]);
     }
   }
   return sheet;
@@ -1782,6 +1993,7 @@ function sanitizeTask_(record) {
     Priority: record.Priority || '',
     Status: record.Status || 'Planned',
     DurationMins: normalizeDuration_(record.DurationMins, 0),
+    TimeSpentMins: normalizeDuration_(record.TimeSpentMins, 0),
     Labels: parseLabels_(record.Labels),
     Notes: record.Notes || '',
     ResourcesCSV: record.ResourcesCSV || '',
@@ -1806,6 +2018,17 @@ function sanitizeSubtask_(record) {
     DurationMins: normalizeDuration_(record.DurationMins, 0),
     Status: record.Status || 'Planned',
     CreatedAt: record.CreatedAt || ''
+  };
+}
+
+function sanitizeTemplate_(record) {
+  if (!record) {
+    return null;
+  }
+  return {
+    TemplateID: record.TemplateID,
+    Name: record.Name || '',
+    Fields: safeParse_(record.FieldsJSON, {})
   };
 }
 
@@ -1840,6 +2063,34 @@ function getTaskById_(taskId) {
   var range = sheet.getRange(2, 1, lastRow - 1, headers.length);
   var values = range.getValues();
   var searchId = String(taskId);
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][idIndex]) === searchId) {
+      return {
+        rowNumber: i + 2,
+        record: arrayToObject_(headers, values[i])
+      };
+    }
+  }
+  return null;
+}
+
+function getTemplateById_(templateId) {
+  if (!templateId) {
+    return null;
+  }
+  var sheet = ensureSheet_(SHEET_NAMES.TEMPLATES, SHEET_HEADERS[SHEET_NAMES.TEMPLATES]);
+  var headers = SHEET_HEADERS[SHEET_NAMES.TEMPLATES];
+  var idIndex = headers.indexOf('TemplateID');
+  if (idIndex === -1) {
+    throw new Error('Templates sheet missing TemplateID column.');
+  }
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return null;
+  }
+  var range = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  var values = range.getValues();
+  var searchId = String(templateId);
   for (var i = 0; i < values.length; i++) {
     if (String(values[i][idIndex]) === searchId) {
       return {

@@ -502,12 +502,21 @@
                   </label>
                   <label class="grid gap-2">
                     <span class="text-sm font-medium text-slate-200">Anchor Task</span>
-                    <select
-                      id="focusTaskSelect"
-                      class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
-                    >
-                      <option value="">Select a task</option>
-                    </select>
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <select
+                        id="focusTaskSelect"
+                        class="grow rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                      >
+                        <option value="">Select a task</option>
+                      </select>
+                      <button
+                        id="focusTaskToolsButton"
+                        type="button"
+                        class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                      >
+                        Task Tools
+                      </button>
+                    </div>
                     <span class="text-xs text-slate-500">Link your focus block to a task for logging.</span>
                   </label>
                   <label class="grid gap-2 md:col-span-2">
@@ -587,6 +596,120 @@
           </section>
         </div>
       </section>
+      <div
+        id="taskModal"
+        class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur"
+        role="presentation"
+      >
+        <div
+          id="taskModalDialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="taskModalTitle"
+          class="w-full max-w-2xl rounded-3xl border border-white/10 bg-slate-900/90 p-6 shadow-brand"
+        >
+          <div class="flex items-start justify-between gap-6">
+            <div class="space-y-2">
+              <h3 id="taskModalTitle" data-task-modal-title class="text-xl font-semibold text-white">Task Toolkit</h3>
+              <p data-task-modal-subtitle class="text-sm text-slate-400">
+                Select a task from Focus Mode to manage templates, time, and reminders.
+              </p>
+              <p data-task-modal-meta class="text-xs text-slate-500"></p>
+            </div>
+            <button
+              type="button"
+              class="rounded-full border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70"
+              data-task-modal-close
+              aria-label="Close task toolkit"
+            >
+              ✕
+            </button>
+          </div>
+          <div class="mt-6 space-y-6">
+            <div class="grid gap-3">
+              <label class="grid gap-2">
+                <span class="text-sm font-medium text-slate-200">Apply Template</span>
+                <select
+                  id="taskTemplateSelect"
+                  class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                >
+                  <option value="">Select a template</option>
+                </select>
+              </label>
+              <button
+                id="taskApplyTemplateButton"
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+              >
+                <span data-role="spinner" class="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin hidden"></span>
+                <span data-role="label">Apply Template</span>
+              </button>
+            </div>
+            <div class="grid gap-3 md:grid-cols-[2fr,1fr] md:items-end">
+              <label class="grid gap-2">
+                <span class="text-sm font-medium text-slate-200">Template name</span>
+                <input
+                  id="taskTemplateNameInput"
+                  type="text"
+                  placeholder="e.g. Creative Brief"
+                  class="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary"
+                />
+              </label>
+              <button
+                id="taskSaveTemplateButton"
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+              >
+                <span data-role="spinner" class="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin hidden"></span>
+                <span data-role="label">Save as Template</span>
+              </button>
+            </div>
+            <div class="grid gap-2">
+              <span class="text-sm font-medium text-slate-200">Log Time Spent (minutes)</span>
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <input
+                  id="taskTimeInput"
+                  type="number"
+                  min="1"
+                  step="5"
+                  class="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary sm:max-w-xs"
+                />
+                <button
+                  id="taskLogTimeButton"
+                  type="button"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                >
+                  <span data-role="spinner" class="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin hidden"></span>
+                  <span data-role="label">Log Minutes</span>
+                </button>
+              </div>
+              <p id="taskTimeSummary" class="text-xs text-slate-500">Total logged: —</p>
+            </div>
+            <div class="grid gap-2">
+              <span class="text-sm font-medium text-slate-200">Schedule Reminder</span>
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <input
+                  id="taskReminderInput"
+                  type="datetime-local"
+                  class="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary sm:max-w-xs"
+                />
+                <button
+                  id="taskReminderButton"
+                  type="button"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                >
+                  <span data-role="spinner" class="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin hidden"></span>
+                  <span data-role="label">Schedule Reminder</span>
+                </button>
+              </div>
+              <p id="taskReminderStatus" class="text-xs text-slate-500"></p>
+            </div>
+            <p class="text-xs text-slate-500">
+              Reminders create Google Calendar events so your future self never misses a follow-up.
+            </p>
+          </div>
+        </div>
+      </div>
     </main>
 
     <script>
@@ -657,6 +780,7 @@
           data: {
             tasks: [],
             moods: [],
+            templates: [],
           },
           charts: {
             velocity: null,
@@ -673,6 +797,10 @@
           selectedMood: 'neutral',
           history: [],
         };
+        const taskModalState = {
+          isOpen: false,
+          taskId: '',
+        };
         const analyticsState = {
           isLoading: false,
           lastUpdated: null,
@@ -680,6 +808,7 @@
         const elements = {
           analytics: {},
           focus: {},
+          task: {},
         };
 
         const tabs = ['dashboard', 'kanban', 'analytics', 'focus', 'admin'];
@@ -765,10 +894,36 @@
           elements.focus.resetButton = document.getElementById('focusResetButton');
           elements.focus.durationInput = document.getElementById('focusDurationInput');
           elements.focus.taskSelect = document.getElementById('focusTaskSelect');
+          elements.focus.taskToolsButton = document.getElementById('focusTaskToolsButton');
           elements.focus.moodSelect = document.getElementById('focusMoodSelect');
           elements.focus.historyList = document.getElementById('focusHistoryList');
           elements.focus.historyEmpty = document.getElementById('focusHistoryEmpty');
           elements.focus.clearHistoryButton = document.getElementById('focusClearHistoryButton');
+
+          elements.task.modal = document.getElementById('taskModal');
+          elements.task.dialog = document.getElementById('taskModalDialog');
+          elements.task.closeButton = elements.task.modal
+            ? elements.task.modal.querySelector('[data-task-modal-close]')
+            : null;
+          elements.task.title = elements.task.modal
+            ? elements.task.modal.querySelector('[data-task-modal-title]')
+            : null;
+          elements.task.subtitle = elements.task.modal
+            ? elements.task.modal.querySelector('[data-task-modal-subtitle]')
+            : null;
+          elements.task.meta = elements.task.modal
+            ? elements.task.modal.querySelector('[data-task-modal-meta]')
+            : null;
+          elements.task.templateSelect = document.getElementById('taskTemplateSelect');
+          elements.task.applyTemplateButton = document.getElementById('taskApplyTemplateButton');
+          elements.task.templateNameInput = document.getElementById('taskTemplateNameInput');
+          elements.task.saveTemplateButton = document.getElementById('taskSaveTemplateButton');
+          elements.task.timeInput = document.getElementById('taskTimeInput');
+          elements.task.logTimeButton = document.getElementById('taskLogTimeButton');
+          elements.task.timeSummary = document.getElementById('taskTimeSummary');
+          elements.task.reminderInput = document.getElementById('taskReminderInput');
+          elements.task.reminderButton = document.getElementById('taskReminderButton');
+          elements.task.reminderStatus = document.getElementById('taskReminderStatus');
 
         }
 
@@ -852,6 +1007,237 @@
           }
           if (elements.focus.clearHistoryButton) {
             elements.focus.clearHistoryButton.addEventListener('click', clearFocusHistory);
+          }
+          if (elements.focus.taskToolsButton) {
+            elements.focus.taskToolsButton.addEventListener('click', handleTaskToolsButtonClick);
+          }
+          if (elements.task.closeButton) {
+            elements.task.closeButton.addEventListener('click', closeTaskModal);
+          }
+          if (elements.task.modal) {
+            elements.task.modal.addEventListener('click', handleTaskModalBackdropClick);
+          }
+          if (elements.task.templateSelect) {
+            elements.task.templateSelect.addEventListener('change', handleTemplateSelectChange);
+          }
+          if (elements.task.applyTemplateButton) {
+            elements.task.applyTemplateButton.addEventListener('click', handleTemplateApply);
+          }
+          if (elements.task.saveTemplateButton) {
+            elements.task.saveTemplateButton.addEventListener('click', handleTemplateSave);
+          }
+          if (elements.task.logTimeButton) {
+            elements.task.logTimeButton.addEventListener('click', handleTaskLogTime);
+          }
+          if (elements.task.reminderButton) {
+            elements.task.reminderButton.addEventListener('click', handleTaskScheduleReminder);
+          }
+          document.addEventListener('keydown', handleGlobalKeydown);
+        }
+
+        async function handleTaskToolsButtonClick() {
+          if (!focusState.selectedTaskId) {
+            showToast('Select a task to manage.', 'error');
+            return;
+          }
+          await openTaskModal(focusState.selectedTaskId);
+        }
+
+        function handleTemplateSelectChange() {
+          updateTemplateApplyButtonState();
+        }
+
+        async function handleTemplateApply() {
+          if (!state.token) {
+            showToast('Sign in to apply templates.', 'error');
+            return;
+          }
+          if (!taskModalState.taskId) {
+            showToast('Choose a task first.', 'error');
+            return;
+          }
+          const select = elements.task.templateSelect;
+          const button = elements.task.applyTemplateButton;
+          if (!select) {
+            return;
+          }
+          const templateId = select.value;
+          if (!templateId) {
+            showToast('Select a template to apply.', 'error');
+            return;
+          }
+          if (button) {
+            setButtonLoading(button, true);
+          }
+          try {
+            const template = await server.applyTemplate(state.token, templateId);
+            if (!template || typeof template !== 'object') {
+              throw new Error('Template not found.');
+            }
+            const updates = template.Fields && typeof template.Fields === 'object' ? template.Fields : {};
+            const updatedTask = await server.updateTask(state.token, taskModalState.taskId, updates);
+            if (updatedTask) {
+              mergeTaskIntoState(updatedTask);
+              showToast(`Template "${template.Name || template.TemplateID}" applied.`, 'success');
+            }
+          } catch (err) {
+            console.error('Template apply failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to apply template.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+          }
+        }
+
+        async function handleTemplateSave() {
+          if (!state.token) {
+            showToast('Sign in to save templates.', 'error');
+            return;
+          }
+          if (!taskModalState.taskId) {
+            showToast('Choose a task first.', 'error');
+            return;
+          }
+          const nameInput = elements.task.templateNameInput;
+          const templateName = nameInput ? String(nameInput.value || '').trim() : '';
+          if (!templateName) {
+            showToast('Provide a template name.', 'error');
+            return;
+          }
+          const task = getTaskFromState(taskModalState.taskId);
+          if (!task) {
+            showToast('Task not found. Refresh your workspace data.', 'error');
+            return;
+          }
+          const fields = {
+            Name: task.Name,
+            Category: task.Category,
+            Priority: task.Priority,
+            DurationMins: task.DurationMins,
+            Labels: task.Labels,
+            Notes: task.Notes,
+            ResourcesCSV: task.ResourcesCSV,
+            DueAt: task.DueAt,
+            Status: task.Status,
+            Assignee: task.Assignee,
+            ParentTaskID: task.ParentTaskID,
+          };
+          const button = elements.task.saveTemplateButton;
+          if (button) {
+            setButtonLoading(button, true);
+          }
+          try {
+            const saved = await server.saveTemplate(state.token, { Name: templateName, Fields: fields });
+            if (saved && typeof saved === 'object') {
+              const templates = Array.isArray(state.data.templates) ? state.data.templates.slice() : [];
+              const existingIndex = templates.findIndex((tpl) => tpl.TemplateID === saved.TemplateID);
+              if (existingIndex >= 0) {
+                templates[existingIndex] = saved;
+              } else {
+                templates.push(saved);
+              }
+              state.data.templates = templates;
+              populateTemplateSelect(saved.TemplateID);
+              if (nameInput) {
+                nameInput.value = saved.Name || templateName;
+              }
+              showToast(`Template "${saved.Name || saved.TemplateID}" saved.`, 'success');
+            }
+          } catch (err) {
+            console.error('Save template failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to save template.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+          }
+        }
+
+        async function handleTaskLogTime() {
+          if (!state.token) {
+            showToast('Sign in to log time.', 'error');
+            return;
+          }
+          if (!taskModalState.taskId) {
+            showToast('Choose a task first.', 'error');
+            return;
+          }
+          const input = elements.task.timeInput;
+          if (!input) {
+            return;
+          }
+          const minutes = Number(input.value);
+          if (!Number.isFinite(minutes) || minutes <= 0) {
+            showToast('Enter minutes greater than zero.', 'error');
+            return;
+          }
+          const button = elements.task.logTimeButton;
+          if (button) {
+            setButtonLoading(button, true);
+          }
+          try {
+            const updated = await server.logTime(state.token, taskModalState.taskId, minutes);
+            if (updated) {
+              mergeTaskIntoState(updated);
+              input.value = '';
+              showToast(`Logged ${formatMinutes(minutes)} on ${updated.Name || 'task'}.`, 'success');
+            }
+          } catch (err) {
+            console.error('Log time failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to log time.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+          }
+        }
+
+        async function handleTaskScheduleReminder() {
+          if (!state.token) {
+            showToast('Sign in to schedule reminders.', 'error');
+            return;
+          }
+          if (!taskModalState.taskId) {
+            showToast('Choose a task first.', 'error');
+            return;
+          }
+          const input = elements.task.reminderInput;
+          if (!input) {
+            return;
+          }
+          const rawValue = String(input.value || '').trim();
+          if (!rawValue) {
+            showToast('Select a reminder date and time.', 'error');
+            return;
+          }
+          const button = elements.task.reminderButton;
+          if (button) {
+            setButtonLoading(button, true);
+          }
+          try {
+            const eventInfo = await server.scheduleReminder(state.token, taskModalState.taskId, rawValue);
+            setReminderStatus(eventInfo);
+            showToast('Reminder scheduled.', 'success');
+          } catch (err) {
+            console.error('Schedule reminder failed:', err);
+            showToast(err && err.message ? err.message : 'Unable to schedule reminder.', 'error');
+          } finally {
+            if (button) {
+              setButtonLoading(button, false);
+            }
+          }
+        }
+
+        function handleTaskModalBackdropClick(event) {
+          if (elements.task.modal && event.target === elements.task.modal) {
+            closeTaskModal();
+          }
+        }
+
+        function handleGlobalKeydown(event) {
+          if (event.key === 'Escape' && taskModalState.isOpen) {
+            closeTaskModal();
           }
         }
 
@@ -1037,6 +1423,7 @@
             ]);
             state.data.tasks = Array.isArray(tasks) ? tasks : [];
             state.data.moods = Array.isArray(moods) ? moods : [];
+            updateTaskModalContent();
             analyticsState.lastUpdated = new Date();
             updateAnalyticsTimestamp();
             populateFocusTaskSelect();
@@ -1437,6 +1824,10 @@
         function handleFocusTaskChange(event) {
           focusState.selectedTaskId = event.target.value || '';
           updateFocusControls();
+          if (taskModalState.isOpen) {
+            taskModalState.taskId = focusState.selectedTaskId;
+            updateTaskModalContent();
+          }
         }
 
         function handleFocusMoodChange(event) {
@@ -1494,6 +1885,7 @@
           const note = `Focus session (${duration} min) completed via Aura Flow Focus Mode.`;
           const logPromises = [
             server.logMood(state.token, taskId, mood, note),
+            server.logTime(state.token, taskId, duration),
           ];
           if (state.user && state.user.Email) {
             logPromises.push(
@@ -1505,12 +1897,16 @@
           }
 
           const results = await Promise.allSettled(logPromises);
+          const timeResult = results[1];
           const failed = results.find((result) => result.status === 'rejected');
           if (failed) {
             const reason = failed.reason && failed.reason.message ? failed.reason.message : String(failed.reason || 'Unable to record focus session.');
             showToast(reason, 'error');
           } else {
-            showToast('Focus session captured. Mood & activity logged.', 'success');
+            showToast('Focus session captured. Mood, time, and activity logged.', 'success');
+          }
+          if (timeResult && timeResult.status === 'fulfilled' && timeResult.value) {
+            mergeTaskIntoState(timeResult.value);
           }
           focusState.remainingSeconds = focusState.durationMinutes * 60;
           updateFocusTimerDisplay();
@@ -1550,6 +1946,238 @@
               </li>`;
             })
             .join('');
+        }
+
+        async function openTaskModal(taskId) {
+          if (!state.token) {
+            showToast('Sign in to manage tasks.', 'error');
+            return;
+          }
+          const task = getTaskFromState(taskId);
+          if (!task) {
+            showToast('Task not found. Refresh your workspace data.', 'error');
+            return;
+          }
+          taskModalState.taskId = taskId;
+          taskModalState.isOpen = true;
+          setReminderStatus(null);
+          if (elements.task.modal) {
+            elements.task.modal.classList.remove('hidden');
+            elements.task.modal.classList.add('flex');
+          }
+          document.body.classList.add('overflow-hidden');
+          updateTaskModalContent();
+          await loadTemplates(elements.task.templateSelect ? elements.task.templateSelect.value : '');
+        }
+
+        function closeTaskModal() {
+          if (elements.task.modal) {
+            elements.task.modal.classList.add('hidden');
+            elements.task.modal.classList.remove('flex');
+          }
+          document.body.classList.remove('overflow-hidden');
+          taskModalState.isOpen = false;
+          taskModalState.taskId = '';
+          setReminderStatus(null);
+          updateTaskModalContent();
+        }
+
+        async function loadTemplates(selectedId = '') {
+          if (!state.token) {
+            state.data.templates = [];
+            populateTemplateSelect();
+            return;
+          }
+          try {
+            const templates = await server.listTemplates(state.token);
+            state.data.templates = Array.isArray(templates) ? templates : [];
+            populateTemplateSelect(selectedId);
+          } catch (err) {
+            console.error('Failed to load templates:', err);
+            state.data.templates = [];
+            populateTemplateSelect();
+            showToast(err && err.message ? err.message : 'Unable to load templates.', 'error');
+          }
+        }
+
+        function populateTemplateSelect(selectedId) {
+          const select = elements.task.templateSelect;
+          if (!select) return;
+          const previousValue = typeof selectedId === 'string' ? selectedId : select.value;
+          while (select.options.length > 1) {
+            select.remove(1);
+          }
+          const templates = Array.isArray(state.data.templates) ? state.data.templates.slice() : [];
+          templates
+            .filter((template) => template && template.TemplateID)
+            .sort((a, b) => String(a.Name || '').localeCompare(String(b.Name || '')))
+            .forEach((template) => {
+              const option = document.createElement('option');
+              option.value = template.TemplateID;
+              option.textContent = template.Name || template.TemplateID;
+              select.appendChild(option);
+            });
+          if (previousValue && templates.some((tpl) => tpl && tpl.TemplateID === previousValue)) {
+            select.value = previousValue;
+          } else {
+            select.value = '';
+          }
+          updateTemplateApplyButtonState();
+        }
+
+        function updateTemplateApplyButtonState() {
+          const button = elements.task.applyTemplateButton;
+          const select = elements.task.templateSelect;
+          if (!button || !select) {
+            return;
+          }
+          const hasSelection = Boolean(select.value);
+          button.disabled = !hasSelection;
+          button.classList.toggle('opacity-60', !hasSelection);
+        }
+
+        function mergeTaskIntoState(updatedTask) {
+          if (!updatedTask || !updatedTask.TaskID) {
+            return;
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks.slice() : [];
+          const index = tasks.findIndex((task) => task.TaskID === updatedTask.TaskID);
+          if (index >= 0) {
+            tasks[index] = Object.assign({}, tasks[index], updatedTask);
+          } else {
+            tasks.push(updatedTask);
+          }
+          state.data.tasks = tasks;
+          populateFocusTaskSelect();
+          renderAnalyticsCharts();
+          updateTaskModalContent();
+        }
+
+        function getTaskFromState(taskId) {
+          if (!taskId) {
+            return null;
+          }
+          const tasks = Array.isArray(state.data.tasks) ? state.data.tasks : [];
+          return tasks.find((task) => task.TaskID === taskId) || null;
+        }
+
+        function updateTaskModalContent() {
+          const titleEl = elements.task.title;
+          const subtitleEl = elements.task.subtitle;
+          const metaEl = elements.task.meta;
+          const summaryEl = elements.task.timeSummary;
+          const nameInput = elements.task.templateNameInput;
+          const timeInput = elements.task.timeInput;
+          const reminderInput = elements.task.reminderInput;
+          const task = getTaskFromState(taskModalState.taskId);
+          if (!task) {
+            if (titleEl) {
+              titleEl.textContent = 'Task Toolkit';
+            }
+            if (subtitleEl) {
+              subtitleEl.textContent = 'Select a task from Focus Mode to manage templates, time, and reminders.';
+            }
+            if (metaEl) {
+              metaEl.textContent = '';
+            }
+            if (summaryEl) {
+              summaryEl.textContent = 'Total logged: —';
+            }
+            if (nameInput && !taskModalState.isOpen) {
+              nameInput.value = '';
+            }
+            if (timeInput && !taskModalState.isOpen) {
+              timeInput.value = '';
+            }
+            if (reminderInput && !taskModalState.isOpen) {
+              reminderInput.value = '';
+            }
+            updateTemplateApplyButtonState();
+            return;
+          }
+          if (titleEl) {
+            titleEl.textContent = task.Name ? `Task Toolkit — ${task.Name}` : `Task Toolkit — ${task.TaskID}`;
+          }
+          if (subtitleEl) {
+            subtitleEl.textContent = task.Notes
+              ? task.Notes
+              : 'Manage reusable templates, time tracking, and reminders.';
+          }
+          if (metaEl) {
+            const status = task.Status || 'Planned';
+            const assignee = task.Assignee ? `Assigned to ${task.Assignee}` : 'Unassigned';
+            const dueLabel = task.DueAt ? ` • Due ${formatLocalDateTime(task.DueAt)}` : '';
+            metaEl.textContent = `${status} • ${assignee}${dueLabel}`;
+          }
+          if (summaryEl) {
+            summaryEl.textContent = `Total logged: ${formatMinutes(task.TimeSpentMins || 0)}`;
+          }
+          if (nameInput && (!nameInput.value || !taskModalState.isOpen)) {
+            nameInput.value = task.Name ? `${task.Name} Template` : '';
+          }
+          if (timeInput && (!timeInput.value || !taskModalState.isOpen)) {
+            const defaultMinutes = focusState.durationMinutes || Math.round(task.DurationMins || 0) || 25;
+            timeInput.value = Math.max(1, defaultMinutes);
+          }
+          if (reminderInput) {
+            reminderInput.value = task.DueAt ? toLocalInputValue(task.DueAt) : '';
+          }
+          updateTemplateApplyButtonState();
+        }
+
+        function setReminderStatus(eventInfo) {
+          const statusEl = elements.task.reminderStatus;
+          if (!statusEl) {
+            return;
+          }
+          statusEl.textContent = '';
+          if (!eventInfo) {
+            return;
+          }
+          const fragment = document.createDocumentFragment();
+          const startLabel = formatLocalDateTime(eventInfo.start || eventInfo.startTime || '');
+          const text = document.createElement('span');
+          text.textContent = startLabel ? `Reminder scheduled for ${startLabel}.` : 'Reminder scheduled.';
+          fragment.appendChild(text);
+          if (eventInfo.url) {
+            const link = document.createElement('a');
+            link.href = eventInfo.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = ' Open in Calendar';
+            link.className = 'text-aura-primary hover:underline';
+            fragment.appendChild(link);
+          }
+          statusEl.appendChild(fragment);
+        }
+
+        function toLocalInputValue(value) {
+          if (!value) {
+            return '';
+          }
+          const date = value instanceof Date ? value : new Date(value);
+          if (Number.isNaN(date.getTime())) {
+            return '';
+          }
+          const offsetMinutes = date.getTimezoneOffset();
+          const local = new Date(date.getTime() - offsetMinutes * 60000);
+          return local.toISOString().slice(0, 16);
+        }
+
+        function formatLocalDateTime(value) {
+          if (!value) {
+            return '';
+          }
+          const date = value instanceof Date ? value : new Date(value);
+          if (Number.isNaN(date.getTime())) {
+            return '';
+          }
+          return new Intl.DateTimeFormat(undefined, {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }).format(date);
         }
 
         function updateFocusTimerDisplay() {
@@ -1604,6 +2232,7 @@
           const startButton = elements.focus.startButton;
           const pauseButton = elements.focus.pauseButton;
           const resetButton = elements.focus.resetButton;
+          const toolsButton = elements.focus.taskToolsButton;
           if (startButton) {
             const disabled = focusState.isRunning || !state.token || !focusState.selectedTaskId;
             startButton.disabled = disabled;
@@ -1617,11 +2246,17 @@
           if (resetButton) {
             resetButton.disabled = false;
           }
+          if (toolsButton) {
+            const disabledTools = !state.token || !focusState.selectedTaskId;
+            toolsButton.disabled = disabledTools;
+            toolsButton.classList.toggle('opacity-60', disabledTools);
+          }
         }
 
         function resetWorkspaceData() {
           state.data.tasks = [];
           state.data.moods = [];
+          state.data.templates = [];
           analyticsState.lastUpdated = null;
           updateAnalyticsTimestamp();
           destroyChart('velocity');
@@ -1668,6 +2303,13 @@
           updateFocusStatus('ready');
           updateFocusControls();
           updateFocusHistoryUi();
+          if (taskModalState.isOpen) {
+            closeTaskModal();
+          } else {
+            updateTaskModalContent();
+          }
+          populateTemplateSelect();
+          setReminderStatus(null);
         }
 
         function toggleEmptyState(element, shouldShow) {
