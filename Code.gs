@@ -4,6 +4,7 @@ var SHEET_NAMES = {
   SUBTASKS: 'Subtasks',
   ACTIVITY_LOG: 'ActivityLog',
   MOODS: 'Moods',
+  COMMENTS: 'Comments',
   ATTACHMENTS: 'Attachments'
 };
 
@@ -32,7 +33,8 @@ SHEET_HEADERS[SHEET_NAMES.TASKS] = [
   'Timestamp',
   'DueAt',
   'UpdatedAt',
-  'ParentTaskID'
+  'ParentTaskID',
+  'DependsOn'
 ];
 SHEET_HEADERS[SHEET_NAMES.SUBTASKS] = [
   'SubtaskID',
@@ -67,6 +69,14 @@ SHEET_HEADERS[SHEET_NAMES.ATTACHMENTS] = [
   'Url',
   'AddedBy',
   'At'
+];
+
+SHEET_HEADERS[SHEET_NAMES.COMMENTS] = [
+  'CommentID',
+  'TaskID',
+  'UserEmail',
+  'Text',
+  'CreatedAt'
 ];
 
 var ROLE_RANK = {
@@ -310,9 +320,23 @@ function createTask(token, taskObj) {
       parentTaskId = parentTask.record.TaskID;
     }
 
+    var dependencyValue = pickFirstDefined_(payload, ['DependsOn', 'dependsOn', 'Dependency', 'dependency']);
+    var dependsOnId = dependencyValue ? String(dependencyValue).trim() : '';
+    if (dependsOnId) {
+      var dependencyTask = getTaskById_(dependsOnId);
+      if (!dependencyTask) {
+        throw new Error('Dependency task not found.');
+      }
+      if (!canViewTask_(session, dependencyTask.record, usersMap)) {
+        throw new Error('Forbidden.');
+      }
+      dependsOnId = dependencyTask.record.TaskID;
+    }
+
     var now = nowIso_();
+    var newTaskId = generateId_('TASK');
     var record = {
-      TaskID: generateId_('TASK'),
+      TaskID: newTaskId,
       Name: name,
       Category: category,
       Priority: priority,
@@ -326,9 +350,13 @@ function createTask(token, taskObj) {
       Timestamp: now,
       DueAt: dueAt,
       UpdatedAt: now,
-      ParentTaskID: parentTaskId
+      ParentTaskID: parentTaskId,
+      DependsOn: dependsOnId
     };
 
+    if (record.DependsOn && record.DependsOn === record.TaskID) {
+      throw new Error('Task cannot depend on itself.');
+    }
     if (record.ParentTaskID && record.ParentTaskID === record.TaskID) {
       throw new Error('Task cannot be its own parent.');
     }
@@ -468,6 +496,28 @@ function updateTask(token, taskId, updates) {
       }
     }
 
+    var dependencyValue = pickFirstDefined_(payload, ['DependsOn', 'dependsOn', 'Dependency', 'dependency']);
+    if (dependencyValue !== undefined) {
+      var dependsOnId = dependencyValue ? String(dependencyValue).trim() : '';
+      if (dependsOnId) {
+        if (dependsOnId === record.TaskID) {
+          throw new Error('Task cannot depend on itself.');
+        }
+        var dependencyTask = getTaskById_(dependsOnId);
+        if (!dependencyTask) {
+          throw new Error('Dependency task not found.');
+        }
+        if (!canViewTask_(session, dependencyTask.record, usersMap)) {
+          throw new Error('Forbidden.');
+        }
+        dependsOnId = dependencyTask.record.TaskID;
+      }
+      if ((record.DependsOn || '') !== dependsOnId) {
+        record.DependsOn = dependsOnId;
+        updatesApplied = true;
+      }
+    }
+
     var newAssigneeEmail = null;
     var assigneeValue = pickFirstDefined_(payload, ['Assignee', 'assignee']);
     if (assigneeValue !== undefined) {
@@ -587,6 +637,7 @@ function deleteTask(token, taskId) {
     var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
     sheet.deleteRow(taskResult.rowNumber);
     deleteSubtasksForTask_(taskResult.record.TaskID);
+    deleteCommentsForTask_(taskResult.record.TaskID);
     logActivity_(session, 'task.delete', 'Task', taskResult.record.TaskID, {});
     return true;
   });
@@ -891,6 +942,74 @@ function listMoods(token, filters) {
         return 0;
       }
       return aKey < bKey ? 1 : -1;
+    });
+    return results;
+  });
+}
+
+function addComment(token, taskId, text) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    if (!taskId) {
+      throw new Error('Task ID is required.');
+    }
+    var taskResult = getTaskById_(String(taskId));
+    if (!taskResult) {
+      throw new Error('Task not found.');
+    }
+    var usersMap = loadUsersMap_();
+    if (!canViewTask_(session, taskResult.record, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+    var commentText = requireNonEmptyString_(text, 'Comment text');
+    var email = getSessionEmail_(session);
+    if (!email) {
+      throw new Error('Unable to resolve session email.');
+    }
+    var sheet = ensureSheet_(SHEET_NAMES.COMMENTS, SHEET_HEADERS[SHEET_NAMES.COMMENTS]);
+    var record = {
+      CommentID: generateId_('COMMENT'),
+      TaskID: taskResult.record.TaskID,
+      UserEmail: email,
+      Text: commentText,
+      CreatedAt: nowIso_()
+    };
+    appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.COMMENTS], record);
+    logActivity_(session, 'comment.add', 'Task', record.TaskID, { commentId: record.CommentID });
+    return sanitizeComment_(record);
+  });
+}
+
+function listComments(token, taskId) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    if (!taskId) {
+      throw new Error('Task ID is required.');
+    }
+    var taskResult = getTaskById_(String(taskId));
+    if (!taskResult) {
+      throw new Error('Task not found.');
+    }
+    var usersMap = loadUsersMap_();
+    if (!canViewTask_(session, taskResult.record, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+    var sheet = ensureSheet_(SHEET_NAMES.COMMENTS, SHEET_HEADERS[SHEET_NAMES.COMMENTS]);
+    var rows = sheetObjects_(sheet, SHEET_HEADERS[SHEET_NAMES.COMMENTS]);
+    var searchId = taskResult.record.TaskID;
+    var results = [];
+    for (var i = 0; i < rows.length; i++) {
+      if (String(rows[i].TaskID || '') === searchId) {
+        results.push(sanitizeComment_(rows[i]));
+      }
+    }
+    results.sort(function (a, b) {
+      var aKey = a.CreatedAt || '';
+      var bKey = b.CreatedAt || '';
+      if (aKey === bKey) {
+        return 0;
+      }
+      return aKey < bKey ? -1 : 1;
     });
     return results;
   });
@@ -1791,7 +1910,8 @@ function sanitizeTask_(record) {
     Timestamp: record.Timestamp || '',
     DueAt: record.DueAt || '',
     UpdatedAt: record.UpdatedAt || '',
-    ParentTaskID: record.ParentTaskID || ''
+    ParentTaskID: record.ParentTaskID || '',
+    DependsOn: record.DependsOn || ''
   };
 }
 
@@ -1820,6 +1940,19 @@ function sanitizeMood_(record) {
     Mood: record.Mood || '',
     Note: record.Note || '',
     At: record.At || ''
+  };
+}
+
+function sanitizeComment_(record) {
+  if (!record) {
+    return null;
+  }
+  return {
+    CommentID: record.CommentID,
+    TaskID: record.TaskID || '',
+    UserEmail: normalizeEmail_(record.UserEmail),
+    Text: record.Text || '',
+    CreatedAt: record.CreatedAt || ''
   };
 }
 
@@ -1918,5 +2051,33 @@ function deleteSubtasksForTask_(taskId) {
       sheet.deleteRow(i + 2);
 
     }
+  }
+}
+
+function deleteCommentsForTask_(taskId) {
+  if (!taskId) {
+    return;
+  }
+  var sheet = ensureSheet_(SHEET_NAMES.COMMENTS, SHEET_HEADERS[SHEET_NAMES.COMMENTS]);
+  var headers = SHEET_HEADERS[SHEET_NAMES.COMMENTS];
+  var rows = sheetObjects_(sheet, headers);
+  if (!rows.length) {
+    return;
+  }
+  var searchId = String(taskId);
+  var toDelete = [];
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].TaskID || '') === searchId) {
+      toDelete.push(rows[i]._rowNumber);
+    }
+  }
+  if (!toDelete.length) {
+    return;
+  }
+  toDelete.sort(function (a, b) {
+    return b - a;
+  });
+  for (var j = 0; j < toDelete.length; j++) {
+    sheet.deleteRow(toDelete[j]);
   }
 }
