@@ -761,7 +761,7 @@ function updateTask(token, taskId, updates) {
   });
 }
 
-function bulkUpdateTasks(token, taskIds, action) {
+function bulkUpdateTasks(token, taskIds, action, options) {
   return handleApi_(function () {
     var session = requireSession_(token);
     ensureTaskWriteAccess_(session);
@@ -1397,46 +1397,6 @@ function applyTemplate(token, templateId) {
   });
 }
 
-function duplicateTask(token, taskId) {
-  return handleApi_(function () {
-    var session = requireSession_(token);
-    ensureTaskWriteAccess_(session);
-    if (!taskId) {
-      throw new Error('Task ID is required.');
-    }
-
-    var taskResult = getTaskById_(String(taskId));
-    if (!taskResult) {
-      throw new Error('Task not found.');
-    }
-
-    var task = taskResult.record;
-    var newId = generateId_('TASK');
-    var duplicated = Object.assign({}, task, {
-      TaskID: newId,
-      Name: task.Name + ' (Copy)',
-      Timestamp: nowIso_(),
-      UpdatedAt: nowIso_()
-    });
-
-    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
-    appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS], duplicated);
-
-    logActivity_(session, 'task.duplicate', 'Task', newId, { source: task.TaskID });
-    return sanitizeTask_(duplicated);
-  });
-}
-
-function logTime(token, taskId, minutes) {
-  // ... Codex’s logTime implementation continues here ...
-}
-
-  return handleApi_(function () {
-    var session = requireSession_(token);
-    ensureTaskWriteAccess_(session);
-    if (!taskId) {
-      throw new Error('Task ID is required.');
-    }
 function logTaskTime(token, taskId, minutes) {
   return handleApi_(function () {
     var session = requireSession_(token);
@@ -1901,7 +1861,7 @@ function listMoods(token, filters) {
   });
 }
 
-function addQuote(token, text) {
+function addQuote(token, text, author) {
   return handleApi_(function () {
     var session = requireSession_(token);
     var payload = text;
@@ -1919,6 +1879,12 @@ function addQuote(token, text) {
       var authorValue = pickFirstDefined_(payload, ['author', 'Author', 'by']);
       if (authorValue !== undefined && authorValue !== null) {
         authorCandidate = String(authorValue).trim();
+      }
+    }
+    if (author !== undefined && author !== null) {
+      var providedAuthor = String(author).trim();
+      if (providedAuthor) {
+        authorCandidate = providedAuthor;
       }
     }
     if (textCandidate === null || textCandidate === undefined) {
@@ -1961,18 +1927,33 @@ function addQuote(token, text) {
   });
 }
 
-function listQuotes(token) {
+function listQuotes(token, options) {
   return handleApi_(function () {
     requireSession_(token);
 
     var sheet = ensureSheet_(SHEET_NAMES.QUOTES, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
     var rows = sheetObjects_(sheet, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
     var results = [];
+    var opts = options;
+    if (typeof opts === 'string') {
+      opts = safeParse_(opts, {});
+    }
+    if (!opts || typeof opts !== 'object') {
+      opts = {};
+    }
+    var approvedOnly = true;
+    if (Object.prototype.hasOwnProperty.call(opts, 'approvedOnly')) {
+      approvedOnly = isTrue_(opts.approvedOnly);
+    }
     for (var i = 0; i < rows.length; i++) {
-      if (!isTrue_(rows[i].Approved)) {
+      var sanitized = sanitizeQuote_(rows[i]);
+      if (!sanitized) {
         continue;
       }
-      results.push(sanitizeQuote_(rows[i]));
+      if (approvedOnly && !sanitized.Approved) {
+        continue;
+      }
+      results.push(sanitized);
     }
     return results;
   });
