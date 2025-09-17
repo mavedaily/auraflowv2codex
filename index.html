@@ -1,1 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aura Flow V2 — by Rare Aura Media Group</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              aura: {
+                primary: '#7f5af0',
+                secondary: '#2cb1bc',
+                accent: '#f2a359',
+              },
+            },
+            boxShadow: {
+              brand: '0 25px 50px -12px rgba(127, 90, 240, 0.45)',
+            },
+          },
+        },
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        background: radial-gradient(circle at top left, rgba(127, 90, 240, 0.3), transparent 40%),
+          radial-gradient(circle at bottom right, rgba(44, 177, 188, 0.25), transparent 45%),
+          #0f172a;
+      }
+      .login-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 1.25rem;
+        padding: 1px;
+        background: linear-gradient(135deg, rgba(127, 90, 240, 0.8), rgba(44, 177, 188, 0.65));
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+      }
+      .toast-enter {
+        transform: translateY(16px);
+        opacity: 0;
+      }
+      .toast-enter-active {
+        transform: translateY(0);
+        opacity: 1;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+      .toast-leave {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      .toast-leave-active {
+        transform: translateY(-8px);
+        opacity: 0;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-slate-100">
+    <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      <div class="absolute -top-32 -right-32 h-72 w-72 rounded-full bg-aura-primary/30 blur-3xl"></div>
+      <div class="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-aura-secondary/25 blur-3xl"></div>
+    </div>
 
+    <div id="toastStack" class="fixed top-4 right-4 z-[100] flex flex-col gap-3 w-72 pointer-events-none" role="status" aria-live="assertive"></div>
+
+    <main class="relative z-10">
+      <section id="loginView" class="min-h-screen flex items-center justify-center px-6 py-12">
+        <div class="login-card relative isolate bg-slate-950/70 backdrop-blur-xl border border-white/10 rounded-3xl shadow-brand max-w-xl w-full">
+          <div class="absolute inset-x-0 -top-20 mx-auto w-40 h-40 rounded-full bg-gradient-to-br from-aura-primary to-aura-secondary blur-3xl opacity-40"></div>
+          <div class="p-10 space-y-10">
+            <div>
+              <p class="text-sm uppercase tracking-[0.3em] text-slate-400 mb-2">Welcome to</p>
+              <h1 class="text-3xl sm:text-4xl font-semibold text-white leading-tight">
+                Aura Flow V2 <span class="text-slate-400">— by Rare Aura Media Group</span>
+              </h1>
+              <p class="mt-4 text-base text-slate-400 leading-relaxed">
+                Manage collaborative workstreams, track focus, and surface insights with a refined workflow engine tailored for scaling creative teams.
+              </p>
+            </div>
+            <form id="loginForm" class="space-y-6">
+              <div class="grid gap-2">
+                <label for="email" class="text-sm font-medium text-slate-200">Work Email</label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="you@rareaura.co"
+                  required
+                  autocomplete="email"
+                  class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                />
+              </div>
+              <div class="grid gap-2">
+                <label for="password" class="text-sm font-medium text-slate-200">Password</label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="••••••••"
+                  required
+                  autocomplete="current-password"
+                  class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                />
+              </div>
+              <button
+                id="loginButton"
+                type="submit"
+                class="group relative w-full inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-3 text-base font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+              >
+                <span data-role="spinner" class="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin hidden"></span>
+                <span data-role="label">Sign in to Aura Flow</span>
+              </button>
+            </form>
+            <div class="grid gap-4 text-sm text-slate-500">
+              <div class="flex items-center gap-3">
+                <span class="h-px flex-1 bg-white/10"></span>
+                <span>Security &amp; Trust</span>
+                <span class="h-px flex-1 bg-white/10"></span>
+              </div>
+              <p>
+                Credentials are encrypted via salted SHA-256 hashing. Sessions stay secure with short-lived tokens managed through Google Apps Script CacheService.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="appView" class="hidden min-h-screen pb-16">
+        <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur border-b border-white/5">
+          <div class="max-w-7xl mx-auto px-6 py-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p class="text-xs uppercase tracking-[0.35em] text-slate-500">Workspace</p>
+              <h2 class="text-2xl font-semibold text-white">
+                Aura Flow V2 <span class="text-slate-400">— by Rare Aura Media Group</span>
+              </h2>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="text-right">
+                <p id="userBadge" class="text-sm font-medium text-white">Authenticated</p>
+                <p class="text-xs text-slate-500" id="roleBadge">Role</p>
+              </div>
+              <button
+                id="logoutButton"
+                class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-transparent px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+          <nav class="border-t border-white/5 bg-slate-950/70">
+            <div class="max-w-7xl mx-auto px-4 overflow-x-auto">
+              <div class="flex items-center gap-2 py-3" role="tablist">
+                <button data-tab-button="dashboard" class="tab-button">Dashboard</button>
+                <button data-tab-button="kanban" class="tab-button">Kanban</button>
+                <button data-tab-button="analytics" class="tab-button">Analytics</button>
+                <button data-tab-button="focus" class="tab-button">Focus</button>
+                <button data-tab-button="admin" class="tab-button">Admin</button>
+              </div>
+            </div>
+          </nav>
+        </header>
+        <div class="max-w-7xl mx-auto px-6 py-12 space-y-12">
+          <section data-tab-panel="dashboard" class="tab-panel">
+            <div class="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
+              <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
+                <p class="text-sm text-slate-400">Tasks Today</p>
+                <p class="mt-3 text-3xl font-semibold text-white" id="metric-today">—</p>
+                <p class="mt-4 text-xs text-slate-500">Coming soon: surfaced from real-time assignments.</p>
+              </div>
+              <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
+                <p class="text-sm text-slate-400">Completed</p>
+                <p class="mt-3 text-3xl font-semibold text-white" id="metric-complete">—</p>
+                <p class="mt-4 text-xs text-slate-500">Completion streaks and throughput analytics arrive in Phase 4.</p>
+              </div>
+              <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
+                <p class="text-sm text-slate-400">Time Tracked</p>
+                <p class="mt-3 text-3xl font-semibold text-white" id="metric-time">—</p>
+                <p class="mt-4 text-xs text-slate-500">Focus mode sessions will sync minutes here.</p>
+              </div>
+              <div class="rounded-2xl bg-slate-900/70 border border-white/5 p-6">
+                <p class="text-sm text-slate-400">Overdue</p>
+                <p class="mt-3 text-3xl font-semibold text-white" id="metric-overdue">—</p>
+                <p class="mt-4 text-xs text-slate-500">Due date intelligence with nudges ships later.</p>
+              </div>
+            </div>
+            <div class="mt-10 rounded-3xl bg-slate-900/80 border border-white/5 p-8">
+              <h3 class="text-xl font-semibold text-white">Workspace Activity Snapshot</h3>
+              <p class="mt-3 text-sm text-slate-400">
+                The unified activity feed, sprint burndowns, and mood overlays will be activated as the backend endpoints land in Phase 3.
+              </p>
+              <div class="mt-6 grid gap-4 text-sm text-slate-500 md:grid-cols-3">
+                <div class="rounded-2xl border border-dashed border-white/10 p-4">
+                  <p class="font-medium text-slate-300">Team Momentum</p>
+                  <p class="mt-2">Visualize cadence as tasks close and focus sessions complete.</p>
+                </div>
+                <div class="rounded-2xl border border-dashed border-white/10 p-4">
+                  <p class="font-medium text-slate-300">Mood Signals</p>
+                  <p class="mt-2">Overlay emotional telemetry to anticipate blockers before they escalate.</p>
+                </div>
+                <div class="rounded-2xl border border-dashed border-white/10 p-4">
+                  <p class="font-medium text-slate-300">Resource Coverage</p>
+                  <p class="mt-2">Monitor attachments and briefs so every deliverable is unblocked.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section data-tab-panel="kanban" class="tab-panel hidden">
+            <div class="rounded-3xl border border-dashed border-white/10 bg-slate-900/70 p-10 text-center">
+              <h3 class="text-2xl font-semibold text-white">Kanban Workspace</h3>
+              <p class="mt-4 text-sm text-slate-400">
+                Drag-and-drop swimlanes for status management will be introduced in Phase 4, powered by live task syncing.
+              </p>
+            </div>
+          </section>
+
+          <section data-tab-panel="analytics" class="tab-panel hidden">
+            <div class="rounded-3xl bg-slate-900/70 border border-white/5 p-8">
+              <h3 class="text-2xl font-semibold text-white">Analytics &amp; Insights</h3>
+              <p class="mt-4 text-sm text-slate-400">
+                Chart.js visualizations for completion velocity, time distribution, and mood trends will activate once task and mood datasets flow in.
+              </p>
+              <div class="mt-10 grid gap-6 lg:grid-cols-2">
+                <div class="aspect-[4/3] rounded-2xl border border-dashed border-white/10 bg-slate-950/60 flex items-center justify-center text-slate-500">
+                  Completion Rate Chart Placeholder
+                </div>
+                <div class="aspect-[4/3] rounded-2xl border border-dashed border-white/10 bg-slate-950/60 flex items-center justify-center text-slate-500">
+                  Time by Category Chart Placeholder
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section data-tab-panel="focus" class="tab-panel hidden">
+            <div class="rounded-3xl bg-slate-900/70 border border-white/5 p-8">
+              <h3 class="text-2xl font-semibold text-white">Focus Mode</h3>
+              <p class="mt-4 text-sm text-slate-400">
+                Pomodoro timers, ambient soundscapes, and session summaries will arrive shortly to keep momentum tight.
+              </p>
+              <div class="mt-8 grid gap-6 md:grid-cols-3">
+                <div class="rounded-2xl border border-dashed border-white/10 p-6">
+                  <p class="font-medium text-slate-300">Timer Controls</p>
+                  <p class="mt-3 text-sm text-slate-500">Quick-start focus blocks with break reminders.</p>
+                </div>
+                <div class="rounded-2xl border border-dashed border-white/10 p-6">
+                  <p class="font-medium text-slate-300">Mood Log</p>
+                  <p class="mt-3 text-sm text-slate-500">Capture how each session felt to sharpen retrospectives.</p>
+                </div>
+                <div class="rounded-2xl border border-dashed border-white/10 p-6">
+                  <p class="font-medium text-slate-300">Activity Sync</p>
+                  <p class="mt-3 text-sm text-slate-500">Automatically update activity logs as sessions start and end.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section data-tab-panel="admin" class="tab-panel hidden">
+            <div class="rounded-3xl bg-slate-900/70 border border-white/5 p-8">
+              <h3 class="text-2xl font-semibold text-white">Admin Control Center</h3>
+              <p class="mt-4 text-sm text-slate-400">
+                User provisioning, hierarchy management, and bulk operations will surface here in Phase 5 once backend services solidify.
+              </p>
+              <div class="mt-8 grid gap-6 md:grid-cols-2">
+                <div class="rounded-2xl border border-dashed border-white/10 p-6">
+                  <p class="font-medium text-slate-300">Team Directory</p>
+                  <p class="mt-3 text-sm text-slate-500">View and manage role-based access across the org.</p>
+                </div>
+                <div class="rounded-2xl border border-dashed border-white/10 p-6">
+                  <p class="font-medium text-slate-300">Bulk Ops</p>
+                  <p class="mt-3 text-sm text-slate-500">Upload CSVs/XLSX to seed large workstreams in a flash.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const server = new Proxy(
+        {},
+        {
+          get(_, method) {
+            return function (...args) {
+              return new Promise((resolve, reject) => {
+                const runnerRoot =
+                  typeof google !== 'undefined' && google.script && typeof google.script.run !== 'undefined'
+                    ? google.script.run
+                    : null;
+                if (!runnerRoot) {
+                  console.warn(`[AuraFlow] google.script.run unavailable for method ${String(method)}`);
+                  reject('Server unavailable. Please deploy as a Google Apps Script Web App.');
+                  return;
+                }
+                const runner = runnerRoot
+                  .withSuccessHandler((result) => {
+                    if (result && typeof result === 'object' && 'success' in result) {
+                      if (result.success) {
+                        resolve(result.data);
+                      } else {
+                        reject(result.error || 'Unknown server error.');
+                      }
+                    } else {
+                      resolve(result);
+                    }
+                  })
+                  .withFailureHandler((err) => {
+                    reject(err && err.message ? err.message : String(err || 'Request failed.'));
+                  });
+                if (typeof runner[method] !== 'function') {
+                  reject(`Server method "${String(method)}" is not defined.`);
+                  return;
+                }
+                try {
+                  runner[method].apply(runner, args);
+                } catch (invokeErr) {
+                  reject(invokeErr && invokeErr.message ? invokeErr.message : String(invokeErr));
+                }
+              });
+            };
+          },
+        }
+      );
+
+      (function () {
+        const STORAGE_KEY = 'aura-flow-v2.session';
+        const state = {
+          token: null,
+          user: null,
+          activeTab: 'dashboard',
+        };
+        const elements = {};
+        const tabs = ['dashboard', 'kanban', 'analytics', 'focus', 'admin'];
+        let isInitialized = false;
+
+        document.addEventListener('DOMContentLoaded', init);
+
+        function init() {
+          if (isInitialized) return;
+          isInitialized = true;
+          cacheElements();
+          enhanceTabButtons();
+          bindEvents();
+          updateShell();
+          restoreSession();
+        }
+
+        function cacheElements() {
+          elements.loginView = document.getElementById('loginView');
+          elements.appView = document.getElementById('appView');
+          elements.loginForm = document.getElementById('loginForm');
+          elements.loginButton = document.getElementById('loginButton');
+          elements.userBadge = document.getElementById('userBadge');
+          elements.roleBadge = document.getElementById('roleBadge');
+          elements.logoutButton = document.getElementById('logoutButton');
+          elements.tabButtons = document.querySelectorAll('[data-tab-button]');
+          elements.tabPanels = document.querySelectorAll('[data-tab-panel]');
+        }
+
+        function enhanceTabButtons() {
+          elements.tabButtons.forEach((btn) => {
+            btn.classList.add(
+              'whitespace-nowrap',
+              'rounded-full',
+              'px-4',
+              'py-2',
+              'text-sm',
+              'font-medium',
+              'text-slate-300',
+              'transition',
+              'bg-white/0',
+              'hover:bg-white/10',
+              'focus-visible:outline',
+              'focus-visible:outline-2',
+              'focus-visible:outline-offset-2',
+              'focus-visible:outline-white/40'
+            );
+            btn.setAttribute('role', 'tab');
+          });
+          elements.tabPanels.forEach((panel) => {
+            panel.setAttribute('role', 'tabpanel');
+          });
+        }
+
+        function bindEvents() {
+          if (elements.loginForm) {
+            elements.loginForm.addEventListener('submit', handleLoginSubmit, { once: false });
+          }
+          if (elements.logoutButton) {
+            elements.logoutButton.addEventListener('click', handleLogout, { once: false });
+          }
+          elements.tabButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const targetTab = btn.getAttribute('data-tab-button');
+              setActiveTab(targetTab);
+            });
+          });
+        }
+
+        async function handleLoginSubmit(event) {
+          event.preventDefault();
+          const formData = new FormData(elements.loginForm);
+          const email = String(formData.get('email') || '').trim();
+          const password = String(formData.get('password') || '');
+          if (!email || !password) {
+            showToast('Please provide both email and password.', 'error');
+            return;
+          }
+          setButtonLoading(elements.loginButton, true);
+          try {
+            const response = await server.login(email, password);
+            if (!response || !response.token) {
+              throw new Error('Unexpected response from server.');
+            }
+            applySession(response.token, response.user);
+            persistSession(response.token, response.user);
+            showToast(`Welcome back, ${response.user.Email}!`, 'success');
+          } catch (err) {
+            console.error('Login failed:', err);
+            showToast(err && err.message ? err.message : String(err), 'error');
+          } finally {
+            setButtonLoading(elements.loginButton, false);
+          }
+        }
+
+        async function handleLogout() {
+          const currentToken = state.token;
+          clearSession();
+          updateShell();
+          if (currentToken) {
+            try {
+              await server.logout(currentToken);
+            } catch (err) {
+              console.warn('Logout warning:', err);
+            }
+          }
+          showToast('You are signed out.', 'success');
+        }
+
+        function setButtonLoading(button, isLoading) {
+          if (!button) return;
+          button.disabled = isLoading;
+          button.classList.toggle('opacity-70', isLoading);
+          const spinner = button.querySelector('[data-role="spinner"]');
+          const label = button.querySelector('[data-role="label"]');
+          if (spinner) spinner.classList.toggle('hidden', !isLoading);
+          if (label) label.classList.toggle('opacity-0', isLoading);
+        }
+
+        function setActiveTab(tabId) {
+          if (!tabs.includes(tabId)) {
+            return;
+          }
+          state.activeTab = tabId;
+          elements.tabButtons.forEach((btn) => {
+            const isActive = btn.getAttribute('data-tab-button') === tabId;
+            btn.classList.toggle('bg-white/10', isActive);
+            btn.classList.toggle('text-white', isActive);
+            btn.classList.toggle('text-slate-300', !isActive);
+            btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            btn.setAttribute('tabindex', isActive ? '0' : '-1');
+          });
+          elements.tabPanels.forEach((panel) => {
+            const isActive = panel.getAttribute('data-tab-panel') === tabId;
+            panel.classList.toggle('hidden', !isActive);
+          });
+        }
+
+        function applySession(token, user) {
+          state.token = token;
+          state.user = user || null;
+          updateShell();
+        }
+
+        function updateShell() {
+          const isAuthenticated = Boolean(state.token && state.user);
+          if (elements.loginView) {
+            elements.loginView.classList.toggle('hidden', isAuthenticated);
+          }
+          if (elements.appView) {
+            elements.appView.classList.toggle('hidden', !isAuthenticated);
+          }
+          if (elements.userBadge) {
+            elements.userBadge.textContent = isAuthenticated ? state.user.Email : 'Not authenticated';
+          }
+          if (elements.roleBadge) {
+            elements.roleBadge.textContent = isAuthenticated && state.user.Role ? state.user.Role : '';
+          }
+          setActiveTab(state.activeTab);
+        }
+
+        function persistSession(token, user) {
+          try {
+            const payload = JSON.stringify({ token, user });
+            localStorage.setItem(STORAGE_KEY, payload);
+          } catch (err) {
+            console.warn('Failed to persist session', err);
+          }
+        }
+
+        function clearSession() {
+          state.token = null;
+          state.user = null;
+          try {
+            localStorage.removeItem(STORAGE_KEY);
+          } catch (err) {
+            console.warn('Failed to clear session storage', err);
+          }
+        }
+
+        async function restoreSession() {
+          let stored = null;
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+              stored = JSON.parse(raw);
+            }
+          } catch (err) {
+            console.warn('Failed to parse stored session', err);
+          }
+          if (!stored || !stored.token) {
+            updateShell();
+            return;
+          }
+          try {
+            const sessionInfo = await server.whoami(stored.token);
+            if (sessionInfo && sessionInfo.token && sessionInfo.user) {
+              persistSession(sessionInfo.token, sessionInfo.user);
+              applySession(sessionInfo.token, sessionInfo.user);
+              showToast(`Welcome back, ${sessionInfo.user.Email}!`, 'success');
+              return;
+            }
+            throw new Error('Session invalid.');
+          } catch (err) {
+            console.warn('Session restore failed:', err);
+            clearSession();
+            updateShell();
+          }
+        }
+      })();
+
+      function showToast(message, type = 'info') {
+        const container = document.getElementById('toastStack');
+        if (!container) return;
+        const toast = document.createElement('div');
+        const baseClasses = [
+          'pointer-events-auto',
+          'rounded-2xl',
+          'border',
+          'border-white/10',
+          'px-4',
+          'py-3',
+          'shadow-lg',
+          'backdrop-blur',
+          'text-sm',
+          'flex',
+          'items-start',
+          'gap-3',
+          'transition',
+        ];
+        const palette = {
+          success: 'bg-emerald-500/20 text-emerald-100',
+          error: 'bg-rose-500/20 text-rose-100',
+          info: 'bg-slate-800/80 text-slate-100',
+        };
+        toast.className = baseClasses.join(' ');
+        toast.classList.add('toast-enter');
+        toast.innerHTML = `
+          <span class="mt-0.5 text-lg">${type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️'}</span>
+          <div class="leading-snug">
+            <p class="font-medium">${message}</p>
+          </div>
+        `;
+        toast.classList.add(...(palette[type] || palette.info).split(' '));
+        container.appendChild(toast);
+        requestAnimationFrame(() => {
+          toast.classList.remove('toast-enter');
+          toast.classList.add('toast-enter-active');
+        });
+        setTimeout(() => {
+          toast.classList.remove('toast-enter-active');
+          toast.classList.add('toast-leave-active');
+          setTimeout(() => {
+            toast.remove();
+          }, 220);
+        }, 3600);
+      }
+    </script>
+  </body>
+</html>
