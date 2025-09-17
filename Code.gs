@@ -161,8 +161,23 @@ function listUsers(token) {
     ensurePermission_(session, 'users:view');
     var sheet = ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]);
     var headers = SHEET_HEADERS[SHEET_NAMES.USERS];
-    var users = sheetObjects_(sheet, headers).map(function (row) {
-      return sanitizeUser_(row);
+    var users = sheetObjects_(sheet, headers)
+      .map(function (row) {
+        return sanitizeUser_(row);
+      })
+      .filter(function (user) {
+        return user !== null;
+      });
+    users.sort(function (a, b) {
+      var emailA = (a && a.Email) || '';
+      var emailB = (b && b.Email) || '';
+      if (emailA < emailB) {
+        return -1;
+      }
+      if (emailA > emailB) {
+        return 1;
+      }
+      return 0;
     });
     return users;
   });
@@ -179,10 +194,15 @@ function upsertUser(token, userObj) {
     if (!email) {
       throw new Error('Email is required.');
     }
-    var normalizedEmail = email.toLowerCase();
-    var desiredRole = userObj.Role || 'Intern';
+    var normalizedEmail = normalizeEmail_(email);
+    var desiredRoleValue = userObj.Role !== undefined && userObj.Role !== null ? String(userObj.Role).trim() : '';
+    var desiredRole = desiredRoleValue || 'Intern';
     if (!ROLE_RANK[desiredRole]) {
       throw new Error('Invalid role.');
+    }
+    var sessionRole = getSessionRole_(session);
+    if (ROLE_RANK[desiredRole] > ROLE_RANK[sessionRole]) {
+      throw new Error('Cannot assign a role higher than your own.');
     }
 
     var sheet = ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]);
@@ -193,28 +213,30 @@ function upsertUser(token, userObj) {
       var record = userResult.record;
       record.Email = normalizedEmail;
       record.Role = desiredRole;
-      record.ManagerEmail = userObj.ManagerEmail || '';
-      record.IsActive = userObj.IsActive === false || userObj.IsActive === 'FALSE' ? 'FALSE' : 'TRUE';
-      if (userObj.Password) {
+      record.ManagerEmail = normalizeEmail_(userObj.ManagerEmail);
+      record.IsActive = userObj.IsActive === false || String(userObj.IsActive).toUpperCase() === 'FALSE' ? 'FALSE' : 'TRUE';
+      var passwordUpdate = userObj.Password !== undefined && userObj.Password !== null ? String(userObj.Password).trim() : '';
+      if (passwordUpdate) {
         var salt = generateSalt_();
         record.Salt = salt;
-        record.PasswordHash = hashPassword_(userObj.Password, salt);
+        record.PasswordHash = hashPassword_(passwordUpdate, salt);
       }
       writeRow_(sheet, headers, userResult.rowNumber, record);
       logActivity_(session, 'user.update', 'User', record.Email, {});
       return sanitizeUser_(record);
     }
-    if (!userObj.Password) {
+    var passwordNew = userObj.Password !== undefined && userObj.Password !== null ? String(userObj.Password).trim() : '';
+    if (!passwordNew) {
       throw new Error('Password is required for new users.');
     }
     var saltNew = generateSalt_();
     var newRecord = {
       Email: normalizedEmail,
-      PasswordHash: hashPassword_(userObj.Password, saltNew),
+      PasswordHash: hashPassword_(passwordNew, saltNew),
       Salt: saltNew,
       Role: desiredRole,
-      ManagerEmail: userObj.ManagerEmail || '',
-      IsActive: userObj.IsActive === false || userObj.IsActive === 'FALSE' ? 'FALSE' : 'TRUE',
+      ManagerEmail: normalizeEmail_(userObj.ManagerEmail),
+      IsActive: userObj.IsActive === false || String(userObj.IsActive).toUpperCase() === 'FALSE' ? 'FALSE' : 'TRUE',
       CreatedAt: now
     };
     appendRow_(sheet, headers, newRecord);
@@ -231,17 +253,65 @@ function disableUser(token, email) {
     if (!email) {
       throw new Error('Email is required.');
     }
-    var userResult = getUserByEmail_((email));
+    var targetEmail = normalizeEmail_(email);
+    var sessionEmail = getSessionEmail_(session);
+    if (sessionEmail && sessionEmail === targetEmail) {
+      throw new Error('You cannot disable your own account.');
+    }
+    var sheet = ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.USERS];
+    var userResult = getUserByEmail_(targetEmail);
 
     if (!userResult) {
       throw new Error('User not found.');
     }
     var record = userResult.record;
     record.Email = normalizeEmail_(record.Email);
+    if (record.IsActive === 'FALSE' || record.IsActive === false) {
+      return sanitizeUser_(record);
+    }
     record.IsActive = 'FALSE';
-    writeRow_(ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]), SHEET_HEADERS[SHEET_NAMES.USERS], userResult.rowNumber, record);
+    writeRow_(sheet, headers, userResult.rowNumber, record);
 
     logActivity_(session, 'user.disable', 'User', record.Email, {});
+    return sanitizeUser_(record);
+  });
+}
+
+function resetUserPassword(token, email, newPassword) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensurePermission_(session, 'users:manage');
+    if (!email) {
+      throw new Error('Email is required.');
+    }
+    var normalizedEmail = normalizeEmail_(email);
+    if (!normalizedEmail) {
+      throw new Error('Email is required.');
+    }
+    if (newPassword === null || newPassword === undefined) {
+      throw new Error('New password is required.');
+    }
+    var password = String(newPassword).trim();
+    if (!password) {
+      throw new Error('New password is required.');
+    }
+    if (password.length < 8) {
+      throw new Error('Password must be at least 8 characters long.');
+    }
+    var sheet = ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.USERS];
+    var userResult = getUserByEmail_(normalizedEmail);
+    if (!userResult) {
+      throw new Error('User not found.');
+    }
+    var record = userResult.record;
+    record.Email = normalizeEmail_(record.Email);
+    var salt = generateSalt_();
+    record.Salt = salt;
+    record.PasswordHash = hashPassword_(password, salt);
+    writeRow_(sheet, headers, userResult.rowNumber, record);
+    logActivity_(session, 'user.resetPassword', 'User', record.Email, {});
     return sanitizeUser_(record);
   });
 }

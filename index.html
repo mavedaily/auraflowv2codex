@@ -568,23 +568,170 @@
           </section>
 
           <section data-tab-panel="admin" class="tab-panel hidden">
-            <div class="rounded-3xl bg-slate-900/70 border border-white/5 p-8">
-              <h3 class="text-2xl font-semibold text-white">Admin Control Center</h3>
-              <p class="mt-4 text-sm text-slate-400">
-                User provisioning, hierarchy management, and bulk operations will surface here in Phase 5 once backend services solidify.
-              </p>
-              <div class="mt-8 grid gap-6 md:grid-cols-2">
-                <div class="rounded-2xl border border-dashed border-white/10 p-6">
-                  <p class="font-medium text-slate-300">Team Directory</p>
-                  <p class="mt-3 text-sm text-slate-500">View and manage role-based access across the org.</p>
+            <div class="rounded-3xl border border-white/5 bg-slate-900/70 p-8">
+              <div class="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                <div class="space-y-2">
+                  <p class="text-xs uppercase tracking-[0.35em] text-slate-500">Administration</p>
+                  <h3 class="text-2xl font-semibold text-white">Team Directory</h3>
+                  <p class="text-sm text-slate-400">
+                    Manage user access, assign roles, and keep accounts audit-ready.
+                  </p>
                 </div>
-                <div class="rounded-2xl border border-dashed border-white/10 p-6">
-                  <p class="font-medium text-slate-300">Bulk Ops</p>
-                  <p class="mt-3 text-sm text-slate-500">Upload CSVs/XLSX to seed large workstreams in a flash.</p>
+                <div class="flex flex-wrap items-center gap-3" id="adminActionBar">
+                  <button
+                    id="adminRefreshButton"
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+                  >
+                    Refresh
+                  </button>
+                  <button
+                    id="adminAddUserButton"
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                  >
+                    Add user
+                  </button>
+                </div>
+              </div>
+              <div
+                id="adminPermissionNotice"
+                class="mt-8 hidden rounded-2xl border border-dashed border-white/10 bg-slate-950/40 p-6 text-sm text-slate-400"
+              >
+                <p class="font-medium text-slate-200">Restricted access</p>
+                <p class="mt-1 text-slate-500">
+                  You do not have permission to view the team directory. Contact an administrator for assistance.
+                </p>
+              </div>
+              <div id="adminUsersTableWrapper" class="mt-8 overflow-hidden rounded-2xl border border-white/5 bg-slate-950/40">
+                <div class="overflow-x-auto">
+                  <table class="min-w-full divide-y divide-white/5 text-sm">
+                    <thead class="bg-white/5 text-left text-xs uppercase tracking-[0.25em] text-slate-400">
+                      <tr>
+                        <th scope="col" class="px-6 py-3 font-medium">Email</th>
+                        <th scope="col" class="px-6 py-3 font-medium">Role</th>
+                        <th scope="col" class="px-6 py-3 font-medium">Status</th>
+                        <th scope="col" class="px-6 py-3 text-right font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminUsersTableBody" class="divide-y divide-white/5"></tbody>
+                  </table>
                 </div>
               </div>
             </div>
           </section>
+        </div>
+        <div
+          id="adminUserModal"
+          class="fixed inset-0 z-50 hidden items-center justify-center px-4 py-8"
+          role="dialog"
+          aria-modal="true"
+          aria-hidden="true"
+        >
+          <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" data-action="close-admin-modal"></div>
+          <div class="relative w-full max-w-xl rounded-3xl border border-white/10 bg-slate-900/90 p-8 shadow-2xl">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h3 id="adminUserModalTitle" class="text-xl font-semibold text-white">Add user</h3>
+                <p id="adminUserModalSubtitle" class="mt-1 text-sm text-slate-400">
+                  Provision a new teammate with the correct role.
+                </p>
+              </div>
+              <button
+                type="button"
+                class="rounded-full border border-white/10 p-2 text-slate-400 transition hover:text-white"
+                data-action="close-admin-modal"
+                aria-label="Close modal"
+              >
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <form id="adminUserForm" class="mt-6 space-y-5">
+              <div>
+                <label for="adminUserEmail" class="text-sm font-medium text-slate-200">Email</label>
+                <input
+                  id="adminUserEmail"
+                  name="email"
+                  type="email"
+                  required
+                  autocomplete="email"
+                  placeholder="teammate@company.com"
+                  class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                />
+              </div>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label for="adminUserRole" class="text-sm font-medium text-slate-200">Role</label>
+                  <select
+                    id="adminUserRole"
+                    name="role"
+                    class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                  >
+                    <option value="Admin">Admin</option>
+                    <option value="Sub-Admin">Sub-Admin</option>
+                    <option value="Manager">Manager</option>
+                    <option value="Intern" selected>Intern</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="adminUserManager" class="text-sm font-medium text-slate-200"
+                    >Manager Email <span class="text-xs text-slate-500">(optional)</span></label
+                  >
+                  <input
+                    id="adminUserManager"
+                    name="managerEmail"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="manager@company.com"
+                    class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label for="adminUserPassword" class="text-sm font-medium text-slate-200">Password</label>
+                <input
+                  id="adminUserPassword"
+                  name="password"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="Minimum 8 characters"
+                  class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+                  required
+                />
+                <p id="adminUserPasswordHint" class="mt-2 text-xs text-slate-500">Minimum 8 characters.</p>
+              </div>
+              <div class="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                <input
+                  id="adminUserIsActive"
+                  name="isActive"
+                  type="checkbox"
+                  class="h-4 w-4 rounded border-white/20 bg-slate-900 text-aura-primary focus:ring-aura-primary"
+                  checked
+                />
+                <div>
+                  <label for="adminUserIsActive" class="text-sm font-medium text-slate-200">Active account</label>
+                  <p class="text-xs text-slate-500">Disabled accounts cannot sign in.</p>
+                </div>
+              </div>
+              <div class="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
+                  data-action="close-admin-modal"
+                >
+                  Cancel
+                </button>
+                <button
+                  id="adminUserSubmitButton"
+                  type="submit"
+                  class="inline-flex items-center justify-center gap-2 rounded-xl bg-aura-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-aura-primary/30 transition hover:bg-aura-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-aura-primary"
+                >
+                  <span data-role="spinner" class="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin hidden"></span>
+                  <span data-role="label">Save user</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </section>
     </main>
@@ -663,6 +810,14 @@
             category: null,
             mood: null,
           },
+          admin: {
+            users: [],
+            isLoading: false,
+            loaded: false,
+            modalMode: 'create',
+            editingUserEmail: '',
+            formSubmitting: false,
+          },
         };
         const focusState = {
           durationMinutes: 25,
@@ -680,6 +835,7 @@
         const elements = {
           analytics: {},
           focus: {},
+          admin: {},
         };
 
         const tabs = ['dashboard', 'kanban', 'analytics', 'focus', 'admin'];
@@ -769,6 +925,24 @@
           elements.focus.historyList = document.getElementById('focusHistoryList');
           elements.focus.historyEmpty = document.getElementById('focusHistoryEmpty');
           elements.focus.clearHistoryButton = document.getElementById('focusClearHistoryButton');
+          elements.admin.actionBar = document.getElementById('adminActionBar');
+          elements.admin.permissionNotice = document.getElementById('adminPermissionNotice');
+          elements.admin.tableWrapper = document.getElementById('adminUsersTableWrapper');
+          elements.admin.tableBody = document.getElementById('adminUsersTableBody');
+          elements.admin.addButton = document.getElementById('adminAddUserButton');
+          elements.admin.refreshButton = document.getElementById('adminRefreshButton');
+          elements.admin.modal = document.getElementById('adminUserModal');
+          elements.admin.modalTitle = document.getElementById('adminUserModalTitle');
+          elements.admin.modalSubtitle = document.getElementById('adminUserModalSubtitle');
+          elements.admin.form = document.getElementById('adminUserForm');
+          elements.admin.emailInput = document.getElementById('adminUserEmail');
+          elements.admin.roleSelect = document.getElementById('adminUserRole');
+          elements.admin.managerInput = document.getElementById('adminUserManager');
+          elements.admin.passwordInput = document.getElementById('adminUserPassword');
+          elements.admin.passwordHint = document.getElementById('adminUserPasswordHint');
+          elements.admin.activeCheckbox = document.getElementById('adminUserIsActive');
+          elements.admin.submitButton = document.getElementById('adminUserSubmitButton');
+          elements.admin.modalCloseButtons = document.querySelectorAll('[data-action="close-admin-modal"]');
 
         }
 
@@ -852,6 +1026,613 @@
           }
           if (elements.focus.clearHistoryButton) {
             elements.focus.clearHistoryButton.addEventListener('click', clearFocusHistory);
+          }
+          if (elements.admin.addButton) {
+            elements.admin.addButton.addEventListener('click', () => openAdminUserModal('create'));
+          }
+          if (elements.admin.refreshButton) {
+            elements.admin.refreshButton.addEventListener('click', () => refreshAdminUsers({ force: true }));
+          }
+          if (elements.admin.tableBody) {
+            elements.admin.tableBody.addEventListener('click', handleAdminTableClick);
+          }
+          if (elements.admin.form) {
+            elements.admin.form.addEventListener('submit', handleAdminUserFormSubmit);
+          }
+          if (elements.admin.modalCloseButtons) {
+            elements.admin.modalCloseButtons.forEach((btn) => {
+              btn.addEventListener('click', (event) => {
+                event.preventDefault();
+                closeAdminUserModal();
+              });
+            });
+          }
+          document.addEventListener('keydown', handleGlobalKeydown);
+        }
+
+        function canViewUsers() {
+          if (!state.user) {
+            return false;
+          }
+          const role = state.user.Role || '';
+          return role === 'Admin' || role === 'Sub-Admin';
+        }
+
+        function canManageUsers() {
+          if (!state.user) {
+            return false;
+          }
+          return state.user.Role === 'Admin';
+        }
+
+        function normalizeEmailLocal(email) {
+          if (email === null || email === undefined) {
+            return '';
+          }
+          return String(email).trim().toLowerCase();
+        }
+
+        function isCurrentUser(email) {
+          if (!state.user || !state.user.Email) {
+            return false;
+          }
+          return normalizeEmailLocal(state.user.Email) === normalizeEmailLocal(email);
+        }
+
+        function isAdminModalOpen() {
+          return Boolean(elements.admin.modal && !elements.admin.modal.classList.contains('hidden'));
+        }
+
+        function resetAdminState() {
+          state.admin.users = [];
+          state.admin.isLoading = false;
+          state.admin.loaded = false;
+          state.admin.modalMode = 'create';
+          state.admin.editingUserEmail = '';
+          state.admin.formSubmitting = false;
+        }
+
+        function resetAdminFormState() {
+          if (elements.admin.form) {
+            elements.admin.form.reset();
+          }
+          if (elements.admin.emailInput) {
+            elements.admin.emailInput.readOnly = false;
+            elements.admin.emailInput.classList.remove('cursor-not-allowed', 'opacity-60');
+            elements.admin.emailInput.removeAttribute('aria-readonly');
+          }
+          if (elements.admin.passwordInput) {
+            elements.admin.passwordInput.required = true;
+            elements.admin.passwordInput.value = '';
+          }
+          if (elements.admin.activeCheckbox) {
+            elements.admin.activeCheckbox.checked = true;
+          }
+          if (elements.admin.passwordHint) {
+            elements.admin.passwordHint.textContent = 'Minimum 8 characters.';
+          }
+          if (elements.admin.submitButton) {
+            elements.admin.submitButton.disabled = false;
+            const submitLabel = elements.admin.submitButton.querySelector('[data-role="label"]');
+            if (submitLabel) {
+              submitLabel.textContent = 'Save user';
+            }
+          }
+        }
+
+        function renderAdminPanel() {
+          const canView = canViewUsers();
+          const canManage = canManageUsers();
+          if (elements.admin.permissionNotice) {
+            elements.admin.permissionNotice.classList.toggle('hidden', canView);
+          }
+          if (elements.admin.tableWrapper) {
+            elements.admin.tableWrapper.classList.toggle('hidden', !canView);
+          }
+          if (elements.admin.actionBar) {
+            elements.admin.actionBar.classList.toggle('hidden', !canView);
+          }
+          if (elements.admin.addButton) {
+            elements.admin.addButton.classList.toggle('hidden', !canManage);
+            elements.admin.addButton.disabled = !canManage;
+            elements.admin.addButton.classList.toggle('opacity-60', !canManage);
+            elements.admin.addButton.classList.toggle('cursor-not-allowed', !canManage);
+            elements.admin.addButton.setAttribute('aria-disabled', canManage ? 'false' : 'true');
+          }
+          if (elements.admin.refreshButton) {
+            elements.admin.refreshButton.disabled = !canView;
+            elements.admin.refreshButton.classList.toggle('opacity-60', !canView);
+            elements.admin.refreshButton.classList.toggle('cursor-not-allowed', !canView);
+            elements.admin.refreshButton.setAttribute('aria-disabled', canView ? 'false' : 'true');
+          }
+          if (!canView) {
+            resetAdminState();
+            renderAdminUsers();
+            return;
+          }
+          renderAdminUsers();
+        }
+
+        function renderAdminUsers() {
+          const body = elements.admin.tableBody;
+          if (!body) {
+            return;
+          }
+          body.innerHTML = '';
+          if (!canViewUsers()) {
+            return;
+          }
+          if (state.admin.isLoading) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 4;
+            cell.className = 'px-6 py-6 text-center text-sm text-slate-400';
+            cell.textContent = 'Loading users…';
+            row.appendChild(cell);
+            body.appendChild(row);
+            return;
+          }
+          const users = Array.isArray(state.admin.users) ? state.admin.users : [];
+          if (!users.length) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 4;
+            cell.className = 'px-6 py-10 text-center text-sm text-slate-400';
+            const title = document.createElement('p');
+            title.className = 'font-medium text-slate-300';
+            title.textContent = 'No users found.';
+            const hint = document.createElement('p');
+            hint.className = 'mt-1 text-slate-500';
+            hint.textContent = canManageUsers()
+              ? 'Use “Add user” to invite teammates.'
+              : 'Administrators can provision teammates from this panel.';
+            cell.appendChild(title);
+            cell.appendChild(hint);
+            row.appendChild(cell);
+            body.appendChild(row);
+            return;
+          }
+          users.forEach((user) => {
+            const row = document.createElement('tr');
+            row.className = 'transition hover:bg-white/5';
+            const emailCell = document.createElement('td');
+            emailCell.className = 'px-6 py-4 align-top';
+            const emailLabel = document.createElement('p');
+            emailLabel.className = 'font-medium text-white';
+            emailLabel.textContent = user && user.Email ? user.Email : '—';
+            emailCell.appendChild(emailLabel);
+            if (user && user.ManagerEmail) {
+              const manager = document.createElement('p');
+              manager.className = 'mt-1 text-xs text-slate-500';
+              manager.textContent = `Manager: ${user.ManagerEmail}`;
+              emailCell.appendChild(manager);
+            }
+            const roleCell = document.createElement('td');
+            roleCell.className = 'px-6 py-4 align-top text-slate-300';
+            roleCell.textContent = user && user.Role ? user.Role : '—';
+            const statusCell = document.createElement('td');
+            statusCell.className = 'px-6 py-4 align-top';
+            const statusBadge = document.createElement('span');
+            const active = !!(user && user.IsActive);
+            statusBadge.className = [
+              'inline-flex',
+              'items-center',
+              'rounded-full',
+              'border',
+              'px-2.5',
+              'py-1',
+              'text-xs',
+              'font-medium',
+              active
+                ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                : 'border-rose-500/20 bg-rose-500/10 text-rose-300',
+            ].join(' ');
+            statusBadge.textContent = active ? 'Active' : 'Disabled';
+            statusCell.appendChild(statusBadge);
+            const actionsCell = document.createElement('td');
+            actionsCell.className = 'px-6 py-4 align-top';
+            actionsCell.setAttribute('data-email', user && user.Email ? user.Email : '');
+            if (canManageUsers()) {
+              const wrapper = document.createElement('div');
+              wrapper.className = 'flex flex-wrap items-center justify-end gap-2';
+              wrapper.appendChild(createAdminActionButton('Edit', 'edit-user', user && user.Email, { variant: 'primary' }));
+              const disableButton = createAdminActionButton(
+                active ? 'Disable' : 'Disabled',
+                'disable-user',
+                user && user.Email,
+                {
+                  disabled: !active || isCurrentUser(user && user.Email),
+                  title: !active
+                    ? 'This account is already disabled.'
+                    : isCurrentUser(user && user.Email)
+                    ? 'You cannot disable your own account.'
+                    : 'Disable account access',
+                }
+              );
+              wrapper.appendChild(disableButton);
+              const resetButton = createAdminActionButton('Reset Password', 'reset-password', user && user.Email, {
+                disabled: isCurrentUser(user && user.Email),
+                title: isCurrentUser(user && user.Email)
+                  ? 'Reset your password from your profile.'
+                  : 'Set a new password for this user.',
+              });
+              wrapper.appendChild(resetButton);
+              actionsCell.appendChild(wrapper);
+            } else {
+              const viewOnly = document.createElement('p');
+              viewOnly.className = 'text-right text-xs text-slate-500';
+              viewOnly.textContent = 'View only';
+              actionsCell.appendChild(viewOnly);
+            }
+            row.appendChild(emailCell);
+            row.appendChild(roleCell);
+            row.appendChild(statusCell);
+            row.appendChild(actionsCell);
+            body.appendChild(row);
+          });
+        }
+
+        function createAdminActionButton(label, action, email, options = {}) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.action = action;
+          if (email) {
+            button.dataset.email = email;
+          }
+          const variant = options.variant || 'ghost';
+          const classes = [
+            'inline-flex',
+            'items-center',
+            'justify-center',
+            'rounded-full',
+            'px-3',
+            'py-1.5',
+            'text-xs',
+            'font-medium',
+            'transition',
+            'focus-visible:outline',
+            'focus-visible:outline-2',
+            'focus-visible:outline-offset-2',
+          ];
+          if (variant === 'primary') {
+            classes.push(
+              'bg-aura-primary',
+              'text-white',
+              'border',
+              'border-transparent',
+              'shadow',
+              'shadow-aura-primary/30',
+              'hover:bg-aura-primary/90',
+              'focus-visible:outline-aura-primary'
+            );
+          } else {
+            classes.push('border', 'border-white/10', 'text-slate-200', 'hover:bg-white/10', 'focus-visible:outline-white/40');
+          }
+          button.className = classes.join(' ');
+          if (options.disabled) {
+            button.disabled = true;
+            button.classList.add('opacity-50', 'cursor-not-allowed');
+            button.setAttribute('aria-disabled', 'true');
+          }
+          if (options.title) {
+            button.title = options.title;
+          }
+          button.textContent = label;
+          return button;
+        }
+
+        async function refreshAdminUsers(options = {}) {
+          const { force = false } = options;
+          if (!state.token || !canViewUsers()) {
+            return;
+          }
+          if (state.admin.isLoading) {
+            return;
+          }
+          if (!force && state.admin.loaded) {
+            renderAdminUsers();
+            return;
+          }
+          state.admin.isLoading = true;
+          renderAdminUsers();
+          try {
+            const response = await server.listUsers(state.token);
+            const users = Array.isArray(response) ? response.slice() : [];
+            users.sort((a, b) => normalizeEmailLocal(a && a.Email).localeCompare(normalizeEmailLocal(b && b.Email)));
+            state.admin.users = users;
+            state.admin.loaded = true;
+          } catch (err) {
+            console.error('Failed to load users:', err);
+            showToast(err && err.message ? err.message : 'Unable to load users.', 'error');
+            state.admin.loaded = false;
+          } finally {
+            state.admin.isLoading = false;
+            renderAdminUsers();
+          }
+        }
+
+        function openAdminUserModal(mode, user) {
+          if (!elements.admin.modal) {
+            return;
+          }
+          const resolvedMode = mode === 'edit' ? 'edit' : 'create';
+          state.admin.modalMode = resolvedMode;
+          state.admin.editingUserEmail = user && user.Email ? user.Email : '';
+          resetAdminFormState();
+          if (elements.admin.emailInput) {
+            elements.admin.emailInput.value = user && user.Email ? user.Email : '';
+            const isEdit = resolvedMode === 'edit';
+            elements.admin.emailInput.readOnly = isEdit;
+            elements.admin.emailInput.classList.toggle('cursor-not-allowed', isEdit);
+            elements.admin.emailInput.classList.toggle('opacity-60', isEdit);
+            elements.admin.emailInput.setAttribute('aria-readonly', isEdit ? 'true' : 'false');
+          }
+          if (elements.admin.roleSelect) {
+            elements.admin.roleSelect.value = user && user.Role ? user.Role : 'Intern';
+          }
+          if (elements.admin.managerInput) {
+            elements.admin.managerInput.value = user && user.ManagerEmail ? user.ManagerEmail : '';
+          }
+          if (elements.admin.activeCheckbox) {
+            elements.admin.activeCheckbox.checked = user ? Boolean(user.IsActive) : true;
+          }
+          if (elements.admin.passwordInput) {
+            elements.admin.passwordInput.required = resolvedMode === 'create';
+            elements.admin.passwordInput.value = '';
+          }
+          if (elements.admin.passwordHint) {
+            elements.admin.passwordHint.textContent =
+              resolvedMode === 'create'
+                ? 'Minimum 8 characters. Share securely with your teammate.'
+                : 'Leave blank to keep the current password. Minimum 8 characters to reset.';
+          }
+          if (elements.admin.modalTitle) {
+            elements.admin.modalTitle.textContent = resolvedMode === 'edit' ? 'Edit user' : 'Add user';
+          }
+          if (elements.admin.modalSubtitle) {
+            elements.admin.modalSubtitle.textContent = resolvedMode === 'edit'
+              ? 'Update role, reporting lines, or status for this teammate.'
+              : 'Provision a new teammate with the correct role.';
+          }
+          if (elements.admin.submitButton) {
+            const label = elements.admin.submitButton.querySelector('[data-role="label"]');
+            if (label) {
+              label.textContent = resolvedMode === 'edit' ? 'Save changes' : 'Create user';
+            }
+            elements.admin.submitButton.disabled = false;
+          }
+          setAdminFormSubmitting(false);
+          elements.admin.modal.classList.remove('hidden');
+          elements.admin.modal.classList.add('flex');
+          elements.admin.modal.setAttribute('aria-hidden', 'false');
+          document.body.classList.add('overflow-hidden');
+          requestAnimationFrame(() => {
+            if (elements.admin.emailInput && !elements.admin.emailInput.readOnly) {
+              elements.admin.emailInput.focus();
+            } else if (elements.admin.roleSelect) {
+              elements.admin.roleSelect.focus();
+            }
+          });
+        }
+
+        function closeAdminUserModal(skipReset) {
+          if (!elements.admin.modal) {
+            return;
+          }
+          elements.admin.modal.classList.add('hidden');
+          elements.admin.modal.classList.remove('flex');
+          elements.admin.modal.setAttribute('aria-hidden', 'true');
+          document.body.classList.remove('overflow-hidden');
+          state.admin.modalMode = 'create';
+          state.admin.editingUserEmail = '';
+          state.admin.formSubmitting = false;
+          if (!skipReset) {
+            resetAdminFormState();
+          }
+        }
+
+        function setAdminFormSubmitting(isSubmitting) {
+          state.admin.formSubmitting = isSubmitting;
+          if (elements.admin.submitButton) {
+            setButtonLoading(elements.admin.submitButton, isSubmitting);
+            elements.admin.submitButton.disabled = isSubmitting;
+          }
+          if (!elements.admin.form) {
+            return;
+          }
+          const controls = elements.admin.form.querySelectorAll('input, select, button, textarea');
+          controls.forEach((control) => {
+            if (control === elements.admin.submitButton) {
+              control.disabled = isSubmitting;
+              return;
+            }
+            control.disabled = isSubmitting;
+          });
+          if (!isSubmitting && elements.admin.emailInput && state.admin.modalMode === 'edit') {
+            elements.admin.emailInput.disabled = false;
+            elements.admin.emailInput.readOnly = true;
+          }
+        }
+
+        async function handleAdminUserFormSubmit(event) {
+          event.preventDefault();
+          if (!canManageUsers()) {
+            showToast('You do not have permission to manage users.', 'error');
+            return;
+          }
+          if (!elements.admin.form) {
+            return;
+          }
+          const formData = new FormData(elements.admin.form);
+          const email = String(formData.get('email') || '').trim();
+          const roleRaw = formData.get('role');
+          const role = roleRaw ? String(roleRaw).trim() || 'Intern' : 'Intern';
+          const managerEmail = String(formData.get('managerEmail') || '').trim();
+          const isActive = formData.get('isActive') === 'on';
+          const passwordValue = String(formData.get('password') || '').trim();
+          if (!email) {
+            showToast('Email is required.', 'error');
+            return;
+          }
+          if (state.admin.modalMode === 'create' && !passwordValue) {
+            showToast('Password is required for new users.', 'error');
+            return;
+          }
+          if (passwordValue && passwordValue.length < 8) {
+            showToast('Password must be at least 8 characters long.', 'error');
+            return;
+          }
+          if (!state.token) {
+            showToast('You are not authenticated.', 'error');
+            return;
+          }
+          const payload = {
+            Email: email,
+            Role: role,
+            ManagerEmail: managerEmail,
+            IsActive: isActive,
+          };
+          if (passwordValue) {
+            payload.Password = passwordValue;
+          }
+          setAdminFormSubmitting(true);
+          try {
+            await server.upsertUser(state.token, payload);
+            showToast(state.admin.modalMode === 'create' ? 'User created successfully.' : 'User updated successfully.', 'success');
+            closeAdminUserModal();
+            resetAdminState();
+            renderAdminUsers();
+            await refreshAdminUsers({ force: true });
+          } catch (err) {
+            console.error('Failed to save user:', err);
+            showToast(err && err.message ? err.message : 'Unable to save user.', 'error');
+          } finally {
+            setAdminFormSubmitting(false);
+          }
+        }
+
+        function handleAdminTableClick(event) {
+          const button = event.target.closest('button[data-action]');
+          if (!button) {
+            return;
+          }
+          const action = button.dataset.action;
+          const email = button.dataset.email || '';
+          if (!email) {
+            showToast('Unable to determine target user.', 'error');
+            return;
+          }
+          if (action === 'edit-user') {
+            if (!canManageUsers()) {
+              showToast('You do not have permission to manage users.', 'error');
+              return;
+            }
+            const target = state.admin.users.find((item) => normalizeEmailLocal(item && item.Email) === normalizeEmailLocal(email));
+            openAdminUserModal('edit', target || { Email: email, Role: 'Intern', IsActive: true });
+            return;
+          }
+          if (action === 'disable-user') {
+            if (button.disabled) {
+              return;
+            }
+            handleAdminDisableUser(email, button);
+            return;
+          }
+          if (action === 'reset-password') {
+            if (button.disabled) {
+              return;
+            }
+            handleAdminResetPassword(email, button);
+          }
+        }
+
+        async function handleAdminDisableUser(email, trigger) {
+          if (!canManageUsers()) {
+            showToast('You do not have permission to manage users.', 'error');
+            return;
+          }
+          if (isCurrentUser(email)) {
+            showToast('You cannot disable your own account.', 'error');
+            return;
+          }
+          if (!state.token) {
+            showToast('You are not authenticated.', 'error');
+            return;
+          }
+          const confirmed = window.confirm(`Disable ${email}? They will no longer be able to sign in until re-enabled.`);
+          if (!confirmed) {
+            return;
+          }
+          setAdminActionLoading(trigger, true);
+          try {
+            await server.disableUser(state.token, email);
+            showToast(`${email} disabled.`, 'success');
+            await refreshAdminUsers({ force: true });
+          } catch (err) {
+            console.error('Failed to disable user:', err);
+            showToast(err && err.message ? err.message : 'Unable to disable user.', 'error');
+          } finally {
+            setAdminActionLoading(trigger, false);
+          }
+        }
+
+        async function handleAdminResetPassword(email, trigger) {
+          if (!canManageUsers()) {
+            showToast('You do not have permission to manage users.', 'error');
+            return;
+          }
+          if (isCurrentUser(email)) {
+            showToast('Reset your password from your profile.', 'error');
+            return;
+          }
+          if (!state.token) {
+            showToast('You are not authenticated.', 'error');
+            return;
+          }
+          const newPassword = window.prompt(`Enter a new password for ${email}:`, '');
+          if (newPassword === null) {
+            return;
+          }
+          const trimmed = String(newPassword).trim();
+          if (!trimmed) {
+            showToast('Password is required.', 'error');
+            return;
+          }
+          if (trimmed.length < 8) {
+            showToast('Password must be at least 8 characters long.', 'error');
+            return;
+          }
+          setAdminActionLoading(trigger, true);
+          try {
+            await server.resetUserPassword(state.token, email, trimmed);
+            showToast('Password reset successfully.', 'success');
+          } catch (err) {
+            console.error('Failed to reset password:', err);
+            showToast(err && err.message ? err.message : 'Unable to reset password.', 'error');
+          } finally {
+            setAdminActionLoading(trigger, false);
+          }
+        }
+
+        function setAdminActionLoading(button, isLoading) {
+          if (!button) {
+            return;
+          }
+          if (isLoading) {
+            button.disabled = true;
+            button.classList.add('opacity-50', 'cursor-not-allowed');
+            button.setAttribute('aria-busy', 'true');
+          } else {
+            button.disabled = false;
+            button.classList.remove('opacity-50', 'cursor-not-allowed');
+            button.removeAttribute('aria-busy');
+          }
+        }
+
+        function handleGlobalKeydown(event) {
+          if (event.key === 'Escape' && isAdminModalOpen()) {
+            event.preventDefault();
+            closeAdminUserModal();
           }
         }
 
@@ -938,11 +1719,18 @@
             updateFocusControls();
 
           }
+          if (tabId === 'admin') {
+            renderAdminPanel();
+            if (canViewUsers()) {
+              refreshAdminUsers({ force: !state.admin.loaded });
+            }
+          }
         }
 
         function applySession(token, user) {
           state.token = token;
           state.user = user || null;
+          resetAdminState();
           updateShell();
           refreshWorkspaceData({ silent: true });
 
@@ -962,6 +1750,7 @@
           if (elements.roleBadge) {
             elements.roleBadge.textContent = isAuthenticated && state.user.Role ? state.user.Role : '';
           }
+          renderAdminPanel();
           renderKanbanBoard();
           setActiveTab(state.activeTab);
         }
@@ -984,6 +1773,13 @@
           } catch (err) {
             console.warn('Failed to clear session storage', err);
           }
+          if (isAdminModalOpen()) {
+            closeAdminUserModal();
+          }
+          resetAdminFormState();
+          resetAdminState();
+          renderAdminUsers();
+          renderAdminPanel();
           resetKanbanState();
         }
 
