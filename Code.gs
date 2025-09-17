@@ -18,7 +18,8 @@ SHEET_HEADERS[SHEET_NAMES.USERS] = [
   'Role',
   'ManagerEmail',
   'IsActive',
-  'CreatedAt'
+  'CreatedAt',
+  'NotificationEmail'
 ];
 SHEET_HEADERS[SHEET_NAMES.TASKS] = [
   'TaskID',
@@ -68,7 +69,8 @@ SHEET_HEADERS[SHEET_NAMES.QUOTES] = [
   'Author',
   'Text',
   'SubmittedBy',
-  'Approved'
+  'Approved',
+  'CreatedAt'
 ];
 SHEET_HEADERS[SHEET_NAMES.ATTACHMENTS] = [
   'AttachmentID',
@@ -339,6 +341,98 @@ function resetUserPassword(token, email, newPassword) {
     writeRow_(sheet, headers, userResult.rowNumber, record);
     logActivity_(session, 'user.resetPassword', 'User', record.Email, {});
     return sanitizeUser_(record);
+  });
+}
+
+function getUserSettings(token, email) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensurePermission_(session, 'users:manage');
+
+    var provided = email;
+    if (provided && typeof provided === 'object') {
+      provided = pickFirstDefined_(provided, ['Email', 'email']);
+    }
+    var targetEmail = normalizeEmail_(provided);
+    if (!targetEmail) {
+      throw new Error('Email is required.');
+    }
+
+    var userResult = getUserByEmail_(targetEmail);
+    if (!userResult) {
+      throw new Error('User not found.');
+    }
+
+    var record = userResult.record || {};
+    var settings = {
+      Email: normalizeEmail_(record.Email),
+      NotificationEmail: normalizeEmail_(record.NotificationEmail)
+    };
+
+    logActivity_(session, 'user.settings.view', 'User', settings.Email, {});
+
+    return settings;
+  });
+}
+
+function updateUserSettings(token, emailOrSettings, maybeSettings) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensurePermission_(session, 'users:manage');
+
+    var payload = null;
+    var targetEmail = '';
+    if (maybeSettings !== undefined && maybeSettings !== null) {
+      targetEmail = normalizeEmail_(emailOrSettings);
+      if (!targetEmail) {
+        throw new Error('Email is required.');
+      }
+      payload = typeof maybeSettings === 'string' ? safeParse_(maybeSettings, null) : maybeSettings;
+    } else {
+      payload = typeof emailOrSettings === 'string' ? safeParse_(emailOrSettings, null) : emailOrSettings;
+      if (payload && typeof payload === 'object') {
+        var emailValue = pickFirstDefined_(payload, ['Email', 'email']);
+        targetEmail = normalizeEmail_(emailValue);
+      }
+    }
+
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Settings payload is required.');
+    }
+
+    if (!targetEmail) {
+      throw new Error('Email is required.');
+    }
+
+    var notificationValue = pickFirstDefined_(payload, ['NotificationEmail', 'notificationEmail']);
+    if (notificationValue === undefined) {
+      throw new Error('NotificationEmail is required.');
+    }
+    var notificationString = notificationValue !== null && notificationValue !== undefined ? String(notificationValue).trim() : '';
+    var notificationEmail = notificationString ? normalizeEmail_(notificationString) : '';
+
+    var userResult = getUserByEmail_(targetEmail);
+    if (!userResult) {
+      throw new Error('User not found.');
+    }
+
+    var sheet = ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.USERS];
+    var record = userResult.record;
+    record.NotificationEmail = notificationEmail;
+    writeRow_(sheet, headers, userResult.rowNumber, record);
+
+    var sanitized = {
+      Email: normalizeEmail_(record.Email),
+      NotificationEmail: notificationEmail
+    };
+
+    logActivity_(session, 'user.settings.update', 'User', sanitized.Email, {
+      notificationEmail: notificationEmail,
+      hasNotificationEmail: !!notificationEmail
+    });
+
+    return sanitized;
   });
 }
 
@@ -761,7 +855,7 @@ function updateTask(token, taskId, updates) {
   });
 }
 
-function bulkUpdateTasks(token, taskIds, action) {
+function bulkUpdateTasks(token, taskIds, action, options) {
   return handleApi_(function () {
     var session = requireSession_(token);
     ensureTaskWriteAccess_(session);
@@ -935,6 +1029,7 @@ function bulkUpdateTasks(token, taskIds, action) {
   });
 }
 
+
 function listTasks(token, filters) {
   return handleApi_(function () {
     var session = requireSession_(token);
@@ -1051,6 +1146,147 @@ function exportTasksCsv(token, filters) {
   });
 }
 
+function sendDailyDigest() {
+  var timezone = Session.getScriptTimeZone() || 'Etc/UTC';
+  var todayKey = Utilities.formatDate(new Date(), timezone, 'yyyy-MM-dd');
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) {
+    return {
+      date: todayKey,
+      processedUsers: 0,
+      notificationsSent: 0,
+      totalTasks: 0,
+      skippedUsers: 0,
+      locked: true
+    };
+  }
+  try {
+    var usersSheet = ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]);
+    var userRows = sheetObjects_(usersSheet, SHEET_HEADERS[SHEET_NAMES.USERS]);
+    var tasksSheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    var taskRows = sheetObjects_(tasksSheet, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+
+    var tasksByAssignee = {};
+    for (var i = 0; i < taskRows.length; i++) {
+      var taskRecord = taskRows[i];
+      var assigneeEmail = normalizeEmail_(taskRecord.Assignee);
+      if (!assigneeEmail) {
+        continue;
+      }
+      var statusValue = String(taskRecord.Status || '').toLowerCase();
+      if (statusValue === 'completed' || statusValue === 'cancelled') {
+        continue;
+      }
+      var dueDate = parseDateValue_(taskRecord.DueAt);
+      if (!dueDate) {
+        continue;
+      }
+      var dueKey = Utilities.formatDate(dueDate, timezone, 'yyyy-MM-dd');
+      if (dueKey > todayKey) {
+        continue;
+      }
+      if (!tasksByAssignee[assigneeEmail]) {
+        tasksByAssignee[assigneeEmail] = [];
+      }
+      tasksByAssignee[assigneeEmail].push({
+        task: taskRecord,
+        dueDate: dueDate,
+        dueKey: dueKey
+      });
+    }
+
+    var summary = {
+      date: todayKey,
+      processedUsers: 0,
+      notificationsSent: 0,
+      totalTasks: 0,
+      skippedUsers: 0,
+      locked: false
+    };
+
+    for (var j = 0; j < userRows.length; j++) {
+      var userRecord = userRows[j];
+      if (!isTrue_(userRecord.IsActive)) {
+        continue;
+      }
+      summary.processedUsers++;
+      var primaryEmail = normalizeEmail_(userRecord.Email);
+      if (!primaryEmail) {
+        summary.skippedUsers++;
+        continue;
+      }
+      var pendingEntries = tasksByAssignee[primaryEmail] || [];
+      if (!pendingEntries.length) {
+        summary.skippedUsers++;
+        continue;
+      }
+      var notificationEmail = String(userRecord.NotificationEmail || '').trim();
+      var targetEmail = notificationEmail || String(userRecord.Email || '').trim();
+      var normalizedTarget = normalizeEmail_(targetEmail);
+      if (!normalizedTarget) {
+        summary.skippedUsers++;
+        continue;
+      }
+
+      pendingEntries.sort(function (a, b) {
+        var diff = a.dueDate.getTime() - b.dueDate.getTime();
+        if (diff !== 0) {
+          return diff;
+        }
+        var priorityA = String(a.task.Priority || '').toLowerCase();
+        var priorityB = String(b.task.Priority || '').toLowerCase();
+        if (priorityA < priorityB) {
+          return -1;
+        }
+        if (priorityA > priorityB) {
+          return 1;
+        }
+        var nameA = String(a.task.Name || '');
+        var nameB = String(b.task.Name || '');
+        return nameA.localeCompare(nameB);
+      });
+
+      var lines = [];
+      lines.push('Aura Flow Daily Digest — ' + todayKey);
+      lines.push('');
+      lines.push('Pending tasks due today or overdue:');
+      lines.push('');
+      for (var n = 0; n < pendingEntries.length; n++) {
+        var entry = pendingEntries[n];
+        var task = entry.task;
+        var displayId = task.TaskID || 'N/A';
+        var displayName = task.Name || 'Untitled Task';
+        var displayPriority = task.Priority ? String(task.Priority) : 'None';
+        lines.push('- [' + displayId + '] ' + displayName + ' — Due: ' + entry.dueKey + ' — Priority: ' + displayPriority);
+      }
+      lines.push('');
+      lines.push('Total pending: ' + pendingEntries.length);
+
+      var subject = 'Aura Flow — Daily Digest ' + todayKey + ' (' + pendingEntries.length + ' tasks)';
+      MailApp.sendEmail(targetEmail, subject, lines.join('\n'));
+
+      summary.notificationsSent++;
+      summary.totalTasks += pendingEntries.length;
+
+      logActivity_('system', 'notifications.digest.send', 'User', primaryEmail, {
+        taskCount: pendingEntries.length,
+        target: normalizedTarget
+      });
+    }
+
+    logActivity_('system', 'notifications.digest.run', 'Digest', todayKey, {
+      processedUsers: summary.processedUsers,
+      notificationsSent: summary.notificationsSent,
+      totalTasks: summary.totalTasks,
+      skippedUsers: summary.skippedUsers
+    });
+
+    return summary;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function generatePdfReport(token, filters) {
   return handleApi_(function () {
     var session = requireSession_(token);
@@ -1112,7 +1348,15 @@ function generatePdfReport(token, filters) {
     if (normalizedFilters.statuses && normalizedFilters.statuses.length) {
       filterSummaries.push('Statuses: ' + normalizedFilters.statuses.join(', '));
     }
-    if (normalizedFilters.assignee) {
+    if (normalizedFilters.categories && normalizedFilters.categories.length) {
+      filterSummaries.push('Categories: ' + normalizedFilters.categories.join(', '));
+    }
+    if (normalizedFilters.priorities && normalizedFilters.priorities.length) {
+      filterSummaries.push('Priorities: ' + normalizedFilters.priorities.join(', '));
+    }
+    if (normalizedFilters.assignees && normalizedFilters.assignees.length > 1) {
+      filterSummaries.push('Assignees: ' + normalizedFilters.assignees.join(', '));
+    } else if (normalizedFilters.assignee) {
       filterSummaries.push('Assignee: ' + normalizedFilters.assignee);
     }
     if (normalizedFilters.dueAfter) {
@@ -1397,46 +1641,6 @@ function applyTemplate(token, templateId) {
   });
 }
 
-function duplicateTask(token, taskId) {
-  return handleApi_(function () {
-    var session = requireSession_(token);
-    ensureTaskWriteAccess_(session);
-    if (!taskId) {
-      throw new Error('Task ID is required.');
-    }
-
-    var taskResult = getTaskById_(String(taskId));
-    if (!taskResult) {
-      throw new Error('Task not found.');
-    }
-
-    var task = taskResult.record;
-    var newId = generateId_('TASK');
-    var duplicated = Object.assign({}, task, {
-      TaskID: newId,
-      Name: task.Name + ' (Copy)',
-      Timestamp: nowIso_(),
-      UpdatedAt: nowIso_()
-    });
-
-    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
-    appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS], duplicated);
-
-    logActivity_(session, 'task.duplicate', 'Task', newId, { source: task.TaskID });
-    return sanitizeTask_(duplicated);
-  });
-}
-
-function logTime(token, taskId, minutes) {
-  // ... Codex’s logTime implementation continues here ...
-}
-
-  return handleApi_(function () {
-    var session = requireSession_(token);
-    ensureTaskWriteAccess_(session);
-    if (!taskId) {
-      throw new Error('Task ID is required.');
-    }
 function logTaskTime(token, taskId, minutes) {
   return handleApi_(function () {
     var session = requireSession_(token);
@@ -1535,11 +1739,15 @@ function duplicateTask(token, taskId) {
   return handleApi_(function () {
     var session = requireSession_(token);
     ensureTaskWriteAccess_(session);
+    if (!taskId) {
+      throw new Error('Task ID is required.');
+    }
 
     var originalResult = getTaskById_(String(taskId));
     if (!originalResult) {
       throw new Error('Task not found.');
     }
+
     var usersMap = loadUsersMap_();
     var originalRecord = originalResult.record;
     if (!canManageTask_(session, originalRecord, originalRecord.Assignee, usersMap)) {
@@ -1569,8 +1777,8 @@ function duplicateTask(token, taskId) {
       Name: originalRecord.Name || '',
       Category: originalRecord.Category || '',
       Priority: originalRecord.Priority || '',
-      Status: normalizeStatus_('New'),
-      DurationMins: originalRecord.DurationMins,
+      Status: normalizeStatus_('Planned'),
+      DurationMins: normalizeDuration_(originalRecord.DurationMins, 0),
       Labels: originalRecord.Labels || '',
       Notes: originalRecord.Notes || '',
       ResourcesCSV: originalRecord.ResourcesCSV || '',
@@ -1579,21 +1787,247 @@ function duplicateTask(token, taskId) {
       Timestamp: now,
       DueAt: originalRecord.DueAt || '',
       UpdatedAt: now,
-      ParentTaskID: originalRecord.ParentTaskID || ''
+      ParentTaskID: originalRecord.ParentTaskID || '',
+      TimeSpentMins: 0
     };
 
     var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
     appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS], clonedRecord);
 
     logActivity_(session, 'task.duplicate', 'Task', clonedRecord.TaskID, {
-      sourceTaskId: originalRecord.TaskID,
-      status: clonedRecord.Status
+      sourceTaskId: originalRecord.TaskID
     });
 
     return sanitizeTask_(clonedRecord);
   });
 }
 
+function bulkUpdateTasks(token, taskIds, action, options) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+
+    var rawIds = [];
+    function addIdValue(value) {
+      if (value === undefined || value === null) {
+        return;
+      }
+      if (Array.isArray(value)) {
+        for (var idx = 0; idx < value.length; idx++) {
+          addIdValue(value[idx]);
+        }
+        return;
+      }
+      rawIds.push(value);
+    }
+    if (Array.isArray(taskIds)) {
+      addIdValue(taskIds);
+    } else if (typeof taskIds === 'string') {
+      var parsedIds = safeParse_(taskIds, null);
+      if (Array.isArray(parsedIds)) {
+        addIdValue(parsedIds);
+      } else if (parsedIds && typeof parsedIds === 'object') {
+        addIdValue(parsedIds.taskIds);
+        addIdValue(parsedIds.ids);
+        addIdValue(parsedIds.taskId);
+        addIdValue(parsedIds.id);
+      }
+      if (!rawIds.length && taskIds.indexOf(',') !== -1) {
+        addIdValue(
+          taskIds
+            .split(',')
+            .map(function (part) {
+              return part.trim();
+            })
+        );
+      }
+      if (!rawIds.length && taskIds.trim()) {
+        addIdValue(taskIds);
+      }
+    } else if (taskIds && typeof taskIds === 'object') {
+      addIdValue(taskIds.taskIds);
+      addIdValue(taskIds.ids);
+      addIdValue(taskIds.taskId);
+      addIdValue(taskIds.id);
+    } else if (taskIds !== undefined && taskIds !== null) {
+      addIdValue(taskIds);
+    }
+
+    var ids = [];
+    var seen = {};
+    for (var i = 0; i < rawIds.length; i++) {
+      if (rawIds[i] === undefined || rawIds[i] === null) {
+        continue;
+      }
+      var trimmed = String(rawIds[i]).trim();
+      if (!trimmed || seen[trimmed]) {
+        continue;
+      }
+      seen[trimmed] = true;
+      ids.push(trimmed);
+    }
+
+    if (ids.length === 0) {
+      throw new Error('At least one task ID is required.');
+    }
+
+    var actionDescriptor = action;
+    var optionsObj = options;
+    if (actionDescriptor && typeof actionDescriptor === 'object' && !Array.isArray(actionDescriptor)) {
+      if (optionsObj && typeof optionsObj === 'object' && !Array.isArray(optionsObj)) {
+        optionsObj = Object.assign({}, actionDescriptor, optionsObj);
+      } else {
+        optionsObj = actionDescriptor;
+      }
+      var extractedType = pickFirstDefined_(actionDescriptor, ['type', 'action', 'name']);
+      if (extractedType !== undefined && extractedType !== null) {
+        actionDescriptor = extractedType;
+      } else {
+        actionDescriptor = null;
+      }
+    }
+    if (typeof optionsObj === 'string') {
+      optionsObj = safeParse_(optionsObj, {});
+    }
+    if (!optionsObj || typeof optionsObj !== 'object' || Array.isArray(optionsObj)) {
+      optionsObj = {};
+    }
+    if (actionDescriptor === undefined || actionDescriptor === null || actionDescriptor === '') {
+      var fallbackAction = pickFirstDefined_(optionsObj, ['type', 'action', 'name']);
+      if (fallbackAction !== undefined && fallbackAction !== null) {
+        actionDescriptor = fallbackAction;
+      }
+    }
+
+    var normalizedAction = String(actionDescriptor || '').toLowerCase();
+    if (['complete', 'assign', 'delete'].indexOf(normalizedAction) === -1) {
+      throw new Error('Unsupported bulk action.');
+    }
+
+    var usersMap = loadUsersMap_();
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.TASKS];
+    var sessionEmail = getSessionEmail_(session);
+
+    var assignEmail = '';
+    if (normalizedAction === 'assign') {
+      var assigneeCandidate = pickFirstDefined_(optionsObj, ['assignee', 'Assignee', 'email', 'Email', 'user', 'User']);
+      if (assigneeCandidate === undefined || assigneeCandidate === null || assigneeCandidate === '') {
+        throw new Error('Assignee is required.');
+      }
+      var candidateString = String(assigneeCandidate).trim();
+      if (!candidateString) {
+        throw new Error('Assignee is required.');
+      }
+      if (candidateString.toLowerCase() === 'me') {
+        assignEmail = sessionEmail;
+      } else {
+        assignEmail = normalizeEmail_(candidateString);
+      }
+      if (!assignEmail) {
+        throw new Error('Assignee is required.');
+      }
+      var assignRecord = usersMap[assignEmail];
+      if (!assignRecord) {
+        throw new Error('Assignee not found.');
+      }
+      if (!isTrue_(assignRecord.IsActive)) {
+        throw new Error('Assignee is not active.');
+      }
+      validateTaskAssignment_(session, assignRecord);
+    }
+
+    var results = [];
+    var errors = [];
+    var deleteTargets = [];
+    var updatedTasks = [];
+    var deletedIds = [];
+
+    for (var j = 0; j < ids.length; j++) {
+      var targetId = ids[j];
+      var taskResult = getTaskById_(String(targetId));
+      if (!taskResult) {
+        errors.push({ taskId: targetId, message: 'Task not found.' });
+        continue;
+      }
+      var record = taskResult.record;
+
+      if (normalizedAction === 'assign') {
+        if (!canManageTask_(session, record, assignEmail, usersMap)) {
+          errors.push({ taskId: record.TaskID, message: 'Forbidden.' });
+          continue;
+        }
+        record.Assignee = assignEmail;
+        if (sessionEmail) {
+          record.Assigner = sessionEmail;
+        } else {
+          record.Assigner = normalizeEmail_(record.Assigner);
+        }
+        record.UpdatedAt = nowIso_();
+        writeRow_(sheet, headers, taskResult.rowNumber, record);
+        logActivity_(session, 'task.bulk.assign', 'Task', record.TaskID, { assignee: record.Assignee });
+        var sanitizedAssign = sanitizeTask_(record);
+        results.push(sanitizedAssign);
+        updatedTasks.push(sanitizedAssign);
+        continue;
+      }
+
+      if (normalizedAction === 'complete') {
+        if (!canManageTask_(session, record, record.Assignee, usersMap)) {
+          errors.push({ taskId: record.TaskID, message: 'Forbidden.' });
+          continue;
+        }
+        record.Status = normalizeStatus_('Completed');
+        record.Assignee = normalizeEmail_(record.Assignee);
+        record.Assigner = normalizeEmail_(record.Assigner);
+        record.UpdatedAt = nowIso_();
+        writeRow_(sheet, headers, taskResult.rowNumber, record);
+        logActivity_(session, 'task.bulk.complete', 'Task', record.TaskID, { status: record.Status });
+        var sanitizedComplete = sanitizeTask_(record);
+        results.push(sanitizedComplete);
+        updatedTasks.push(sanitizedComplete);
+        continue;
+      }
+
+      if (normalizedAction === 'delete') {
+        if (!canManageTask_(session, record, record.Assignee, usersMap)) {
+          errors.push({ taskId: record.TaskID, message: 'Forbidden.' });
+          continue;
+        }
+        deleteTargets.push({ rowNumber: taskResult.rowNumber, taskId: record.TaskID });
+      }
+    }
+
+    if (normalizedAction === 'delete' && deleteTargets.length) {
+      deleteTargets.sort(function (a, b) {
+        return b.rowNumber - a.rowNumber;
+      });
+      for (var k = 0; k < deleteTargets.length; k++) {
+        var target = deleteTargets[k];
+        sheet.deleteRow(target.rowNumber);
+        deleteSubtasksForTask_(target.taskId);
+        logActivity_(session, 'task.bulk.delete', 'Task', target.taskId, {});
+        results.push({ taskId: target.taskId, deleted: true });
+        deletedIds.push(target.taskId);
+      }
+    }
+
+    logActivity_(session, 'task.bulk.summary', 'Task', '', {
+      action: normalizedAction,
+      requested: ids.length,
+      succeeded: results.length,
+      errors: errors.length
+    });
+
+    return {
+      action: normalizedAction,
+      requested: ids.length,
+      succeeded: results.length,
+      results: results,
+      updated: updatedTasks,
+      deleted: deletedIds,
+      errors: errors
+    };
   });
 }
 
@@ -1901,19 +2335,29 @@ function listMoods(token, filters) {
   });
 }
 
-function addQuote(token, text) {
+function addQuote(token, text, author) {
   return handleApi_(function () {
     var session = requireSession_(token);
-    var payload = text;
-    if (typeof payload === 'string') {
-      var parsed = safeParse_(payload, null);
+    var payload = {};
+
+    if (text && typeof text === 'object' && !Array.isArray(text)) {
+      payload = Object.assign({}, text);
+    } else if (typeof text === 'string') {
+      var parsed = safeParse_(text, null);
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         payload = parsed;
+      } else if (text.trim()) {
+        payload.text = text;
       }
+    } else if (text !== undefined && text !== null) {
+      payload.text = String(text);
+    }
+
+    if (author !== undefined && author !== null) {
+      payload.author = author;
     }
 
     var textCandidate = null;
-    var authorCandidate = '';
     if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
       textCandidate = pickFirstDefined_(payload, ['text', 'Text', 'quote', 'value']);
       var authorValue = pickFirstDefined_(payload, ['author', 'Author', 'by']);
@@ -1921,10 +2365,17 @@ function addQuote(token, text) {
         authorCandidate = String(authorValue).trim();
       }
     }
+    if (author !== undefined && author !== null) {
+      var providedAuthor = String(author).trim();
+      if (providedAuthor) {
+        authorCandidate = providedAuthor;
+      }
+    }
     if (textCandidate === null || textCandidate === undefined) {
       if (typeof text === 'string') {
         textCandidate = text;
       }
+
     }
     if (textCandidate === null || textCandidate === undefined) {
       throw new Error('Quote text is required.');
@@ -1933,27 +2384,35 @@ function addQuote(token, text) {
     if (!quoteText) {
       throw new Error('Quote text is required.');
     }
-    var quoteAuthor = authorCandidate || '';
+
+    var authorCandidate = '';
+    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+      var authorValue = pickFirstDefined_(payload, ['author', 'Author', 'by', 'By']);
+      if (authorValue !== undefined && authorValue !== null) {
+        authorCandidate = String(authorValue).trim();
+      }
+    }
 
     var submittedBy = getSessionEmail_(session);
     if (!submittedBy) {
       throw new Error('Unable to resolve session email.');
     }
 
-    var approved = getSessionRole_(session) === 'Admin';
+    var now = nowIso_();
     var record = {
       QuoteID: generateId_('QUOTE'),
-      Author: quoteAuthor,
+      Author: authorCandidate,
       Text: quoteText,
       SubmittedBy: submittedBy,
-      Approved: approved ? 'TRUE' : 'FALSE'
+      Approved: 'FALSE',
+      CreatedAt: now
     };
 
     var sheet = ensureSheet_(SHEET_NAMES.QUOTES, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
     appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.QUOTES], record);
 
     logActivity_(session, 'quote.add', 'Quote', record.QuoteID, {
-      approved: approved,
+      approved: false,
       length: quoteText.length
     });
 
@@ -1961,20 +2420,98 @@ function addQuote(token, text) {
   });
 }
 
-function listQuotes(token) {
+function listQuotes(token, options) {
   return handleApi_(function () {
-    requireSession_(token);
+    var session = requireSession_(token);
+    var payload = options;
+    if (typeof payload === 'string') {
+      payload = safeParse_(payload, {});
+    }
+    if (!payload || typeof payload !== 'object') {
+      payload = {};
+    }
+
+    var approvedOnly = true;
+    if (Object.prototype.hasOwnProperty.call(payload, 'approvedOnly')) {
+      var candidate = payload.approvedOnly;
+      if (candidate === false || candidate === 'false' || candidate === 'FALSE' || candidate === 0) {
+        approvedOnly = false;
+      } else if (candidate === true || candidate === 'true' || candidate === 'TRUE' || candidate === 1) {
+        approvedOnly = true;
+      } else {
+        approvedOnly = !!candidate;
+      }
+    }
+
+    if (getSessionRole_(session) !== 'Admin') {
+      approvedOnly = true;
+    }
 
     var sheet = ensureSheet_(SHEET_NAMES.QUOTES, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
     var rows = sheetObjects_(sheet, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
     var results = [];
+    var opts = options;
+    if (typeof opts === 'string') {
+      opts = safeParse_(opts, {});
+    }
+    if (!opts || typeof opts !== 'object') {
+      opts = {};
+    }
+    var approvedOnly = true;
+    if (Object.prototype.hasOwnProperty.call(opts, 'approvedOnly')) {
+      approvedOnly = isTrue_(opts.approvedOnly);
+    }
     for (var i = 0; i < rows.length; i++) {
-      if (!isTrue_(rows[i].Approved)) {
+     var sanitized = sanitizeQuote_(rows[i]);
+      if (!sanitized) {
         continue;
       }
-      results.push(sanitizeQuote_(rows[i]));
+      if (approvedOnly && !sanitized.Approved) {
+        continue;
+      }
+      results.push(sanitized);
+
     }
     return results;
+  });
+}
+
+function approveQuote(token, quoteId) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    if (getSessionRole_(session) !== 'Admin') {
+      throw new Error('Forbidden.');
+    }
+    if (!quoteId) {
+      throw new Error('Quote ID is required.');
+    }
+
+    var quoteResult = getQuoteById_(String(quoteId));
+    if (!quoteResult) {
+      throw new Error('Quote not found.');
+    }
+
+    var record = quoteResult.record;
+    var previouslyApproved = isTrue_(record.Approved);
+    var changed = false;
+    if (!record.CreatedAt) {
+      record.CreatedAt = nowIso_();
+      changed = true;
+    }
+    if (!previouslyApproved) {
+      record.Approved = 'TRUE';
+      changed = true;
+    }
+    if (changed) {
+      var sheet = ensureSheet_(SHEET_NAMES.QUOTES, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
+      writeRow_(sheet, SHEET_HEADERS[SHEET_NAMES.QUOTES], quoteResult.rowNumber, record);
+    }
+    logActivity_(session, 'quote.approve', 'Quote', record.QuoteID, {
+      alreadyApproved: previouslyApproved,
+      updated: changed
+    });
+
+    return sanitizeQuote_(record);
   });
 }
 
@@ -2171,6 +2708,7 @@ function sanitizeUser_(record) {
     Email: normalizeEmail_(record.Email),
     Role: record.Role,
     ManagerEmail: normalizeEmail_(record.ManagerEmail),
+    NotificationEmail: normalizeEmail_(record.NotificationEmail),
 
     IsActive: isTrue_(record.IsActive),
     CreatedAt: record.CreatedAt || ''
@@ -2603,6 +3141,9 @@ function normalizeTaskFilters_(filters, session) {
 
   var normalized = {
     statuses: [],
+    categories: [],
+    priorities: [],
+    assignees: [],
     assignee: '',
     dueAfter: null,
     dueBefore: null
@@ -2611,38 +3152,98 @@ function normalizeTaskFilters_(filters, session) {
   var statusesSource = pickFirstDefined_(source, ['statuses', 'Statuses', 'status', 'Status']);
   if (statusesSource !== undefined && statusesSource !== null && statusesSource !== '') {
     var rawStatuses = Array.isArray(statusesSource) ? statusesSource : String(statusesSource).split(',');
-    var seen = {};
+    var statusSeen = {};
     for (var i = 0; i < rawStatuses.length; i++) {
-      var entry = rawStatuses[i];
-      if (entry === undefined || entry === null) {
+      var statusEntry = rawStatuses[i];
+      if (statusEntry === undefined || statusEntry === null) {
         continue;
       }
-      var trimmed = String(entry).trim();
-      if (!trimmed) {
+      var statusTrimmed = String(statusEntry).trim();
+      if (!statusTrimmed) {
         continue;
       }
-      var normalizedStatus = normalizeStatus_(trimmed);
-      if (!seen[normalizedStatus]) {
+      var normalizedStatus = normalizeStatus_(statusTrimmed);
+      if (!statusSeen[normalizedStatus]) {
         normalized.statuses.push(normalizedStatus);
-        seen[normalizedStatus] = true;
+        statusSeen[normalizedStatus] = true;
       }
     }
   }
 
-  var assigneeValue = pickFirstDefined_(source, ['assignee', 'Assignee']);
-  if (assigneeValue !== undefined && assigneeValue !== null && assigneeValue !== '') {
-    var assigneeString = String(assigneeValue).trim();
-    if (assigneeString) {
+  var categoriesSource = pickFirstDefined_(source, ['categories', 'Categories', 'category', 'Category']);
+  if (categoriesSource !== undefined && categoriesSource !== null && categoriesSource !== '') {
+    var rawCategories = Array.isArray(categoriesSource) ? categoriesSource : String(categoriesSource).split(',');
+    var categorySeen = {};
+    for (var j = 0; j < rawCategories.length; j++) {
+      var categoryEntry = rawCategories[j];
+      if (categoryEntry === undefined || categoryEntry === null) {
+        continue;
+      }
+      var categoryTrimmed = String(categoryEntry).trim();
+      if (!categoryTrimmed) {
+        continue;
+      }
+      var categoryKey = categoryTrimmed.toLowerCase();
+      if (!categorySeen[categoryKey]) {
+        normalized.categories.push(categoryTrimmed);
+        categorySeen[categoryKey] = true;
+      }
+    }
+  }
+
+  var prioritiesSource = pickFirstDefined_(source, ['priorities', 'Priorities', 'priority', 'Priority']);
+  if (prioritiesSource !== undefined && prioritiesSource !== null && prioritiesSource !== '') {
+    var rawPriorities = Array.isArray(prioritiesSource) ? prioritiesSource : String(prioritiesSource).split(',');
+    var prioritySeen = {};
+    for (var k = 0; k < rawPriorities.length; k++) {
+      var priorityEntry = rawPriorities[k];
+      if (priorityEntry === undefined || priorityEntry === null) {
+        continue;
+      }
+      var priorityTrimmed = String(priorityEntry).trim();
+      if (!priorityTrimmed) {
+        continue;
+      }
+      var priorityKey = priorityTrimmed.toLowerCase();
+      if (!prioritySeen[priorityKey]) {
+        normalized.priorities.push(priorityTrimmed);
+        prioritySeen[priorityKey] = true;
+      }
+    }
+  }
+
+  var assigneesSource = pickFirstDefined_(source, ['assignees', 'Assignees', 'assignee', 'Assignee']);
+  if (assigneesSource !== undefined && assigneesSource !== null && assigneesSource !== '') {
+    var rawAssignees = Array.isArray(assigneesSource) ? assigneesSource : String(assigneesSource).split(',');
+    var assigneeSeen = {};
+    var sessionEmail = session ? getSessionEmail_(session) : '';
+    for (var m = 0; m < rawAssignees.length; m++) {
+      var assigneeEntry = rawAssignees[m];
+      if (assigneeEntry === undefined || assigneeEntry === null) {
+        continue;
+      }
+      var assigneeString = String(assigneeEntry).trim();
+      if (!assigneeString) {
+        continue;
+      }
+      var resolvedAssignee = assigneeString;
       if (session && assigneeString.toLowerCase() === 'me') {
-        normalized.assignee = getSessionEmail_(session);
-      } else {
-        normalized.assignee = normalizeEmail_(assigneeString);
+        resolvedAssignee = sessionEmail;
       }
+      var normalizedAssignee = normalizeEmail_(resolvedAssignee);
+      if (!normalizedAssignee || assigneeSeen[normalizedAssignee]) {
+        continue;
+      }
+      normalized.assignees.push(normalizedAssignee);
+      assigneeSeen[normalizedAssignee] = true;
+    }
+    if (normalized.assignees.length) {
+      normalized.assignee = normalized.assignees[0];
     }
   }
 
-  var dueAfterValue = pickFirstDefined_(source, ['dueAfter', 'DueAfter', 'from', 'From', 'start', 'Start']);
-  var dueBeforeValue = pickFirstDefined_(source, ['dueBefore', 'DueBefore', 'to', 'To', 'end', 'End']);
+  var dueAfterValue = pickFirstDefined_(source, ['dueAfter', 'DueAfter', 'from', 'From', 'start', 'Start', 'dateFrom', 'DateFrom']);
+  var dueBeforeValue = pickFirstDefined_(source, ['dueBefore', 'DueBefore', 'to', 'To', 'end', 'End', 'dateTo', 'DateTo']);
   normalized.dueAfter = parseDateValue_(dueAfterValue);
   normalized.dueBefore = parseDateValue_(dueBeforeValue);
 
@@ -2808,10 +3409,24 @@ function taskMatchesFilters_(taskRecord, filters) {
     return true;
   }
   if (filters.statuses && filters.statuses.length) {
-    var recordStatus = String(taskRecord.Status || '');
+    var recordStatusRaw = String(taskRecord.Status || '');
+    var recordStatus = recordStatusRaw;
+    try {
+      recordStatus = normalizeStatus_(recordStatusRaw);
+    } catch (err) {
+      recordStatus = recordStatusRaw;
+    }
     var statusMatch = false;
     for (var i = 0; i < filters.statuses.length; i++) {
-      if (recordStatus === filters.statuses[i]) {
+      var filterStatus = filters.statuses[i];
+      if (!filterStatus) {
+        continue;
+      }
+      if (recordStatus === filterStatus) {
+        statusMatch = true;
+        break;
+      }
+      if (recordStatusRaw && String(filterStatus).toLowerCase() === recordStatusRaw.toLowerCase()) {
         statusMatch = true;
         break;
       }
@@ -2820,7 +3435,53 @@ function taskMatchesFilters_(taskRecord, filters) {
       return false;
     }
   }
-  if (filters.assignee) {
+  if (filters.categories && filters.categories.length) {
+    var recordCategory = String(taskRecord.Category || '').trim().toLowerCase();
+    var categoryMatch = false;
+    for (var j = 0; j < filters.categories.length; j++) {
+      var filterCategory = String(filters.categories[j]).trim().toLowerCase();
+      if (!filterCategory) {
+        continue;
+      }
+      if (recordCategory === filterCategory) {
+        categoryMatch = true;
+        break;
+      }
+    }
+    if (!categoryMatch) {
+      return false;
+    }
+  }
+  if (filters.priorities && filters.priorities.length) {
+    var recordPriority = String(taskRecord.Priority || '').trim().toLowerCase();
+    var priorityMatch = false;
+    for (var k = 0; k < filters.priorities.length; k++) {
+      var filterPriority = String(filters.priorities[k]).trim().toLowerCase();
+      if (!filterPriority) {
+        continue;
+      }
+      if (recordPriority === filterPriority) {
+        priorityMatch = true;
+        break;
+      }
+    }
+    if (!priorityMatch) {
+      return false;
+    }
+  }
+  if (filters.assignees && filters.assignees.length) {
+    var recordAssignee = normalizeEmail_(taskRecord.Assignee);
+    var assigneeMatch = false;
+    for (var m = 0; m < filters.assignees.length; m++) {
+      if (recordAssignee === filters.assignees[m]) {
+        assigneeMatch = true;
+        break;
+      }
+    }
+    if (!assigneeMatch) {
+      return false;
+    }
+  } else if (filters.assignee) {
     if (normalizeEmail_(taskRecord.Assignee) !== filters.assignee) {
       return false;
     }
@@ -3097,7 +3758,8 @@ function sanitizeQuote_(record) {
     Author: record.Author || '',
     Text: record.Text || '',
     SubmittedBy: normalizeEmail_(record.SubmittedBy),
-    Approved: isTrue_(record.Approved)
+    Approved: isTrue_(record.Approved),
+    CreatedAt: record.CreatedAt || ''
   };
 }
 
@@ -3111,6 +3773,34 @@ function escapeHtml_(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function getQuoteById_(quoteId) {
+  if (!quoteId) {
+    return null;
+  }
+  var sheet = ensureSheet_(SHEET_NAMES.QUOTES, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
+  var headers = SHEET_HEADERS[SHEET_NAMES.QUOTES];
+  var idIndex = headers.indexOf('QuoteID');
+  if (idIndex === -1) {
+    throw new Error('Quotes sheet missing QuoteID column.');
+  }
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return null;
+  }
+  var range = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  var values = range.getValues();
+  var searchId = String(quoteId);
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][idIndex]) === searchId) {
+      return {
+        rowNumber: i + 2,
+        record: arrayToObject_(headers, values[i])
+      };
+    }
+  }
+  return null;
 }
 
 function getTaskById_(taskId) {
