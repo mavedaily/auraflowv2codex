@@ -21,6 +21,22 @@
             },
           },
         },
+        safelist: [
+          'ring-aura-primary/60',
+          'ring-aura-primary/50',
+          'ring-offset-2',
+          'ring-offset-slate-950',
+          'text-aura-primary',
+          'bg-aura-primary/10',
+          'cursor-grab',
+          'cursor-grabbing',
+          'opacity-60',
+          'opacity-70',
+          'text-[0.65rem]',
+          'max-w-[8rem]',
+          'max-w-[10rem]',
+          'animate-pulse',
+        ],
       };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -219,11 +235,122 @@
           </section>
 
           <section data-tab-panel="kanban" class="tab-panel hidden">
-            <div class="rounded-3xl border border-dashed border-white/10 bg-slate-900/70 p-10 text-center">
-              <h3 class="text-2xl font-semibold text-white">Kanban Workspace</h3>
-              <p class="mt-4 text-sm text-slate-400">
-                Drag-and-drop swimlanes for status management will be introduced in Phase 4, powered by live task syncing.
-              </p>
+            <div class="space-y-8">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 class="text-2xl font-semibold text-white">Kanban Workspace</h3>
+                  <p class="text-sm text-slate-400">
+                    Drag tasks across swimlanes to reflect real-time delivery status. Updates sync instantly with the workspace.
+                  </p>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-slate-500">
+                  <span class="hidden sm:inline">Statuses:</span>
+                  <ul class="flex items-center gap-2">
+                    <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">Planned</li>
+                    <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">In-Progress</li>
+                    <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">Completed</li>
+                    <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">Shifted</li>
+                    <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">Cancelled</li>
+                  </ul>
+                </div>
+              </div>
+              <div
+                id="kanbanLoading"
+                class="hidden items-center gap-3 text-sm text-slate-400 sm:flex"
+                role="status"
+                aria-live="polite"
+              >
+                <span class="flex h-2.5 w-2.5 items-center justify-center">
+                  <span class="h-2.5 w-2.5 animate-ping rounded-full bg-aura-primary/70"></span>
+                </span>
+                <span>Syncing tasks&hellip;</span>
+              </div>
+              <div
+                id="kanbanEmpty"
+                class="hidden rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-10 text-center"
+              >
+                <div class="mx-auto flex max-w-md flex-col gap-3">
+                  <h4 class="text-lg font-semibold text-white">No tasks yet</h4>
+                  <p class="text-sm text-slate-400">
+                    When tasks are created they will appear here, ready to be triaged across the workflow.
+                  </p>
+                </div>
+              </div>
+              <div
+                id="kanbanBoard"
+                class="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory xl:grid xl:grid-cols-5 xl:gap-6 xl:overflow-visible"
+              >
+                <div
+                  class="kanban-column relative flex min-w-[230px] snap-center flex-col rounded-3xl border border-white/10 bg-slate-950/60 p-5 transition-all duration-200 hover:border-white/20"
+                  data-kanban-column="Planned"
+                  aria-label="Planned column"
+                >
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div>
+                      <h4 class="text-base font-semibold text-white">Planned</h4>
+                      <p class="text-xs text-slate-500">Upcoming scope and queued initiatives.</p>
+                    </div>
+                    <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-slate-300" data-kanban-count>0</span>
+                  </div>
+                  <div class="mt-4 flex flex-col gap-3" data-kanban-list role="list" aria-label="Planned tasks"></div>
+                </div>
+                <div
+                  class="kanban-column relative flex min-w-[230px] snap-center flex-col rounded-3xl border border-white/10 bg-slate-950/60 p-5 transition-all duration-200 hover:border-white/20"
+                  data-kanban-column="In-Progress"
+                  aria-label="In-Progress column"
+                >
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div>
+                      <h4 class="text-base font-semibold text-white">In-Progress</h4>
+                      <p class="text-xs text-slate-500">Active execution and collaboration.</p>
+                    </div>
+                    <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-slate-300" data-kanban-count>0</span>
+                  </div>
+                  <div class="mt-4 flex flex-col gap-3" data-kanban-list role="list" aria-label="In-Progress tasks"></div>
+                </div>
+                <div
+                  class="kanban-column relative flex min-w-[230px] snap-center flex-col rounded-3xl border border-white/10 bg-slate-950/60 p-5 transition-all duration-200 hover:border-white/20"
+                  data-kanban-column="Completed"
+                  aria-label="Completed column"
+                >
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div>
+                      <h4 class="text-base font-semibold text-white">Completed</h4>
+                      <p class="text-xs text-slate-500">Validated deliverables and wins.</p>
+                    </div>
+                    <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-slate-300" data-kanban-count>0</span>
+                  </div>
+                  <div class="mt-4 flex flex-col gap-3" data-kanban-list role="list" aria-label="Completed tasks"></div>
+                </div>
+                <div
+                  class="kanban-column relative flex min-w-[230px] snap-center flex-col rounded-3xl border border-white/10 bg-slate-950/60 p-5 transition-all duration-200 hover:border-white/20"
+                  data-kanban-column="Shifted"
+                  aria-label="Shifted column"
+                >
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div>
+                      <h4 class="text-base font-semibold text-white">Shifted</h4>
+                      <p class="text-xs text-slate-500">Rescheduled or deferred scope.</p>
+                    </div>
+                    <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-slate-300" data-kanban-count>0</span>
+                  </div>
+                  <div class="mt-4 flex flex-col gap-3" data-kanban-list role="list" aria-label="Shifted tasks"></div>
+                </div>
+                <div
+                  class="kanban-column relative flex min-w-[230px] snap-center flex-col rounded-3xl border border-white/10 bg-slate-950/60 p-5 transition-all duration-200 hover:border-white/20"
+                  data-kanban-column="Cancelled"
+                  aria-label="Cancelled column"
+                >
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div>
+                      <h4 class="text-base font-semibold text-white">Cancelled</h4>
+                      <p class="text-xs text-slate-500">Stopped, rejected, or void work.</p>
+                    </div>
+                    <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-slate-300" data-kanban-count>0</span>
+                  </div>
+                  <div class="mt-4 flex flex-col gap-3" data-kanban-list role="list" aria-label="Cancelled tasks"></div>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -510,6 +637,19 @@
 
       (function () {
         const STORAGE_KEY = 'aura-flow-v2.session';
+        const KANBAN_STATUSES = [
+          { id: 'Planned', label: 'Planned' },
+          { id: 'In-Progress', label: 'In-Progress' },
+          { id: 'Completed', label: 'Completed' },
+          { id: 'Shifted', label: 'Shifted' },
+          { id: 'Cancelled', label: 'Cancelled' },
+        ];
+        const COLUMN_HIGHLIGHT_CLASSES = [
+          'ring-2',
+          'ring-aura-primary/60',
+          'ring-offset-2',
+          'ring-offset-slate-950'
+        ];
         const state = {
           token: null,
           user: null,
@@ -541,6 +681,7 @@
           analytics: {},
           focus: {},
         };
+
         const tabs = ['dashboard', 'kanban', 'analytics', 'focus', 'admin'];
         const STATUS_ORDER = {
           'In-Progress': 0,
@@ -584,6 +725,7 @@
           isInitialized = true;
           cacheElements();
           enhanceTabButtons();
+          setupKanbanBoard();
           bindEvents();
           initializeFocusMode();
           updateShell();
@@ -627,6 +769,7 @@
           elements.focus.historyList = document.getElementById('focusHistoryList');
           elements.focus.historyEmpty = document.getElementById('focusHistoryEmpty');
           elements.focus.clearHistoryButton = document.getElementById('focusClearHistoryButton');
+
         }
 
         function enhanceTabButtons() {
@@ -654,6 +797,23 @@
             panel.setAttribute('role', 'tabpanel');
             panel.setAttribute('aria-hidden', panel.classList.contains('hidden') ? 'true' : 'false');
           });
+        }
+
+        function setupKanbanBoard() {
+          if (!elements.kanbanBoard) {
+            return;
+          }
+          KANBAN_STATUSES.forEach((status) => {
+            const column = elements.kanbanColumns[status.id];
+            if (!column) {
+              return;
+            }
+            column.addEventListener('dragenter', (event) => handleKanbanDragEnter(event, status.id));
+            column.addEventListener('dragover', (event) => handleKanbanDragOver(event, status.id));
+            column.addEventListener('dragleave', (event) => handleKanbanDragLeave(event, status.id));
+            column.addEventListener('drop', (event) => handleKanbanDrop(event, status.id));
+          });
+          renderKanbanBoard();
         }
 
         function bindEvents() {
@@ -776,6 +936,7 @@
           }
           if (tabId === 'focus') {
             updateFocusControls();
+
           }
         }
 
@@ -784,6 +945,7 @@
           state.user = user || null;
           updateShell();
           refreshWorkspaceData({ silent: true });
+
         }
 
         function updateShell() {
@@ -800,6 +962,7 @@
           if (elements.roleBadge) {
             elements.roleBadge.textContent = isAuthenticated && state.user.Role ? state.user.Role : '';
           }
+          renderKanbanBoard();
           setActiveTab(state.activeTab);
         }
 
@@ -821,6 +984,7 @@
           } catch (err) {
             console.warn('Failed to clear session storage', err);
           }
+          resetKanbanState();
         }
 
         async function restoreSession() {
@@ -1573,6 +1737,7 @@
 
         function clampNumber(value, min, max) {
           return Math.min(Math.max(value, min), max);
+
         }
       })();
 
