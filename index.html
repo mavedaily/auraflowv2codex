@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aura Flow V2 — by Rare Aura Media Group</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -45,9 +51,27 @@
         color-scheme: dark;
       }
       body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
         background: radial-gradient(circle at top left, rgba(127, 90, 240, 0.3), transparent 40%),
           radial-gradient(circle at bottom right, rgba(44, 177, 188, 0.25), transparent 45%),
           #0f172a;
+        font-family: 'Manrope', 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #e2e8f0;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        letter-spacing: 0.01em;
+      }
+      main {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+      }
+      footer {
+        backdrop-filter: blur(14px);
       }
       .login-card::before {
         content: '';
@@ -81,7 +105,7 @@
       }
     </style>
   </head>
-  <body class="min-h-screen text-slate-100">
+  <body class="min-h-screen text-slate-100 font-sans">
     <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
       <div class="absolute -top-32 -right-32 h-72 w-72 rounded-full bg-aura-primary/30 blur-3xl"></div>
       <div class="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-aura-secondary/25 blur-3xl"></div>
@@ -90,7 +114,10 @@
     <div id="toastStack" class="fixed top-4 right-4 z-[100] flex flex-col gap-3 w-72 pointer-events-none" role="status" aria-live="assertive"></div>
 
     <main class="relative z-10">
-      <section id="loginView" class="min-h-screen flex items-center justify-center px-6 py-12">
+      <section
+        id="loginView"
+        class="min-h-[calc(100vh-5rem)] flex items-center justify-center px-6 py-12"
+      >
         <div class="login-card relative isolate bg-slate-950/70 backdrop-blur-xl border border-white/10 rounded-3xl shadow-brand max-w-xl w-full">
           <div class="absolute inset-x-0 -top-20 mx-auto w-40 h-40 rounded-full bg-gradient-to-br from-aura-primary to-aura-secondary blur-3xl opacity-40"></div>
           <div class="p-10 space-y-10">
@@ -154,7 +181,7 @@
         </div>
       </section>
 
-      <section id="appView" class="hidden min-h-screen pb-16">
+      <section id="appView" class="hidden min-h-[calc(100vh-5rem)] pb-16">
         <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur border-b border-white/5">
           <div class="max-w-7xl mx-auto px-6 py-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -588,6 +615,11 @@
         </div>
       </section>
     </main>
+    <footer class="relative z-10 border-t border-white/10 bg-slate-950/70">
+      <div class="mx-auto max-w-7xl px-6 py-6 text-center text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">
+        Aura Flow V2 — Rare Aura Media Group
+      </div>
+    </footer>
 
     <script>
       const server = new Proxy(
@@ -637,6 +669,9 @@
 
       (function () {
         const STORAGE_KEY = 'aura-flow-v2.session';
+        const TASK_CACHE_KEY = 'aura-flow-v2.tasks.cache';
+        const TASK_CACHE_LIMIT = 20;
+        const SESSION_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
         const KANBAN_STATUSES = [
           { id: 'Planned', label: 'Planned' },
           { id: 'In-Progress', label: 'In-Progress' },
@@ -717,6 +752,8 @@
           burntout: 1,
         };
         let isInitialized = false;
+        let sessionRefreshTimerId = null;
+        let sessionRefreshFailureNotified = false;
 
         document.addEventListener('DOMContentLoaded', init);
 
@@ -944,6 +981,8 @@
           state.token = token;
           state.user = user || null;
           updateShell();
+          hydrateTasksFromCache();
+          startSessionRefresh();
           refreshWorkspaceData({ silent: true });
 
         }
@@ -956,12 +995,7 @@
           if (elements.appView) {
             elements.appView.classList.toggle('hidden', !isAuthenticated);
           }
-          if (elements.userBadge) {
-            elements.userBadge.textContent = isAuthenticated ? state.user.Email : 'Not authenticated';
-          }
-          if (elements.roleBadge) {
-            elements.roleBadge.textContent = isAuthenticated && state.user.Role ? state.user.Role : '';
-          }
+          updateIdentityBadges(isAuthenticated);
           renderKanbanBoard();
           setActiveTab(state.activeTab);
         }
@@ -976,6 +1010,7 @@
         }
 
         function clearSession() {
+          stopSessionRefresh();
           state.token = null;
           state.user = null;
           resetWorkspaceData();
@@ -1040,11 +1075,22 @@
             analyticsState.lastUpdated = new Date();
             updateAnalyticsTimestamp();
             populateFocusTaskSelect();
+            renderKanbanBoard();
             renderAnalyticsCharts();
+            cacheTasksSnapshot(state.data.tasks);
           } catch (err) {
             console.error('Failed to refresh workspace data:', err);
             showToast(err && err.message ? err.message : 'Unable to refresh analytics.', 'error');
-            renderAnalyticsCharts();
+            if (!state.data.tasks.length) {
+              const hydrated = hydrateTasksFromCache();
+              if (!hydrated) {
+                renderKanbanBoard();
+                renderAnalyticsCharts();
+              }
+            } else {
+              renderKanbanBoard();
+              renderAnalyticsCharts();
+            }
           } finally {
             analyticsState.isLoading = false;
             if (elements.analytics.refreshButton && !silent) {
@@ -1066,6 +1112,132 @@
             day: 'numeric',
           });
           elements.analytics.refreshTime.textContent = `Updated ${formatted}`;
+        }
+
+        function startSessionRefresh() {
+          stopSessionRefresh();
+          if (!state.token) {
+            return;
+          }
+          sessionRefreshFailureNotified = false;
+          sessionRefreshTimerId = setInterval(() => {
+            handleSessionRefresh().catch((err) => {
+              console.warn('Session refresh error:', err);
+            });
+          }, SESSION_REFRESH_INTERVAL_MS);
+        }
+
+        async function handleSessionRefresh() {
+          if (!state.token) {
+            return;
+          }
+          try {
+            const refreshed = await server.refreshSession(state.token);
+            if (!refreshed || !refreshed.token) {
+              return;
+            }
+            state.token = refreshed.token;
+            if (refreshed.user) {
+              state.user = refreshed.user;
+            }
+            persistSession(state.token, state.user);
+            updateIdentityBadges();
+          } catch (err) {
+            const message = err && err.message ? err.message : String(err || '');
+            if (message.toLowerCase().includes('unauthorized')) {
+              stopSessionRefresh();
+              const hadToken = Boolean(state.token);
+              clearSession();
+              updateShell();
+              if (!sessionRefreshFailureNotified && hadToken) {
+                sessionRefreshFailureNotified = true;
+                showToast('Your session expired. Please sign in again.', 'error');
+              }
+            } else {
+              console.warn('Session refresh failed:', err);
+            }
+          }
+        }
+
+        function stopSessionRefresh() {
+          if (sessionRefreshTimerId) {
+            clearInterval(sessionRefreshTimerId);
+            sessionRefreshTimerId = null;
+          }
+        }
+
+        function updateIdentityBadges(isAuthenticated = Boolean(state.token && state.user)) {
+          if (elements.userBadge) {
+            elements.userBadge.textContent = isAuthenticated && state.user && state.user.Email
+              ? state.user.Email
+              : 'Not authenticated';
+          }
+          if (elements.roleBadge) {
+            elements.roleBadge.textContent =
+              isAuthenticated && state.user && state.user.Role ? state.user.Role : '';
+          }
+        }
+
+        function hydrateTasksFromCache() {
+          let hydrated = false;
+          try {
+            const raw = localStorage.getItem(TASK_CACHE_KEY);
+            if (!raw) {
+              return hydrated;
+            }
+            const payload = JSON.parse(raw);
+            if (!payload || !Array.isArray(payload.tasks) || !payload.tasks.length) {
+              return hydrated;
+            }
+            state.data.tasks = payload.tasks;
+            if (payload.savedAt) {
+              const savedAt = new Date(payload.savedAt);
+              if (!Number.isNaN(savedAt.getTime())) {
+                analyticsState.lastUpdated = savedAt;
+                updateAnalyticsTimestamp();
+              }
+            }
+            populateFocusTaskSelect();
+            renderKanbanBoard();
+            renderAnalyticsCharts();
+            hydrated = true;
+          } catch (err) {
+            console.warn('Failed to hydrate cached tasks', err);
+          }
+          return hydrated;
+        }
+
+        function cacheTasksSnapshot(tasks) {
+          if (!Array.isArray(tasks)) {
+            return;
+          }
+          try {
+            const snapshot = sortTasksByRecency(tasks).slice(0, TASK_CACHE_LIMIT);
+            const payload = JSON.stringify({ savedAt: Date.now(), tasks: snapshot });
+            localStorage.setItem(TASK_CACHE_KEY, payload);
+          } catch (err) {
+            console.warn('Failed to cache tasks for offline access', err);
+          }
+        }
+
+        function sortTasksByRecency(tasks) {
+          return tasks.slice().sort((a, b) => resolveTaskTimestamp(b) - resolveTaskTimestamp(a));
+        }
+
+        function resolveTaskTimestamp(task) {
+          if (!task) {
+            return 0;
+          }
+          const fields = [task.UpdatedAt, task.Timestamp, task.DueAt];
+          for (let i = 0; i < fields.length; i += 1) {
+            const value = fields[i];
+            if (!value) continue;
+            const date = new Date(value);
+            if (!Number.isNaN(date.getTime())) {
+              return date.getTime();
+            }
+          }
+          return 0;
         }
 
         function renderAnalyticsCharts() {
