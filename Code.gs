@@ -344,6 +344,129 @@ function createTask(token, taskObj) {
   });
 }
 
+function bulkUploadTasks(token, rows) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+
+    var role = getSessionRole_(session);
+    if (['Admin', 'Sub-Admin', 'Manager'].indexOf(role) === -1) {
+      throw new Error('Forbidden.');
+    }
+
+    var payload = typeof rows === 'string' ? safeParse_(rows, null) : rows;
+    if (!Array.isArray(payload)) {
+      throw new Error('Rows payload must be an array.');
+    }
+    if (payload.length === 0) {
+      throw new Error('No rows provided.');
+    }
+
+    var assignerEmail = getSessionEmail_(session);
+    if (!assignerEmail) {
+      throw new Error('Unable to resolve session email.');
+    }
+
+    var usersMap = loadUsersMap_();
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.TASKS];
+
+    var inserted = [];
+    var errors = [];
+
+    for (var i = 0; i < payload.length; i++) {
+      try {
+        var rawRow = payload[i];
+        if (!rawRow || typeof rawRow !== 'object') {
+          throw new Error('Row is empty or invalid.');
+        }
+
+        var row = normalizeBulkRow_(rawRow);
+
+        var name = requireNonEmptyString_(pickFirstDefined_(row, ['Task', 'Name', 'Title']), 'Task');
+
+        var durationValue = pickFirstDefined_(row, ['Duration', 'DurationMins', 'Minutes', 'Mins']);
+        if (durationValue === undefined || durationValue === null || durationValue === '') {
+          throw new Error('Duration is required.');
+        }
+        var duration = normalizeDuration_(durationValue, 0);
+
+        var categoryValue = pickFirstDefined_(row, ['Category', 'Stream']);
+        var category = requireNonEmptyString_(categoryValue, 'Category');
+        category = normalizeTaskCategory_(category);
+
+        var priorityValue = pickFirstDefined_(row, ['Priority']);
+        var priority = requireNonEmptyString_(priorityValue, 'Priority');
+
+        var assigneeValue = pickFirstDefined_(row, ['Assignee', 'AssigneeEmail', 'Owner', 'AssignedTo']);
+        var assigneeEmail = normalizeEmail_(assigneeValue);
+        if (!assigneeEmail) {
+          throw new Error('Assignee is required.');
+        }
+        var assigneeRecord = usersMap[assigneeEmail];
+        if (!assigneeRecord) {
+          throw new Error('Assignee not found.');
+        }
+        if (!isTrue_(assigneeRecord.IsActive)) {
+          throw new Error('Assignee is not active.');
+        }
+        if (!ROLE_RANK[assigneeRecord.Role || '']) {
+          throw new Error('Invalid assignee role.');
+        }
+        validateTaskAssignment_(session, assigneeRecord);
+
+        var dateValue = pickFirstDefined_(row, ['Date', 'DueDate', 'DueAt', 'Deadline']);
+        var dueAt = resolveBulkDueDateString_(dateValue);
+
+        var labels = toCsvString_(pickFirstDefined_(row, ['Labels', 'Label', 'Tags', 'Tag']));
+        var notesValue = pickFirstDefined_(row, ['Notes', 'Note', 'Description']);
+        var notes = notesValue !== undefined && notesValue !== null ? String(notesValue) : '';
+        var resources = toCsvString_(pickFirstDefined_(row, ['Resources', 'ResourcesCSV', 'Links', 'Link', 'Url', 'URL']));
+        var statusValue = pickFirstDefined_(row, ['Status']);
+        var status = statusValue ? normalizeStatus_(statusValue) : 'Planned';
+
+        var now = nowIso_();
+        var record = {
+          TaskID: generateId_('TASK'),
+          Name: name,
+          Category: category,
+          Priority: priority,
+          Status: status,
+          DurationMins: duration,
+          Labels: labels,
+          Notes: notes,
+          ResourcesCSV: resources,
+          Assigner: assignerEmail,
+          Assignee: assigneeEmail,
+          Timestamp: now,
+          DueAt: dueAt,
+          UpdatedAt: now,
+          ParentTaskID: ''
+        };
+
+        if (!canManageTask_(session, record, record.Assignee, usersMap)) {
+          throw new Error('Forbidden.');
+        }
+
+        appendRow_(sheet, headers, record);
+        inserted.push(sanitizeTask_(record));
+        logActivity_(session, 'task.bulkUpload', 'Task', record.TaskID, { assignee: record.Assignee, status: record.Status });
+      } catch (rowErr) {
+        errors.push({
+          index: i,
+          message: rowErr && rowErr.message ? rowErr.message : String(rowErr || 'Row failed.')
+        });
+      }
+    }
+
+    return {
+      inserted: inserted.length,
+      tasks: inserted,
+      errors: errors
+    };
+  });
+}
+
 function updateTask(token, taskId, updates) {
   return handleApi_(function () {
     var session = requireSession_(token);
@@ -1575,6 +1698,137 @@ function parseDateValue_(value) {
     }
   }
   return null;
+}
+
+function resolveBulkDueDateString_(value) {
+  if (value === undefined || value === null || value === '') {
+    throw new Error('Date is required.');
+  }
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    if (!isNaN(value.getTime())) {
+      return value.toISOString().slice(0, 10);
+    }
+    throw new Error('Invalid date.');
+  }
+  if (typeof value === 'number') {
+    var excelDate = convertExcelSerialToDate_(value);
+    if (excelDate) {
+      return excelDate.toISOString().slice(0, 10);
+    }
+  }
+  var str = String(value).trim();
+  if (!str) {
+    throw new Error('Date is required.');
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
+  }
+  var parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+  var numeric = Number(str);
+  if (!isNaN(numeric)) {
+    var fromNumeric = convertExcelSerialToDate_(numeric);
+    if (fromNumeric) {
+      return fromNumeric.toISOString().slice(0, 10);
+    }
+  }
+  throw new Error('Invalid date.');
+}
+
+function convertExcelSerialToDate_(value) {
+  var serial = Number(value);
+  if (isNaN(serial)) {
+    return null;
+  }
+  if (serial <= 0) {
+    return null;
+  }
+  if (serial > 59) {
+    serial -= 1; // Excel's fictitious 1900 leap day
+  }
+  var millis = Math.round((serial - 25569) * 86400 * 1000);
+  var date = new Date(millis);
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+}
+
+function normalizeBulkRow_(row) {
+  var normalized = {};
+  for (var key in row) {
+    if (!row.hasOwnProperty(key)) {
+      continue;
+    }
+    var canonical = canonicalizeBulkKey_(key);
+    if (canonical) {
+      if (normalized[canonical] === undefined) {
+        normalized[canonical] = row[key];
+      }
+    } else {
+      if (normalized[key] === undefined) {
+        normalized[key] = row[key];
+      }
+    }
+  }
+  return normalized;
+}
+
+function canonicalizeBulkKey_(key) {
+  if (!key && key !== 0) {
+    return null;
+  }
+  var normalized = String(key)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+  if (!normalized) {
+    return null;
+  }
+  var map = {
+    task: 'Task',
+    taskname: 'Task',
+    name: 'Task',
+    title: 'Task',
+    workitem: 'Task',
+    duration: 'Duration',
+    durationmins: 'Duration',
+    durationminutes: 'Duration',
+    minutes: 'Duration',
+    mins: 'Duration',
+    category: 'Category',
+    type: 'Category',
+    stream: 'Category',
+    priority: 'Priority',
+    assignee: 'Assignee',
+    assigneeemail: 'Assignee',
+    owner: 'Assignee',
+    assignedto: 'Assignee',
+    collaborator: 'Assignee',
+    date: 'Date',
+    duedate: 'Date',
+    due: 'Date',
+    dueat: 'Date',
+    deadline: 'Date',
+    labels: 'Labels',
+    label: 'Labels',
+    tags: 'Labels',
+    tag: 'Labels',
+    notes: 'Notes',
+    note: 'Notes',
+    description: 'Notes',
+    summary: 'Notes',
+    resources: 'Resources',
+    resource: 'Resources',
+    links: 'Resources',
+    link: 'Resources',
+    url: 'Resources',
+    urls: 'Resources',
+    status: 'Status'
+  };
+  return map.hasOwnProperty(normalized) ? map[normalized] : null;
 }
 
 function taskMatchesFilters_(taskRecord, filters) {
