@@ -43,37 +43,7 @@
         -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
         -webkit-mask-composite: xor;
         mask-composite: exclude;
-        z-index: -1;
-        pointer-events: none;
-      }
-      .login-card__content {
-        padding: clamp(1.75rem, calc(1rem + 5vw), 2.5rem);
-      }
-      :where(button, input, select, textarea, [role='tab']):focus-visible {
-        outline: 2px solid rgba(127, 90, 240, 0.9);
-        outline-offset: 3px;
-      }
-      :where(button, input, select, textarea, [role='tab']):focus:not(:focus-visible) {
-        outline: none;
-      }
-      @media (max-width: 400px) {
-        #loginView {
-          padding-inline: 1.25rem;
-        }
-        .login-card {
-          border-radius: 1.5rem;
-          margin-inline: auto;
-        }
-        .login-card::before {
-          border-radius: 1.5rem;
-        }
-        .login-card__content {
-          padding: 1.75rem;
-        }
-        #toastStack {
-          right: 1rem;
-          width: calc(100% - 2rem);
-        }
+
       }
       .toast-enter {
         transform: translateY(16px);
@@ -107,7 +77,8 @@
       <section id="loginView" class="min-h-screen flex items-center justify-center px-6 py-12">
         <div class="login-card relative isolate bg-slate-950/70 backdrop-blur-xl border border-white/10 rounded-3xl shadow-brand max-w-xl w-full">
           <div class="absolute inset-x-0 -top-20 mx-auto w-40 h-40 rounded-full bg-gradient-to-br from-aura-primary to-aura-secondary blur-3xl opacity-40"></div>
-          <div class="login-card__content space-y-10">
+          <div class="p-10 space-y-10">
+
             <div>
               <p class="text-sm uppercase tracking-[0.3em] text-slate-400 mb-2">Welcome to</p>
               <h1 class="text-3xl sm:text-4xl font-semibold text-white leading-tight">
@@ -127,7 +98,8 @@
                   placeholder="you@rareaura.co"
                   required
                   autocomplete="email"
-                  class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-aura-primary focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:border-transparent"
+                  class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+
                 />
               </div>
               <div class="grid gap-2">
@@ -139,7 +111,8 @@
                   placeholder="••••••••"
                   required
                   autocomplete="current-password"
-                  class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-aura-primary focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 focus-visible:border-transparent"
+                  class="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 text-base text-slate-100 focus:outline-none focus:ring-2 focus:ring-aura-primary focus:border-transparent"
+
                 />
               </div>
               <button
@@ -393,25 +366,13 @@
           elements.userBadge = document.getElementById('userBadge');
           elements.roleBadge = document.getElementById('roleBadge');
           elements.logoutButton = document.getElementById('logoutButton');
-          elements.tabButtons = Array.from(document.querySelectorAll('[data-tab-button]'));
-          elements.tabPanels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+          elements.tabButtons = document.querySelectorAll('[data-tab-button]');
+          elements.tabPanels = document.querySelectorAll('[data-tab-panel]');
         }
 
         function enhanceTabButtons() {
-          const panelMap = new Map();
-          elements.tabPanels.forEach((panel) => {
-            const tabId = panel.getAttribute('data-tab-panel');
-            if (!tabId) return;
-            const panelId = panel.id && panel.id.trim() ? panel.id : `tab-${tabId}-panel`;
-            panel.id = panelId;
-            panel.setAttribute('role', 'tabpanel');
-            panel.setAttribute('tabindex', '-1');
-            panel.setAttribute('aria-hidden', 'true');
-            panelMap.set(tabId, panel);
-          });
           elements.tabButtons.forEach((btn) => {
-            const tabId = btn.getAttribute('data-tab-button');
-            if (!tabId) return;
+
             btn.classList.add(
               'whitespace-nowrap',
               'rounded-full',
@@ -428,17 +389,11 @@
               'focus-visible:outline-offset-2',
               'focus-visible:outline-white/40'
             );
-            const buttonId = btn.id && btn.id.trim() ? btn.id : `tab-${tabId}-tab`;
-            btn.id = buttonId;
-            btn.setAttribute('type', 'button');
             btn.setAttribute('role', 'tab');
-            btn.setAttribute('aria-selected', 'false');
-            btn.setAttribute('tabindex', '-1');
-            const linkedPanel = panelMap.get(tabId);
-            if (linkedPanel) {
-              btn.setAttribute('aria-controls', linkedPanel.id);
-              linkedPanel.setAttribute('aria-labelledby', buttonId);
-            }
+          });
+          elements.tabPanels.forEach((panel) => {
+            panel.setAttribute('role', 'tabpanel');
+
           });
         }
 
@@ -523,8 +478,7 @@
           elements.tabPanels.forEach((panel) => {
             const isActive = panel.getAttribute('data-tab-panel') === tabId;
             panel.classList.toggle('hidden', !isActive);
-            panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
-            panel.setAttribute('tabindex', isActive ? '0' : '-1');
+
           });
         }
 
@@ -607,7 +561,7 @@
         const toast = document.createElement('div');
         const baseClasses = [
           'pointer-events-auto',
-          'cursor-pointer',
+
           'rounded-2xl',
           'border',
           'border-white/10',
@@ -635,42 +589,20 @@
           </div>
         `;
         toast.classList.add(...(palette[type] || palette.info).split(' '));
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('tabindex', '0');
+
         container.appendChild(toast);
         requestAnimationFrame(() => {
           toast.classList.remove('toast-enter');
           toast.classList.add('toast-enter-active');
         });
-        let dismissTimer;
-        const dismissToast = () => {
-          if (toast.dataset.dismissed === 'true') return;
-          toast.dataset.dismissed = 'true';
+        setTimeout(() => {
           toast.classList.remove('toast-enter-active');
           toast.classList.add('toast-leave-active');
-          const removeToast = () => toast.remove();
-          toast.addEventListener('transitionend', removeToast, { once: true });
-          setTimeout(removeToast, 250);
-          dismissTimer = null;
-        };
-        dismissTimer = setTimeout(() => {
-          dismissToast();
+          setTimeout(() => {
+            toast.remove();
+          }, 220);
         }, 3600);
-        toast.addEventListener('click', () => {
-          if (dismissTimer) {
-            clearTimeout(dismissTimer);
-          }
-          dismissToast();
-        });
-        toast.addEventListener('keydown', (event) => {
-          if (['Enter', ' ', 'Spacebar', 'Escape'].includes(event.key)) {
-            event.preventDefault();
-            if (dismissTimer) {
-              clearTimeout(dismissTimer);
-            }
-            dismissToast();
-          }
-        });
+
       }
     </script>
   </body>

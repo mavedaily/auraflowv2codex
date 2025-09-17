@@ -83,8 +83,9 @@ var ROLE_PERMISSIONS = {
   'Intern': ['tasks:view:self', 'tasks:manage:self', 'moods:log']
 };
 
+var TASK_STATUSES = ['Planned', 'In-Progress', 'Completed', 'Shifted', 'Cancelled'];
 var SESSION_CACHE_PREFIX = 'afv2_session_';
-var SESSION_USER_INDEX_PREFIX = 'afv2_session_idx_';
+
 var SESSION_TTL_SECONDS = 6 * 60 * 60; // 6 hours
 var DEFAULT_ADMIN_PASSWORD = 'ChangeMeNow!1';
 
@@ -98,10 +99,12 @@ function doGet(e) {
 
 function login(email, password) {
   return handleApi_(function () {
-    var normalizedEmail = normalizeEmail_(requireNonEmptyString_(email, 'Email'));
-    var providedPassword = requireNonEmptyString_(password, 'Password', { trim: false });
+    if (!email || !password) {
+      throw new Error('Email and password are required.');
+    }
     firstRunInit();
-    var userResult = getUserByEmail_(normalizedEmail);
+    var userResult = getUserByEmail_(email);
+
     if (!userResult) {
       throw new Error('Invalid credentials.');
     }
@@ -113,28 +116,30 @@ function login(email, password) {
       throw new Error('Account is not properly configured.');
     }
     var expected = user.PasswordHash;
-    var providedHash = hashPassword_(providedPassword, user.Salt);
-    if (expected !== providedHash) {
+    var provided = hashPassword_(password, user.Salt);
+    if (expected !== provided) {
+
       throw new Error('Invalid credentials.');
     }
     var session = createSessionForUser_(user);
     logActivity_(user.Email, 'login', 'User', user.Email, {});
     return {
       token: session.token,
-      user: session.user
+      user: sanitizeUser_(user)
+
     };
   });
 }
 
 function logout(token) {
   return handleApi_(function () {
-    var sessionToken = token ? String(token).trim() : '';
-    if (sessionToken) {
-      var session = getSession_(sessionToken);
+    if (token) {
+      var session = getSession_(token);
       if (session) {
         logActivity_(session.email, 'logout', 'User', session.email, {});
       }
-      destroySession_(sessionToken);
+      destroySession_(token);
+
     }
     return true;
   });
@@ -167,57 +172,54 @@ function upsertUser(token, userObj) {
   return handleApi_(function () {
     var session = requireSession_(token);
     ensurePermission_(session, 'users:manage');
-    if (!userObj || typeof userObj !== 'object') {
-      throw new Error('User object is required.');
+    if (!userObj || !userObj.Email) {
+      throw new Error('Email is required.');
     }
-    var emailInput = requireNonEmptyString_(userObj.Email, 'Email');
-    var normalizedEmail = normalizeEmail_(emailInput);
-    var desiredRole = String(userObj.Role || 'Intern').trim() || 'Intern';
+    var email = String(userObj.Email).trim();
+    if (!email) {
+      throw new Error('Email is required.');
+    }
+    var normalizedEmail = email.toLowerCase();
+    var desiredRole = userObj.Role || 'Intern';
     if (!ROLE_RANK[desiredRole]) {
       throw new Error('Invalid role.');
     }
-    var managerEmail = normalizeEmail_(userObj.ManagerEmail);
+
     var sheet = ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]);
     var headers = SHEET_HEADERS[SHEET_NAMES.USERS];
     var userResult = getUserByEmail_(normalizedEmail);
     var now = nowIso_();
-    var isActiveValue = userObj.IsActive === false || String(userObj.IsActive).toUpperCase() === 'FALSE' ? 'FALSE' : 'TRUE';
     if (userResult) {
       var record = userResult.record;
-      var originalRole = record.Role || 'Intern';
-      record.Email = normalizedEmail;
+      record.Email = email;
       record.Role = desiredRole;
-      record.ManagerEmail = managerEmail;
-      record.IsActive = isActiveValue;
+      record.ManagerEmail = userObj.ManagerEmail || '';
+      record.IsActive = userObj.IsActive === false || userObj.IsActive === 'FALSE' ? 'FALSE' : 'TRUE';
       if (userObj.Password) {
-        var passwordValue = requireNonEmptyString_(userObj.Password, 'Password', { trim: false });
         var salt = generateSalt_();
         record.Salt = salt;
-        record.PasswordHash = hashPassword_(passwordValue, salt);
+        record.PasswordHash = hashPassword_(userObj.Password, salt);
       }
       writeRow_(sheet, headers, userResult.rowNumber, record);
-      if ((ROLE_RANK[originalRole] || 0) > (ROLE_RANK[record.Role] || 0) || !isTrue_(record.IsActive)) {
-        invalidateSessionsForUser_(record.Email);
-      }
       logActivity_(session, 'user.update', 'User', record.Email, {});
       return sanitizeUser_(record);
     }
-    var passwordNew = requireNonEmptyString_(userObj.Password, 'Password', { trim: false });
+    if (!userObj.Password) {
+      throw new Error('Password is required for new users.');
+    }
     var saltNew = generateSalt_();
     var newRecord = {
-      Email: normalizedEmail,
-      PasswordHash: hashPassword_(passwordNew, saltNew),
+      Email: email,
+      PasswordHash: hashPassword_(userObj.Password, saltNew),
       Salt: saltNew,
       Role: desiredRole,
-      ManagerEmail: managerEmail,
-      IsActive: isActiveValue,
+      ManagerEmail: userObj.ManagerEmail || '',
+      IsActive: userObj.IsActive === false || userObj.IsActive === 'FALSE' ? 'FALSE' : 'TRUE',
       CreatedAt: now
     };
     appendRow_(sheet, headers, newRecord);
-    logActivity_(session, 'user.create', 'User', normalizedEmail, {});
-    if (!isTrue_(newRecord.IsActive)) {
-      invalidateSessionsForUser_(newRecord.Email);
-    }
+    logActivity_(session, 'user.create', 'User', email, {});
+
     return sanitizeUser_(newRecord);
   });
 }
@@ -226,122 +228,411 @@ function disableUser(token, email) {
   return handleApi_(function () {
     var session = requireSession_(token);
     ensurePermission_(session, 'users:manage');
-    var normalizedEmail = normalizeEmail_(requireNonEmptyString_(email, 'Email'));
-    var userResult = getUserByEmail_(normalizedEmail);
+    if (!email) {
+      throw new Error('Email is required.');
+    }
+    var userResult = getUserByEmail_((email));
+
     if (!userResult) {
       throw new Error('User not found.');
     }
     var record = userResult.record;
-    record.Email = normalizedEmail;
     record.IsActive = 'FALSE';
     writeRow_(ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]), SHEET_HEADERS[SHEET_NAMES.USERS], userResult.rowNumber, record);
-    invalidateSessionsForUser_(record.Email);
+
     logActivity_(session, 'user.disable', 'User', record.Email, {});
     return sanitizeUser_(record);
   });
 }
 
-function resetUserPassword(token, email, newPassword) {
+function listTasks(token, filters) {
   return handleApi_(function () {
     var session = requireSession_(token);
-    if (!session || (session.role || (session.user && session.user.Role)) !== 'Admin') {
-      throw new Error('Admins only.');
+    if (!sessionHasPermission_(session, 'tasks:view') && !sessionHasPermission_(session, 'tasks:view:self')) {
+      throw new Error('Forbidden.');
     }
-    var normalizedEmail = normalizeEmail_(requireNonEmptyString_(email, 'Email'));
-    var passwordValue = requireNonEmptyString_(newPassword, 'New password', { trim: false });
-    var userResult = getUserByEmail_(normalizedEmail);
-    if (!userResult) {
-      throw new Error('User not found.');
+    var usersMap = loadUsersMap_();
+    var normalizedFilters = normalizeTaskFilters_(filters);
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.TASKS];
+    var rows = sheetObjects_(sheet, headers);
+    var results = [];
+    for (var i = 0; i < rows.length; i++) {
+      var record = rows[i];
+      if (!canViewTask_(session, record, usersMap)) {
+        continue;
+      }
+      if (!taskMatchesFilters_(record, normalizedFilters)) {
+        continue;
+      }
+      results.push(record);
     }
-    var record = userResult.record;
-    record.Email = normalizedEmail;
-    var salt = generateSalt_();
-    record.Salt = salt;
-    record.PasswordHash = hashPassword_(passwordValue, salt);
-    writeRow_(ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]), SHEET_HEADERS[SHEET_NAMES.USERS], userResult.rowNumber, record);
-    invalidateSessionsForUser_(record.Email);
-    logActivity_(session, 'user.resetPassword', 'User', record.Email, {});
-    return sanitizeUser_(record);
-  });
-}
-
-function refreshSession(token) {
-  return handleApi_(function () {
-    var session = requireSession_(token);
-    persistSession_(session);
+    results.sort(function (a, b) {
+      var aKey = a.UpdatedAt || a.Timestamp || '';
+      var bKey = b.UpdatedAt || b.Timestamp || '';
+      if (aKey === bKey) {
+        return 0;
+      }
+      return aKey < bKey ? 1 : -1;
+    });
+    var total = results.length;
+    var start = normalizedFilters.cursor;
+    var end = Math.min(start + normalizedFilters.limit, total);
+    var slice = [];
+    for (var j = start; j < end; j++) {
+      slice.push(sanitizeTask_(results[j]));
+    }
     return {
-      token: session.token,
-      user: session.user,
-      refreshedAt: session.lastSeenAt
+      items: slice,
+      nextCursor: end < total ? String(end) : null,
+      total: total
     };
   });
 }
 
-function assignTask(token, taskId, assigneeEmail) {
+function getTask(token, id) {
   return handleApi_(function () {
     var session = requireSession_(token);
-    var canManageAll = hasPermission_(session, 'tasks:manage');
-    var canManageTeam = hasPermission_(session, 'tasks:manage:team');
-    var canManageSelf = hasPermission_(session, 'tasks:manage:self');
-    if (!canManageAll && !canManageTeam && !canManageSelf) {
-      throw new Error('Forbidden.');
+    if (!id) {
+      throw new Error('Task ID is required.');
     }
-    var normalizedTaskId = requireNonEmptyString_(taskId, 'Task ID');
-    var normalizedAssignee = normalizeEmail_(requireNonEmptyString_(assigneeEmail, 'Assignee email'));
-    if (canManageSelf && !canManageAll && !canManageTeam) {
-      if (!session.user || session.user.Email !== normalizedAssignee) {
-        throw new Error('You can only assign tasks to yourself.');
-      }
-    }
-    var assigneeResult = ensureActiveUserRecord_(normalizedAssignee, 'Assignee must be an active user.');
-    var taskResult = getTaskById_(normalizedTaskId);
+    var taskResult = getTaskById_(id);
     if (!taskResult) {
       throw new Error('Task not found.');
+    }
+    var usersMap = loadUsersMap_();
+    if (!canViewTask_(session, taskResult.record, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+    var sanitized = sanitizeTask_(taskResult.record);
+    sanitized.Subtasks = getSubtasksForTask_(taskResult.record.TaskID).map(function (row) {
+      return sanitizeSubtask_(row);
+    });
+    return sanitized;
+  });
+}
+
+function upsertTask(token, taskObj) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    if (!sessionHasPermission_(session, 'tasks:manage') && !sessionHasPermission_(session, 'tasks:manage:team') && !sessionHasPermission_(session, 'tasks:manage:self')) {
+      throw new Error('Forbidden.');
+    }
+    var payload = typeof taskObj === 'string' ? safeParse_(taskObj, null) : taskObj;
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Task payload is required.');
+    }
+    if (payload.taskId && !payload.TaskID) {
+      payload.TaskID = payload.taskId;
+    }
+    var isUpdate = Boolean(payload.TaskID);
+    var usersMap = loadUsersMap_();
+    var sessionEmail = session.user && session.user.Email ? session.user.Email : session.email || '';
+    var nameValue = pickFirstDefined_(payload, ['Name', 'name']);
+    var trimmedName = nameValue !== undefined && nameValue !== null ? String(nameValue).trim() : '';
+    var assigneeValue = pickFirstDefined_(payload, ['Assignee', 'assignee']);
+    var assigneeNormalized = assigneeValue ? normalizeEmail_(assigneeValue) : '';
+    var assigneeRecord = assigneeNormalized ? usersMap[assigneeNormalized] : null;
+    if (assigneeNormalized && !assigneeRecord) {
+      throw new Error('Assignee not found.');
+    }
+    if (assigneeRecord && !isTrue_(assigneeRecord.IsActive)) {
+      throw new Error('Assignee is disabled.');
     }
     var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
     var headers = SHEET_HEADERS[SHEET_NAMES.TASKS];
-    var record = taskResult.record;
-    record.TaskID = record.TaskID || normalizedTaskId;
-    record.Assignee = normalizeEmail_(assigneeResult.record.Email) || normalizedAssignee;
-    record.Assigner = session.user ? session.user.Email : normalizeEmail_(session.email);
-    record.UpdatedAt = nowIso_();
-    writeRow_(sheet, headers, taskResult.rowNumber, record);
-    logActivity_(session, 'task.assign', 'Task', record.TaskID, {
-      assignee: record.Assignee,
-      assigner: record.Assigner
-    });
-    return record;
+    var now = nowIso_();
+    if (!isUpdate && !trimmedName) {
+      throw new Error('Task name is required.');
+    }
+    if (isUpdate) {
+      var existing = getTaskById_(payload.TaskID);
+      if (!existing) {
+        throw new Error('Task not found.');
+      }
+      var record = existing.record;
+      var targetAssignee = record.Assignee;
+      if (assigneeValue !== undefined) {
+        targetAssignee = assigneeRecord ? assigneeRecord.Email : String(assigneeValue || '');
+      }
+      if (!canManageTask_(session, record, targetAssignee, usersMap)) {
+        throw new Error('Forbidden.');
+      }
+      if (trimmedName) {
+        record.Name = trimmedName;
+      }
+      var categoryValue = pickFirstDefined_(payload, ['Category', 'category']);
+      if (categoryValue !== undefined) {
+        record.Category = String(categoryValue || '');
+      }
+      var priorityValue = pickFirstDefined_(payload, ['Priority', 'priority']);
+      if (priorityValue !== undefined) {
+        record.Priority = String(priorityValue || '');
+      }
+      var statusValue = pickFirstDefined_(payload, ['Status', 'status']);
+      if (statusValue !== undefined) {
+        record.Status = normalizeStatus_(statusValue);
+      }
+      var durationValue = pickFirstDefined_(payload, ['DurationMins', 'durationMins', 'Duration', 'duration']);
+      if (durationValue !== undefined) {
+        record.DurationMins = normalizeDuration_(durationValue, record.DurationMins);
+      }
+      var labelsValue = pickFirstDefined_(payload, ['Labels', 'labels']);
+      if (labelsValue !== undefined) {
+        record.Labels = toCsvString_(labelsValue);
+      }
+      var notesValue = pickFirstDefined_(payload, ['Notes', 'notes']);
+      if (notesValue !== undefined) {
+        record.Notes = String(notesValue || '');
+      }
+      var resourcesValue = pickFirstDefined_(payload, ['ResourcesCSV', 'resourcesCSV', 'Resources', 'resources']);
+      if (resourcesValue !== undefined) {
+        record.ResourcesCSV = toCsvString_(resourcesValue);
+      }
+      if (assigneeValue !== undefined) {
+        record.Assignee = assigneeRecord ? assigneeRecord.Email : String(assigneeValue || '');
+      }
+      var dueValue = pickFirstDefined_(payload, ['DueAt', 'dueAt', 'DueDate', 'dueDate']);
+      if (dueValue !== undefined) {
+        record.DueAt = dueValue ? String(dueValue) : '';
+      }
+      var parentValue = pickFirstDefined_(payload, ['ParentTaskID', 'parentTaskId', 'ParentID', 'parentId']);
+      if (parentValue !== undefined) {
+        record.ParentTaskID = parentValue ? String(parentValue) : '';
+      }
+      record.UpdatedAt = now;
+      writeRow_(sheet, headers, existing.rowNumber, record);
+      logActivity_(session, 'task.update', 'Task', record.TaskID, { status: record.Status, assignee: record.Assignee });
+      return sanitizeTask_(record);
+    }
+    var newRecord = {
+      TaskID: payload.TaskID || generateId_('TASK'),
+      Name: trimmedName || 'Untitled Task',
+      Category: String(pickFirstDefined_(payload, ['Category', 'category']) || ''),
+      Priority: String(pickFirstDefined_(payload, ['Priority', 'priority']) || ''),
+      Status: normalizeStatus_(pickFirstDefined_(payload, ['Status', 'status']) || 'Planned'),
+      DurationMins: normalizeDuration_(pickFirstDefined_(payload, ['DurationMins', 'durationMins', 'Duration', 'duration']), 0),
+      Labels: toCsvString_(pickFirstDefined_(payload, ['Labels', 'labels'])),
+      Notes: String(pickFirstDefined_(payload, ['Notes', 'notes']) || ''),
+      ResourcesCSV: toCsvString_(pickFirstDefined_(payload, ['ResourcesCSV', 'resourcesCSV', 'Resources', 'resources'])),
+      Assigner: sessionEmail,
+      Assignee: '',
+      Timestamp: now,
+      DueAt: String(pickFirstDefined_(payload, ['DueAt', 'dueAt', 'DueDate', 'dueDate']) || ''),
+      UpdatedAt: now,
+      ParentTaskID: String(pickFirstDefined_(payload, ['ParentTaskID', 'parentTaskId', 'ParentID', 'parentId']) || '')
+    };
+    if (assigneeRecord) {
+      newRecord.Assignee = assigneeRecord.Email;
+    } else if (assigneeValue) {
+      newRecord.Assignee = String(assigneeValue || '');
+    } else if (sessionHasPermission_(session, 'tasks:manage:self') && !sessionHasPermission_(session, 'tasks:manage:team') && !sessionHasPermission_(session, 'tasks:manage')) {
+      newRecord.Assignee = sessionEmail;
+    }
+    if (!canManageTask_(session, newRecord, newRecord.Assignee, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+    appendRow_(sheet, headers, newRecord);
+    logActivity_(session, 'task.create', 'Task', newRecord.TaskID, { status: newRecord.Status, assignee: newRecord.Assignee });
+    return sanitizeTask_(newRecord);
   });
 }
 
-function logMood(token, entry) {
+function deleteTask(token, id) {
   return handleApi_(function () {
     var session = requireSession_(token);
-    ensurePermission_(session, 'moods:log');
-    if (!entry || typeof entry !== 'object') {
-      throw new Error('Mood entry is required.');
+    if (!id) {
+      throw new Error('Task ID is required.');
     }
-    var moodValue = requireNonEmptyString_(entry.Mood, 'Mood');
-    var taskId = requireNonEmptyString_(entry.TaskID, 'Task ID');
-    var taskResult = getTaskById_(taskId);
+    var taskResult = getTaskById_(id);
     if (!taskResult) {
       throw new Error('Task not found.');
     }
+    var usersMap = loadUsersMap_();
+    if (!canManageTask_(session, taskResult.record, taskResult.record.Assignee, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    sheet.deleteRow(taskResult.rowNumber);
+    deleteSubtasksForTask_(id);
+    logActivity_(session, 'task.delete', 'Task', id, {});
+    return true;
+  });
+}
+
+function listSubtasks(token, taskId) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    if (!taskId) {
+      throw new Error('Task ID is required.');
+    }
+    var taskResult = getTaskById_((taskId));
+    if (!taskResult) {
+      throw new Error('Task not found.');
+    }
+    var usersMap = loadUsersMap_();
+    if (!canViewTask_(session, taskResult.record, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+    return getSubtasksForTask_(taskResult.record.TaskID).map(function (row) {
+      return sanitizeSubtask_(row);
+    });
+  });
+}
+
+function upsertSubtask(token, subtaskObj) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    if (!sessionHasPermission_(session, 'tasks:manage') && !sessionHasPermission_(session, 'tasks:manage:team') && !sessionHasPermission_(session, 'tasks:manage:self')) {
+      throw new Error('Forbidden.');
+    }
+    var payload = typeof subtaskObj === 'string' ? safeParse_(subtaskObj, null) : subtaskObj;
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Subtask payload is required.');
+    }
+    if (payload.subtaskId && !payload.SubtaskID) {
+      payload.SubtaskID = payload.subtaskId;
+    }
+    if (payload.taskId && !payload.TaskID) {
+      payload.TaskID = payload.taskId;
+    }
+    if (!payload.TaskID) {
+      throw new Error('Task ID is required.');
+    }
+    var taskResult = getTaskById_(payload.TaskID);
+    if (!taskResult) {
+      throw new Error('Parent task not found.');
+    }
+    var usersMap = loadUsersMap_();
+    if (!canManageTask_(session, taskResult.record, taskResult.record.Assignee, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+    var sheet = ensureSheet_(SHEET_NAMES.SUBTASKS, SHEET_HEADERS[SHEET_NAMES.SUBTASKS]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.SUBTASKS];
+    var now = nowIso_();
+    var nameValue = pickFirstDefined_(payload, ['Name', 'name']);
+    var trimmedName = nameValue !== undefined && nameValue !== null ? String(nameValue).trim() : '';
+    var statusValue = pickFirstDefined_(payload, ['Status', 'status']);
+    var durationValue = pickFirstDefined_(payload, ['DurationMins', 'durationMins', 'Duration', 'duration']);
+    if (payload.SubtaskID) {
+      var existing = getSubtaskById_(payload.SubtaskID);
+      if (!existing) {
+        throw new Error('Subtask not found.');
+      }
+      existing.record.TaskID = taskResult.record.TaskID;
+      var record = existing.record;
+      if (trimmedName) {
+        record.Name = trimmedName;
+      }
+      if (durationValue !== undefined) {
+        record.DurationMins = normalizeDuration_(durationValue, record.DurationMins);
+      }
+      if (statusValue !== undefined) {
+        record.Status = normalizeStatus_(statusValue);
+      }
+      writeRow_(sheet, headers, existing.rowNumber, record);
+      logActivity_(session, 'subtask.update', 'Subtask', record.SubtaskID, { taskId: record.TaskID, status: record.Status });
+      return sanitizeSubtask_(record);
+    }
+    var newRecord = {
+      SubtaskID: payload.SubtaskID || generateId_('SUBTASK'),
+      TaskID: taskResult.record.TaskID,
+      Name: trimmedName || 'Untitled Subtask',
+      DurationMins: normalizeDuration_(durationValue, 0),
+      Status: normalizeStatus_(statusValue || 'Planned'),
+      CreatedAt: now
+    };
+    appendRow_(sheet, headers, newRecord);
+    logActivity_(session, 'subtask.create', 'Subtask', newRecord.SubtaskID, { taskId: newRecord.TaskID, status: newRecord.Status });
+    return sanitizeSubtask_(newRecord);
+  });
+}
+
+function deleteSubtask(token, subtaskId) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    if (!subtaskId) {
+      throw new Error('Subtask ID is required.');
+    }
+    var existing = getSubtaskById_(subtaskId);
+    if (!existing) {
+      throw new Error('Subtask not found.');
+    }
+    var taskResult = getTaskById_(existing.record.TaskID);
+    if (!taskResult) {
+      throw new Error('Parent task not found.');
+    }
+    var usersMap = loadUsersMap_();
+    if (!canManageTask_(session, taskResult.record, taskResult.record.Assignee, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+    var sheet = ensureSheet_(SHEET_NAMES.SUBTASKS, SHEET_HEADERS[SHEET_NAMES.SUBTASKS]);
+    sheet.deleteRow(existing.rowNumber);
+    logActivity_(session, 'subtask.delete', 'Subtask', existing.record.SubtaskID, { taskId: existing.record.TaskID });
+    return true;
+  });
+}
+
+function setTaskStatus(token, id, status) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    if (!id) {
+      throw new Error('Task ID is required.');
+    }
+    var taskResult = getTaskById_(id);
+    if (!taskResult) {
+      throw new Error('Task not found.');
+    }
+    var usersMap = loadUsersMap_();
+  if (!canManageTask_(session, taskResult.record, taskResult.record.Assignee, usersMap)) {
+    throw new Error('Forbidden.');
+  }
+  if (status === undefined || status === null) {
+    throw new Error('Status is required.');
+  }
+  var normalizedStatus = normalizeStatus_(status);
+  var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+  var record = taskResult.record;
+  record.Status = normalizedStatus;
+  record.UpdatedAt = nowIso_();
+    writeRow_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS], taskResult.rowNumber, record);
+    logActivity_(session, 'task.status', 'Task', record.TaskID, { status: normalizedStatus });
+    return sanitizeTask_(record);
+  });
+}
+
+function logMood(token, taskId, mood, note) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensurePermission_(session, 'moods:log');
+    var moodValue = mood !== undefined && mood !== null ? String(mood).trim() : '';
+    if (!moodValue) {
+      throw new Error('Mood is required.');
+    }
+    var normalizedTaskId = taskId ? String(taskId) : '';
+    if (normalizedTaskId) {
+      var taskResult = getTaskById_(normalizedTaskId);
+      if (!taskResult) {
+        throw new Error('Task not found.');
+      }
+      var usersMap = loadUsersMap_();
+      if (!canViewTask_(session, taskResult.record, usersMap)) {
+        throw new Error('Forbidden.');
+      }
+    }
     var sheet = ensureSheet_(SHEET_NAMES.MOODS, SHEET_HEADERS[SHEET_NAMES.MOODS]);
-    var headers = SHEET_HEADERS[SHEET_NAMES.MOODS];
     var record = {
       EntryID: generateId_('MOOD'),
-      TaskID: taskResult.record.TaskID,
-      Email: session.user ? session.user.Email : normalizeEmail_(session.email),
+      TaskID: normalizedTaskId,
+      Email: session.user && session.user.Email ? session.user.Email : session.email || '',
       Mood: moodValue,
-      Note: entry.Note ? String(entry.Note).trim() : '',
+      Note: note !== undefined && note !== null ? String(note) : '',
       At: nowIso_()
     };
-    appendRow_(sheet, headers, record);
-    logActivity_(session, 'mood.log', 'Task', taskResult.record.TaskID, {
-      mood: moodValue
-    });
-    return record;
+    appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.MOODS], record);
+    logActivity_(session, 'mood.log', 'Task', normalizedTaskId, { mood: moodValue });
+    return sanitizeMood_(record);
+
   });
 }
 
@@ -389,17 +680,17 @@ function ensureDefaultAdmin_() {
   } catch (err) {
     activeEmail = '';
   }
-  var defaultEmail = normalizeEmail_(activeEmail || 'admin@example.com') || 'admin@example.com';
+  var defaultEmail = activeEmail || 'admin@example.com';
   var existing = getUserByEmail_(defaultEmail);
   if (existing) {
     var existingRecord = existing.record;
-    existingRecord.Email = defaultEmail;
     existingRecord.Role = 'Admin';
     existingRecord.IsActive = 'TRUE';
     if (!existingRecord.PasswordHash || !existingRecord.Salt) {
-      var saltExisting = generateSalt_();
-      existingRecord.Salt = saltExisting;
-      existingRecord.PasswordHash = hashPassword_(DEFAULT_ADMIN_PASSWORD, saltExisting);
+      var salt = generateSalt_();
+      existingRecord.Salt = salt;
+      existingRecord.PasswordHash = hashPassword_(DEFAULT_ADMIN_PASSWORD, salt);
+
     }
     writeRow_(sheet, headers, existing.rowNumber, existingRecord);
     logActivity_('system', 'bootstrap.admin.promote', 'User', defaultEmail, {});
@@ -503,51 +794,12 @@ function getUserByEmail_(email) {
   var values = range.getValues();
   for (var i = 0; i < values.length; i++) {
     var rowValue = values[i];
-    var rowEmail = normalizeEmail_(rowValue[emailIndex]);
+    var rowEmail = normalizeEmail_(rowValue[emailIndex] || '');
     if (rowEmail === normalized) {
-      var record = arrayToObject_(headers, rowValue);
-      record.Email = normalized;
-      record.ManagerEmail = normalizeEmail_(record.ManagerEmail);
       return {
         rowNumber: i + 2,
-        record: record
-      };
-    }
-  }
-  return null;
-}
+        record: arrayToObject_(headers, rowValue)
 
-function getTaskById_(taskId) {
-  if (taskId === null || taskId === undefined) {
-    return null;
-  }
-  var normalizedId = String(taskId).trim();
-  if (!normalizedId) {
-    return null;
-  }
-  var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
-  var headers = SHEET_HEADERS[SHEET_NAMES.TASKS];
-  var idIndex = headers.indexOf('TaskID');
-  if (idIndex === -1) {
-    throw new Error('Tasks sheet missing TaskID column.');
-  }
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
-    return null;
-  }
-  var range = sheet.getRange(2, 1, lastRow - 1, headers.length);
-  var values = range.getValues();
-  for (var i = 0; i < values.length; i++) {
-    var row = values[i];
-    var currentId = String(row[idIndex] || '').trim();
-    if (currentId === normalizedId) {
-      var record = arrayToObject_(headers, row);
-      record.TaskID = currentId;
-      record.Assignee = normalizeEmail_(record.Assignee);
-      record.Assigner = normalizeEmail_(record.Assigner);
-      return {
-        rowNumber: i + 2,
-        record: record
       };
     }
   }
@@ -559,9 +811,10 @@ function sanitizeUser_(record) {
     return null;
   }
   return {
-    Email: normalizeEmail_(record.Email),
-    Role: record.Role || 'Intern',
-    ManagerEmail: normalizeEmail_(record.ManagerEmail || ''),
+    Email: record.Email,
+    Role: record.Role,
+    ManagerEmail: record.ManagerEmail || '',
+
     IsActive: isTrue_(record.IsActive),
     CreatedAt: record.CreatedAt || ''
   };
@@ -575,8 +828,8 @@ function hashPassword_(password, salt) {
   if (!salt) {
     throw new Error('Missing password salt.');
   }
-  var passwordString = password === null || password === undefined ? '' : String(password);
-  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, salt + '::' + passwordString);
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, salt + '::' + password);
+
   return Utilities.base64Encode(digest);
 }
 
@@ -585,16 +838,13 @@ function generateSalt_() {
 }
 
 function createSessionForUser_(userRecord) {
-  if (!userRecord || !userRecord.Email) {
-    throw new Error('Cannot create session for unknown user.');
-  }
-  var now = nowIso_();
+  var token = generateId_('SESS');
   var session = {
-    token: generateId_('SESS'),
-    email: normalizeEmail_(userRecord.Email),
+    token: token,
+    email: userRecord.Email,
     role: userRecord.Role || 'Intern',
-    createdAt: now,
-    lastSeenAt: now
+    createdAt: nowIso_()
+
   };
   persistSession_(session);
   session.user = sanitizeUser_(userRecord);
@@ -602,100 +852,67 @@ function createSessionForUser_(userRecord) {
 }
 
 function persistSession_(session) {
-  if (!session || !session.token) {
-    return;
-  }
   var cache = CacheService.getScriptCache();
-  var normalizedEmail = normalizeEmail_(session.email);
-  var now = nowIso_();
-  session.email = normalizedEmail;
-  session.lastSeenAt = now;
   var payload = safeStringify_({
     token: session.token,
-    email: normalizedEmail,
-    role: session.role || 'Intern',
-    createdAt: session.createdAt || now,
-    lastSeenAt: session.lastSeenAt
+    email: session.email,
+    role: session.role,
+    createdAt: session.createdAt
   });
   cache.put(SESSION_CACHE_PREFIX + session.token, payload, SESSION_TTL_SECONDS);
-  if (normalizedEmail) {
-    upsertSessionIndex_(normalizedEmail, session.token);
-  }
+
 }
 
 function destroySession_(token) {
   if (!token) {
     return;
   }
-  var cache = CacheService.getScriptCache();
-  var payload = cache.get(SESSION_CACHE_PREFIX + token);
-  if (payload) {
-    var data = safeParse_(payload, null);
-    if (data && data.email) {
-      removeTokenFromUserIndex_(data.email, token);
-    }
-  }
-  cache.remove(SESSION_CACHE_PREFIX + token);
+  CacheService.getScriptCache().remove(SESSION_CACHE_PREFIX + token);
+
 }
 
 function getSession_(token) {
   if (!token) {
     return null;
   }
-  var sessionToken = String(token).trim();
-  if (!sessionToken) {
-    return null;
-  }
   var cache = CacheService.getScriptCache();
-  var payload = cache.get(SESSION_CACHE_PREFIX + sessionToken);
+  var payload = cache.get(SESSION_CACHE_PREFIX + token);
+
   if (!payload) {
     return null;
   }
   var base = safeParse_(payload, null);
-  if (!base || !base.email) {
-    destroySession_(sessionToken);
+  if (!base) {
+
     return null;
   }
   var userResult = getUserByEmail_(base.email);
   if (!userResult) {
-    destroySession_(sessionToken);
+
     return null;
   }
   var record = userResult.record;
   if (!isTrue_(record.IsActive)) {
-    invalidateSessionsForUser_(record.Email);
     return null;
   }
-  var actualRole = record.Role || 'Intern';
-  var cachedRole = base.role || actualRole;
-  var actualRank = ROLE_RANK[actualRole] || 0;
-  var cachedRank = ROLE_RANK[cachedRole] || 0;
-  if (actualRank < cachedRank) {
-    invalidateSessionsForUser_(record.Email);
-    return null;
-  }
-  base.role = actualRole;
-  base.email = normalizeEmail_(record.Email);
+  base.role = record.Role || base.role || 'Intern';
   base.user = sanitizeUser_(record);
-  base.token = sessionToken;
-  base.createdAt = base.createdAt || nowIso_();
+
   persistSession_(base);
   return base;
 }
 
 function requireSession_(token) {
-  var sessionToken = token ? String(token).trim() : '';
-  if (!sessionToken) {
-    throw new Error('Unauthorized.');
-  }
-  var session = getSession_(sessionToken);
+  var session = getSession_(token);
+
   if (!session) {
     throw new Error('Unauthorized.');
   }
   return session;
 }
 
-function hasPermission_(session, perm) {
+function sessionHasPermission_(session, perm) {
+
   if (!session) {
     return false;
   }
@@ -711,7 +928,8 @@ function ensurePermission_(session, perm) {
   if (!session) {
     throw new Error('Unauthorized.');
   }
-  if (!hasPermission_(session, perm)) {
+  if (!sessionHasPermission_(session, perm)) {
+
     throw new Error('Forbidden.');
   }
   return true;
@@ -723,11 +941,12 @@ function logActivity_(sessionOrEmail, action, targetType, targetId, meta) {
     var actorEmail = '';
     if (sessionOrEmail) {
       if (typeof sessionOrEmail === 'string') {
-        actorEmail = normalizeEmail_(sessionOrEmail);
+        actorEmail = sessionOrEmail;
       } else if (sessionOrEmail.email) {
-        actorEmail = normalizeEmail_(sessionOrEmail.email);
+        actorEmail = sessionOrEmail.email;
       } else if (sessionOrEmail.user && sessionOrEmail.user.Email) {
-        actorEmail = normalizeEmail_(sessionOrEmail.user.Email);
+        actorEmail = sessionOrEmail.user.Email;
+
       }
     }
     var record = {
@@ -754,7 +973,8 @@ function handleApi_(callback) {
     var data = callback();
     return {
       success: true,
-      data: data === undefined ? null : data
+      data: data
+
     };
   } catch (err) {
     Logger.log('API error: ' + (err && err.stack ? err.stack : err));
@@ -789,94 +1009,506 @@ function generateId_(prefix) {
   return prefix ? prefix + '_' + raw : raw;
 }
 
+function pickFirstDefined_(obj, keys) {
+  if (!obj) {
+    return undefined;
+  }
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    if (obj.hasOwnProperty(key) && obj[key] !== undefined && obj[key] !== null) {
+      return obj[key];
+    }
+  }
+  return undefined;
+}
+
+
 function normalizeEmail_(email) {
   if (email === null || email === undefined) {
     return '';
   }
-  return String(email).trim().toLowerCase();
+  var value = String(email).trim().toLowerCase();
+  return value;
 }
 
-function requireNonEmptyString_(value, fieldName, options) {
-  if (value === null || value === undefined) {
-    throw new Error(fieldName + ' is required.');
-  }
-  var str = String(value);
-  if (!options || options.trim !== false) {
-    str = str.trim();
-  }
-  if (!str) {
-    throw new Error(fieldName + ' is required.');
-  }
-  return str;
-}
-
-function ensureActiveUserRecord_(email, errorMessage) {
-  var normalized = normalizeEmail_(email);
-  if (!normalized) {
-    throw new Error(errorMessage || 'User must be active.');
-  }
-  var userResult = getUserByEmail_(normalized);
-  if (!userResult || !isTrue_(userResult.record.IsActive)) {
-    throw new Error(errorMessage || 'User must be active.');
-  }
-  userResult.record.Email = normalized;
-  return userResult;
-}
-
-function upsertSessionIndex_(email, token) {
-  if (!email || !token) {
-    return;
-  }
-  var cache = CacheService.getScriptCache();
-  var key = SESSION_USER_INDEX_PREFIX + email;
-  var payload = cache.get(key);
-  var tokens = payload ? safeParse_(payload, []) : [];
-  if (tokens.indexOf(token) === -1) {
-    tokens.push(token);
-  }
-  cache.put(key, safeStringify_(tokens), SESSION_TTL_SECONDS);
-}
-
-function removeTokenFromUserIndex_(email, token) {
-  if (!email || !token) {
-    return;
-  }
-  var cache = CacheService.getScriptCache();
-  var key = SESSION_USER_INDEX_PREFIX + email;
-  var payload = cache.get(key);
-  if (!payload) {
-    return;
-  }
-  var tokens = safeParse_(payload, []);
-  var filtered = [];
-  for (var i = 0; i < tokens.length; i++) {
-    if (tokens[i] && tokens[i] !== token) {
-      filtered.push(tokens[i]);
+function loadUsersMap_() {
+  var sheet = ensureSheet_(SHEET_NAMES.USERS, SHEET_HEADERS[SHEET_NAMES.USERS]);
+  var headers = SHEET_HEADERS[SHEET_NAMES.USERS];
+  var rows = sheetObjects_(sheet, headers);
+  var map = {};
+  for (var i = 0; i < rows.length; i++) {
+    var email = normalizeEmail_(rows[i].Email);
+    if (email) {
+      map[email] = rows[i];
     }
   }
-  if (filtered.length) {
-    cache.put(key, safeStringify_(filtered), SESSION_TTL_SECONDS);
-  } else {
-    cache.remove(key);
-  }
+  return map;
 }
 
-function invalidateSessionsForUser_(email) {
-  var normalized = normalizeEmail_(email);
-  if (!normalized) {
+function canManageUser_(session, targetEmail, usersMap) {
+  var normalizedTarget = normalizeEmail_(targetEmail);
+  if (!normalizedTarget) {
+    return true;
+  }
+  var sessionEmail = normalizeEmail_(session && (session.email || (session.user && session.user.Email)));
+  if (!sessionEmail) {
+    return false;
+  }
+  if (normalizedTarget === sessionEmail) {
+    return true;
+  }
+  if (sessionHasPermission_(session, 'tasks:manage')) {
+    return true;
+  }
+  if (!sessionHasPermission_(session, 'tasks:manage:team')) {
+    return false;
+  }
+  var users = usersMap || {};
+  var target = users[normalizedTarget];
+  if (!target) {
+    return false;
+  }
+  var sessionRoleRank = ROLE_RANK[session.role] || ROLE_RANK['Intern'];
+  var targetRoleRank = ROLE_RANK[target.Role] || ROLE_RANK['Intern'];
+  if (sessionRoleRank <= targetRoleRank) {
+    return false;
+  }
+  var manager = normalizeEmail_(target.ManagerEmail);
+  while (manager) {
+    if (manager === sessionEmail) {
+      return true;
+    }
+    var next = users[manager];
+    if (!next) {
+      break;
+    }
+    manager = normalizeEmail_(next.ManagerEmail);
+  }
+  return false;
+}
+
+function canManageTask_(session, taskRecord, newAssignee, usersMap) {
+  if (!session) {
+    return false;
+  }
+  var sessionEmail = normalizeEmail_(session.email || (session.user && session.user.Email));
+  if (!sessionEmail) {
+    return false;
+  }
+  if (sessionHasPermission_(session, 'tasks:manage')) {
+    return true;
+  }
+  var assigneeEmail = normalizeEmail_(newAssignee !== undefined ? newAssignee : (taskRecord && taskRecord.Assignee));
+  var assignerEmail = taskRecord ? normalizeEmail_(taskRecord.Assigner) : '';
+  if (sessionHasPermission_(session, 'tasks:manage:team')) {
+    if (assigneeEmail) {
+      if (assigneeEmail === sessionEmail || canManageUser_(session, assigneeEmail, usersMap)) {
+        return true;
+      }
+    } else {
+      return true;
+    }
+    if (assignerEmail && (assignerEmail === sessionEmail || canManageUser_(session, assignerEmail, usersMap))) {
+      return true;
+    }
+  }
+  if (sessionHasPermission_(session, 'tasks:manage:self')) {
+    if (assigneeEmail && assigneeEmail === sessionEmail) {
+      return true;
+    }
+    if (assignerEmail && assignerEmail === sessionEmail) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function canViewTask_(session, taskRecord, usersMap) {
+  if (!taskRecord) {
+    return false;
+  }
+  if (sessionHasPermission_(session, 'tasks:manage')) {
+    return true;
+  }
+  var sessionEmail = normalizeEmail_(session && (session.email || (session.user && session.user.Email)));
+  var assigneeEmail = normalizeEmail_(taskRecord.Assignee);
+  var assignerEmail = normalizeEmail_(taskRecord.Assigner);
+  if (sessionHasPermission_(session, 'tasks:view')) {
+    if (assigneeEmail === sessionEmail || assignerEmail === sessionEmail) {
+      return true;
+    }
+    if (assigneeEmail && canManageUser_(session, assigneeEmail, usersMap)) {
+      return true;
+    }
+    if (assignerEmail && canManageUser_(session, assignerEmail, usersMap)) {
+      return true;
+    }
+  }
+  if (sessionHasPermission_(session, 'tasks:view:self') || sessionHasPermission_(session, 'tasks:manage:self')) {
+    if (assigneeEmail === sessionEmail || assignerEmail === sessionEmail) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function normalizeTaskFilters_(filters) {
+  if (!filters) {
+    filters = {};
+  } else if (typeof filters === 'string') {
+    filters = safeParse_(filters, {});
+  }
+  if (!filters || typeof filters !== 'object') {
+    filters = {};
+  }
+  var normalized = {};
+  var limit = Number(filters.limit);
+  if (!limit || limit <= 0) {
+    limit = 50;
+  }
+  normalized.limit = Math.min(Math.floor(limit), 200);
+  if (normalized.limit <= 0) {
+    normalized.limit = 50;
+  }
+  var cursor = Number(filters.cursor);
+  if (!cursor || cursor < 0) {
+    cursor = 0;
+  }
+  normalized.cursor = Math.floor(cursor);
+  normalized.statuses = normalizeToLowerArray_(pickFirstDefined_(filters, ['status', 'statuses']));
+  normalized.categories = normalizeToLowerArray_(pickFirstDefined_(filters, ['category', 'categories']));
+  normalized.priorities = normalizeToLowerArray_(pickFirstDefined_(filters, ['priority', 'priorities']));
+  normalized.assignee = normalizeEmail_(pickFirstDefined_(filters, ['assignee', 'Assignee']));
+  normalized.assigner = normalizeEmail_(pickFirstDefined_(filters, ['assigner', 'Assigner']));
+  normalized.parentTaskId = pickFirstDefined_(filters, ['parentTaskId', 'ParentTaskID', 'parentId', 'ParentID']) || '';
+  var searchValue = pickFirstDefined_(filters, ['search', 'Search']);
+  normalized.search = searchValue ? String(searchValue).trim().toLowerCase() : '';
+  normalized.dueAfter = parseDateValue_(pickFirstDefined_(filters, ['dueAfter', 'DueAfter']));
+  normalized.dueBefore = parseDateValue_(pickFirstDefined_(filters, ['dueBefore', 'DueBefore']));
+  return normalized;
+}
+
+function normalizeToLowerArray_(value) {
+  var list = [];
+  if (value === undefined || value === null) {
+    return list;
+  }
+  var source;
+  if (Array.isArray(value)) {
+    source = value;
+  } else {
+    source = String(value).split(',');
+  }
+  for (var i = 0; i < source.length; i++) {
+    var item = source[i];
+    if (item === undefined || item === null) {
+      continue;
+    }
+    var trimmed = String(item).trim();
+    if (trimmed) {
+      list.push(trimmed.toLowerCase());
+    }
+  }
+  return list;
+}
+
+function parseDateValue_(value) {
+  if (!value) {
+    return null;
+  }
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    if (!isNaN(value.getTime())) {
+      return value;
+    }
+    return null;
+  }
+  var date = new Date(value);
+  if (!isNaN(date.getTime())) {
+    return date;
+  }
+  if (typeof value === 'number') {
+    var fromNumber = new Date(Number(value));
+    if (!isNaN(fromNumber.getTime())) {
+      return fromNumber;
+    }
+  }
+  return null;
+}
+
+function taskMatchesFilters_(taskRecord, filters) {
+  if (filters.statuses.length && filters.statuses.indexOf(String(taskRecord.Status || '').toLowerCase()) === -1) {
+    return false;
+  }
+  if (filters.categories.length && filters.categories.indexOf(String(taskRecord.Category || '').toLowerCase()) === -1) {
+    return false;
+  }
+  if (filters.priorities.length && filters.priorities.indexOf(String(taskRecord.Priority || '').toLowerCase()) === -1) {
+    return false;
+  }
+  if (filters.assignee && normalizeEmail_(taskRecord.Assignee) !== filters.assignee) {
+    return false;
+  }
+  if (filters.assigner && normalizeEmail_(taskRecord.Assigner) !== filters.assigner) {
+    return false;
+  }
+  if (filters.parentTaskId && String(taskRecord.ParentTaskID || '') !== String(filters.parentTaskId)) {
+    return false;
+  }
+  if (filters.search) {
+    var haystack = [
+      taskRecord.Name || '',
+      taskRecord.Notes || '',
+      taskRecord.Labels || '',
+      taskRecord.Category || '',
+      taskRecord.Priority || ''
+    ].join(' ').toLowerCase();
+    if (haystack.indexOf(filters.search) === -1) {
+      return false;
+    }
+  }
+  if (filters.dueAfter || filters.dueBefore) {
+    var dueDate = parseDateValue_(taskRecord.DueAt);
+    if (!dueDate) {
+      if (filters.dueAfter || filters.dueBefore) {
+        return false;
+      }
+    } else {
+      if (filters.dueAfter && dueDate.getTime() < filters.dueAfter.getTime()) {
+        return false;
+      }
+      if (filters.dueBefore && dueDate.getTime() > filters.dueBefore.getTime()) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function toCsvString_(value) {
+  if (value === undefined || value === null) {
+    return '';
+  }
+  if (Array.isArray(value)) {
+    var cleaned = [];
+    for (var i = 0; i < value.length; i++) {
+      var entry = value[i];
+      if (entry === undefined || entry === null) {
+        continue;
+      }
+      var trimmed = String(entry).trim();
+      if (trimmed) {
+        cleaned.push(trimmed);
+      }
+    }
+    return cleaned.join(', ');
+  }
+  return String(value);
+}
+
+function parseLabels_(value) {
+  if (value === undefined || value === null || value === '') {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    var fromArray = [];
+    for (var i = 0; i < value.length; i++) {
+      if (value[i] === undefined || value[i] === null) {
+        continue;
+      }
+      var trimmed = String(value[i]).trim();
+      if (trimmed) {
+        fromArray.push(trimmed);
+      }
+    }
+    return fromArray;
+  }
+  var parts = String(value).split(',');
+  var list = [];
+  for (var j = 0; j < parts.length; j++) {
+    var part = parts[j].trim();
+    if (part) {
+      list.push(part);
+    }
+  }
+  return list;
+}
+
+function normalizeDuration_(value, fallback) {
+  if (value === undefined || value === null || value === '') {
+    var fallbackNumber = Number(fallback);
+    return isNaN(fallbackNumber) ? 0 : Math.max(0, fallbackNumber);
+  }
+  var num = Number(value);
+  if (isNaN(num)) {
+    var fallbackNum = Number(fallback);
+    return isNaN(fallbackNum) ? 0 : Math.max(0, fallbackNum);
+  }
+  if (num < 0) {
+    return 0;
+  }
+  return Math.round(num * 100) / 100;
+}
+
+function normalizeStatus_(status) {
+  var candidate = status !== undefined && status !== null ? String(status).trim() : '';
+  if (!candidate) {
+    return 'Planned';
+  }
+  var lower = candidate.toLowerCase();
+  for (var i = 0; i < TASK_STATUSES.length; i++) {
+    if (TASK_STATUSES[i].toLowerCase() === lower) {
+      return TASK_STATUSES[i];
+    }
+  }
+  throw new Error('Invalid status.');
+}
+
+function sanitizeTask_(record) {
+  if (!record) {
+    return null;
+  }
+  return {
+    TaskID: record.TaskID,
+    Name: record.Name || '',
+    Category: record.Category || '',
+    Priority: record.Priority || '',
+    Status: record.Status || 'Planned',
+    DurationMins: normalizeDuration_(record.DurationMins, 0),
+    Labels: parseLabels_(record.Labels),
+    Notes: record.Notes || '',
+    ResourcesCSV: record.ResourcesCSV || '',
+    Resources: parseLabels_(record.ResourcesCSV),
+    Assigner: record.Assigner || '',
+    Assignee: record.Assignee || '',
+    Timestamp: record.Timestamp || '',
+    DueAt: record.DueAt || '',
+    UpdatedAt: record.UpdatedAt || '',
+    ParentTaskID: record.ParentTaskID || ''
+  };
+}
+
+function sanitizeSubtask_(record) {
+  if (!record) {
+    return null;
+  }
+  return {
+    SubtaskID: record.SubtaskID,
+    TaskID: record.TaskID,
+    Name: record.Name || '',
+    DurationMins: normalizeDuration_(record.DurationMins, 0),
+    Status: record.Status || 'Planned',
+    CreatedAt: record.CreatedAt || ''
+  };
+}
+
+function sanitizeMood_(record) {
+  if (!record) {
+    return null;
+  }
+  return {
+    EntryID: record.EntryID,
+    TaskID: record.TaskID || '',
+    Email: record.Email || '',
+    Mood: record.Mood || '',
+    Note: record.Note || '',
+    At: record.At || ''
+  };
+}
+
+function getTaskById_(taskId) {
+  if (!taskId) {
+    return null;
+  }
+  var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+  var headers = SHEET_HEADERS[SHEET_NAMES.TASKS];
+  var idIndex = headers.indexOf('TaskID');
+  if (idIndex === -1) {
+    throw new Error('Tasks sheet missing TaskID column.');
+  }
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return null;
+  }
+  var range = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  var values = range.getValues();
+  var searchId = String(taskId);
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][idIndex]) === searchId) {
+      return {
+        rowNumber: i + 2,
+        record: arrayToObject_(headers, values[i])
+      };
+    }
+  }
+  return null;
+}
+
+function getSubtaskById_(subtaskId) {
+  if (!subtaskId) {
+    return null;
+  }
+  var sheet = ensureSheet_(SHEET_NAMES.SUBTASKS, SHEET_HEADERS[SHEET_NAMES.SUBTASKS]);
+  var headers = SHEET_HEADERS[SHEET_NAMES.SUBTASKS];
+  var idIndex = headers.indexOf('SubtaskID');
+  if (idIndex === -1) {
+    throw new Error('Subtasks sheet missing SubtaskID column.');
+  }
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return null;
+  }
+  var range = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  var values = range.getValues();
+  var searchId = String(subtaskId);
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][idIndex]) === searchId) {
+      return {
+        rowNumber: i + 2,
+        record: arrayToObject_(headers, values[i])
+      };
+    }
+  }
+  return null;
+}
+
+function getSubtasksForTask_(taskId) {
+  var sheet = ensureSheet_(SHEET_NAMES.SUBTASKS, SHEET_HEADERS[SHEET_NAMES.SUBTASKS]);
+  var headers = SHEET_HEADERS[SHEET_NAMES.SUBTASKS];
+  var rows = sheetObjects_(sheet, headers);
+  if (!taskId) {
+    return rows;
+  }
+  var searchId = String(taskId);
+  var results = [];
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].TaskID || '') === searchId) {
+      results.push(rows[i]);
+    }
+  }
+  return results;
+}
+
+function deleteSubtasksForTask_(taskId) {
+  if (!taskId) {
     return;
   }
-  var cache = CacheService.getScriptCache();
-  var key = SESSION_USER_INDEX_PREFIX + normalized;
-  var payload = cache.get(key);
-  if (!payload) {
+  var sheet = ensureSheet_(SHEET_NAMES.SUBTASKS, SHEET_HEADERS[SHEET_NAMES.SUBTASKS]);
+  var headers = SHEET_HEADERS[SHEET_NAMES.SUBTASKS];
+  var idIndex = headers.indexOf('TaskID');
+  if (idIndex === -1) {
     return;
   }
-  cache.remove(key);
-  var tokens = safeParse_(payload, []);
-  for (var i = 0; i < tokens.length; i++) {
-    if (tokens[i]) {
-      destroySession_(tokens[i]);
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return;
+  }
+  var range = sheet.getRange(2, 1, lastRow - 1, headers.length);
+  var values = range.getValues();
+  var searchId = String(taskId);
+  for (var i = values.length - 1; i >= 0; i--) {
+    if (String(values[i][idIndex]) === searchId) {
+      sheet.deleteRow(i + 2);
+
     }
   }
 }
