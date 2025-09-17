@@ -4,6 +4,7 @@ var SHEET_NAMES = {
   SUBTASKS: 'Subtasks',
   ACTIVITY_LOG: 'ActivityLog',
   MOODS: 'Moods',
+  QUOTES: 'Quotes',
   ATTACHMENTS: 'Attachments'
 };
 
@@ -59,6 +60,13 @@ SHEET_HEADERS[SHEET_NAMES.MOODS] = [
   'Note',
   'At'
 ];
+SHEET_HEADERS[SHEET_NAMES.QUOTES] = [
+  'QuoteID',
+  'Author',
+  'Text',
+  'SubmittedBy',
+  'Approved'
+];
 SHEET_HEADERS[SHEET_NAMES.ATTACHMENTS] = [
   'AttachmentID',
   'TaskID',
@@ -83,7 +91,7 @@ var ROLE_PERMISSIONS = {
   'Intern': ['tasks:view:self', 'tasks:manage:self', 'moods:log']
 };
 
-var TASK_STATUSES = ['Planned', 'In-Progress', 'Completed', 'Shifted', 'Cancelled'];
+var TASK_STATUSES = ['New', 'Planned', 'In-Progress', 'Completed', 'Shifted', 'Cancelled'];
 var SESSION_CACHE_PREFIX = 'afv2_session_';
 
 var SESSION_TTL_SECONDS = 6 * 60 * 60; // 6 hours
@@ -665,6 +673,180 @@ function updateTask(token, taskId, updates) {
   });
 }
 
+function bulkUpdateTasks(token, taskIds, action) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+
+    var idPayload = typeof taskIds === 'string' ? safeParse_(taskIds, null) : taskIds;
+    var rawIds = [];
+    if (Array.isArray(idPayload)) {
+      rawIds = idPayload;
+    } else if (idPayload && typeof idPayload === 'object') {
+      if (Array.isArray(idPayload.taskIds)) {
+        rawIds = idPayload.taskIds;
+      } else if (Array.isArray(idPayload.ids)) {
+        rawIds = idPayload.ids;
+      }
+    }
+    if (!rawIds.length && typeof taskIds === 'string') {
+      var split = String(taskIds)
+        .split(',')
+        .map(function (part) {
+          return part.trim();
+        })
+        .filter(function (part) {
+          return part;
+        });
+      rawIds = rawIds.concat(split);
+    }
+    var normalizedIds = [];
+    for (var i = 0; i < rawIds.length; i++) {
+      var value = rawIds[i];
+      if (value === undefined || value === null) {
+        continue;
+      }
+      var str = String(value).trim();
+      if (!str) {
+        continue;
+      }
+      if (normalizedIds.indexOf(str) === -1) {
+        normalizedIds.push(str);
+      }
+    }
+    if (!normalizedIds.length) {
+      throw new Error('No task IDs provided.');
+    }
+
+    var actionPayload = action;
+    if (typeof actionPayload === 'string') {
+      var parsedAction = safeParse_(actionPayload, null);
+      if (parsedAction && typeof parsedAction === 'object') {
+        actionPayload = parsedAction;
+      } else {
+        actionPayload = { type: actionPayload };
+      }
+    }
+    if (!actionPayload || typeof actionPayload !== 'object') {
+      throw new Error('Action payload is required.');
+    }
+    var actionTypeValue = pickFirstDefined_(actionPayload, ['type', 'action']);
+    var actionType = actionTypeValue ? String(actionTypeValue).trim().toLowerCase() : '';
+    if (!actionType) {
+      throw new Error('Action type is required.');
+    }
+    if (['complete', 'assign', 'delete'].indexOf(actionType) === -1) {
+      throw new Error('Unsupported action.');
+    }
+
+    var usersMap = loadUsersMap_();
+    var assignContext = null;
+    if (actionType === 'assign') {
+      var assigneeValue = pickFirstDefined_(actionPayload, ['assignee', 'assigneeEmail', 'email', 'user']);
+      if (assigneeValue === undefined || assigneeValue === null || assigneeValue === '') {
+        assigneeValue = getSessionEmail_(session);
+      }
+      var assigneeEmail = normalizeEmail_(assigneeValue);
+      if (!assigneeEmail) {
+        throw new Error('Assignee email is required for assign action.');
+      }
+      var assigneeRecord = usersMap[assigneeEmail];
+      if (!assigneeRecord) {
+        throw new Error('Assignee not found.');
+      }
+      if (!isTrue_(assigneeRecord.IsActive)) {
+        throw new Error('Assignee is not active.');
+      }
+      validateTaskAssignment_(session, assigneeRecord);
+      assignContext = {
+        email: assigneeEmail,
+        record: assigneeRecord
+      };
+    }
+
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    var headers = SHEET_HEADERS[SHEET_NAMES.TASKS];
+
+    var updated = [];
+    var deleted = [];
+    var errors = [];
+    var deletions = [];
+
+    for (var j = 0; j < normalizedIds.length; j++) {
+      var taskId = normalizedIds[j];
+      try {
+        var taskResult = getTaskById_(taskId);
+        if (!taskResult) {
+          throw new Error('Task not found.');
+        }
+        var record = taskResult.record;
+        if (!canManageTask_(session, record, actionType === 'assign' && assignContext ? assignContext.email : record.Assignee, usersMap)) {
+          throw new Error('Forbidden.');
+        }
+        if (actionType === 'delete') {
+          deletions.push(taskResult);
+          deleted.push(record.TaskID);
+          continue;
+        }
+        if (actionType === 'complete') {
+          var previousStatus = record.Status || '';
+          var newStatus = normalizeStatus_('Completed');
+          record.Status = newStatus;
+          record.Assignee = normalizeEmail_(record.Assignee);
+          record.Assigner = normalizeEmail_(record.Assigner);
+          record.UpdatedAt = nowIso_();
+          writeRow_(sheet, headers, taskResult.rowNumber, record);
+          var sanitizedComplete = sanitizeTask_(record);
+          updated.push(sanitizedComplete);
+          logActivity_(session, 'task.bulkComplete', 'Task', record.TaskID, {
+            status: sanitizedComplete.Status,
+            previousStatus: previousStatus
+          });
+          continue;
+        }
+        if (actionType === 'assign' && assignContext) {
+          var previousAssignee = normalizeEmail_(record.Assignee);
+          record.Assignee = assignContext.email;
+          record.Assigner = normalizeEmail_(record.Assigner);
+          record.UpdatedAt = nowIso_();
+          writeRow_(sheet, headers, taskResult.rowNumber, record);
+          var sanitizedAssign = sanitizeTask_(record);
+          updated.push(sanitizedAssign);
+          logActivity_(session, 'task.bulkAssign', 'Task', record.TaskID, {
+            assignee: assignContext.email,
+            previousAssignee: previousAssignee
+          });
+          continue;
+        }
+      } catch (err) {
+        errors.push({
+          taskId: String(taskId),
+          message: err && err.message ? err.message : String(err)
+        });
+      }
+    }
+
+    if (deletions.length) {
+      deletions.sort(function (a, b) {
+        return b.rowNumber - a.rowNumber;
+      });
+      for (var k = 0; k < deletions.length; k++) {
+        var deletion = deletions[k];
+        sheet.deleteRow(deletion.rowNumber);
+        deleteSubtasksForTask_(deletion.record.TaskID);
+        logActivity_(session, 'task.bulkDelete', 'Task', deletion.record.TaskID, {});
+      }
+    }
+
+    return {
+      action: actionType,
+      updated: updated,
+      deleted: deleted,
+      errors: errors
+    };
+  });
+}
+
 function listTasks(token, filters) {
   return handleApi_(function () {
     var session = requireSession_(token);
@@ -1042,6 +1224,71 @@ function deleteTask(token, taskId) {
   });
 }
 
+function duplicateTask(token, taskId) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    ensureTaskWriteAccess_(session);
+    if (!taskId) {
+      throw new Error('Task ID is required.');
+    }
+    var originalResult = getTaskById_(String(taskId));
+    if (!originalResult) {
+      throw new Error('Task not found.');
+    }
+    var usersMap = loadUsersMap_();
+    var originalRecord = originalResult.record;
+    if (!canManageTask_(session, originalRecord, originalRecord.Assignee, usersMap)) {
+      throw new Error('Forbidden.');
+    }
+
+    var sessionEmail = getSessionEmail_(session);
+    if (!sessionEmail) {
+      throw new Error('Unable to resolve session email.');
+    }
+
+    var assigneeEmail = normalizeEmail_(originalRecord.Assignee);
+    if (assigneeEmail) {
+      var assigneeRecord = usersMap[assigneeEmail];
+      if (!assigneeRecord) {
+        throw new Error('Assignee not found.');
+      }
+      if (!isTrue_(assigneeRecord.IsActive)) {
+        throw new Error('Assignee is not active.');
+      }
+      validateTaskAssignment_(session, assigneeRecord);
+    }
+
+    var now = nowIso_();
+    var clonedRecord = {
+      TaskID: generateId_('TASK'),
+      Name: originalRecord.Name || '',
+      Category: originalRecord.Category || '',
+      Priority: originalRecord.Priority || '',
+      Status: normalizeStatus_('New'),
+      DurationMins: originalRecord.DurationMins,
+      Labels: originalRecord.Labels || '',
+      Notes: originalRecord.Notes || '',
+      ResourcesCSV: originalRecord.ResourcesCSV || '',
+      Assigner: sessionEmail,
+      Assignee: assigneeEmail,
+      Timestamp: now,
+      DueAt: originalRecord.DueAt || '',
+      UpdatedAt: now,
+      ParentTaskID: originalRecord.ParentTaskID || ''
+    };
+
+    var sheet = ensureSheet_(SHEET_NAMES.TASKS, SHEET_HEADERS[SHEET_NAMES.TASKS]);
+    appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.TASKS], clonedRecord);
+
+    logActivity_(session, 'task.duplicate', 'Task', clonedRecord.TaskID, {
+      sourceTaskId: originalRecord.TaskID,
+      status: clonedRecord.Status
+    });
+
+    return sanitizeTask_(clonedRecord);
+  });
+}
+
 function createSubtask(token, subtaskObj) {
   return handleApi_(function () {
     var session = requireSession_(token);
@@ -1342,6 +1589,83 @@ function listMoods(token, filters) {
       }
       return aKey < bKey ? 1 : -1;
     });
+    return results;
+  });
+}
+
+function addQuote(token, text) {
+  return handleApi_(function () {
+    var session = requireSession_(token);
+    var payload = text;
+    if (typeof payload === 'string') {
+      var parsed = safeParse_(payload, null);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        payload = parsed;
+      }
+    }
+
+    var textCandidate = null;
+    var authorCandidate = '';
+    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+      textCandidate = pickFirstDefined_(payload, ['text', 'Text', 'quote', 'value']);
+      var authorValue = pickFirstDefined_(payload, ['author', 'Author', 'by']);
+      if (authorValue !== undefined && authorValue !== null) {
+        authorCandidate = String(authorValue).trim();
+      }
+    }
+    if (textCandidate === null || textCandidate === undefined) {
+      if (typeof text === 'string') {
+        textCandidate = text;
+      }
+    }
+    if (textCandidate === null || textCandidate === undefined) {
+      throw new Error('Quote text is required.');
+    }
+    var quoteText = String(textCandidate).trim();
+    if (!quoteText) {
+      throw new Error('Quote text is required.');
+    }
+    var quoteAuthor = authorCandidate || '';
+
+    var submittedBy = getSessionEmail_(session);
+    if (!submittedBy) {
+      throw new Error('Unable to resolve session email.');
+    }
+
+    var approved = getSessionRole_(session) === 'Admin';
+    var record = {
+      QuoteID: generateId_('QUOTE'),
+      Author: quoteAuthor,
+      Text: quoteText,
+      SubmittedBy: submittedBy,
+      Approved: approved ? 'TRUE' : 'FALSE'
+    };
+
+    var sheet = ensureSheet_(SHEET_NAMES.QUOTES, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
+    appendRow_(sheet, SHEET_HEADERS[SHEET_NAMES.QUOTES], record);
+
+    logActivity_(session, 'quote.add', 'Quote', record.QuoteID, {
+      approved: approved,
+      length: quoteText.length
+    });
+
+    return sanitizeQuote_(record);
+  });
+}
+
+function listQuotes(token) {
+  return handleApi_(function () {
+    requireSession_(token);
+
+    var sheet = ensureSheet_(SHEET_NAMES.QUOTES, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
+    var rows = sheetObjects_(sheet, SHEET_HEADERS[SHEET_NAMES.QUOTES]);
+    var results = [];
+    for (var i = 0; i < rows.length; i++) {
+      if (!isTrue_(rows[i].Approved)) {
+        continue;
+      }
+      results.push(sanitizeQuote_(rows[i]));
+    }
     return results;
   });
 }
@@ -2428,6 +2752,19 @@ function sanitizeMood_(record) {
     Mood: record.Mood || '',
     Note: record.Note || '',
     At: record.At || ''
+  };
+}
+
+function sanitizeQuote_(record) {
+  if (!record) {
+    return null;
+  }
+  return {
+    QuoteID: record.QuoteID,
+    Author: record.Author || '',
+    Text: record.Text || '',
+    SubmittedBy: normalizeEmail_(record.SubmittedBy),
+    Approved: isTrue_(record.Approved)
   };
 }
 
