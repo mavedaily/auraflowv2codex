@@ -21,6 +21,22 @@
             },
           },
         },
+        safelist: [
+          'ring-aura-primary/60',
+          'ring-aura-primary/50',
+          'ring-offset-2',
+          'ring-offset-slate-950',
+          'text-aura-primary',
+          'bg-aura-primary/10',
+          'cursor-grab',
+          'cursor-grabbing',
+          'opacity-60',
+          'opacity-70',
+          'text-[0.65rem]',
+          'max-w-[8rem]',
+          'max-w-[10rem]',
+          'animate-pulse',
+        ],
       };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -219,11 +235,122 @@
           </section>
 
           <section data-tab-panel="kanban" class="tab-panel hidden">
-            <div class="rounded-3xl border border-dashed border-white/10 bg-slate-900/70 p-10 text-center">
-              <h3 class="text-2xl font-semibold text-white">Kanban Workspace</h3>
-              <p class="mt-4 text-sm text-slate-400">
-                Drag-and-drop swimlanes for status management will be introduced in Phase 4, powered by live task syncing.
-              </p>
+            <div class="space-y-8">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 class="text-2xl font-semibold text-white">Kanban Workspace</h3>
+                  <p class="text-sm text-slate-400">
+                    Drag tasks across swimlanes to reflect real-time delivery status. Updates sync instantly with the workspace.
+                  </p>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-slate-500">
+                  <span class="hidden sm:inline">Statuses:</span>
+                  <ul class="flex items-center gap-2">
+                    <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">Planned</li>
+                    <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">In-Progress</li>
+                    <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">Completed</li>
+                    <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">Shifted</li>
+                    <li class="rounded-full bg-white/5 px-2 py-1 text-[0.7rem] uppercase tracking-wide text-slate-300">Cancelled</li>
+                  </ul>
+                </div>
+              </div>
+              <div
+                id="kanbanLoading"
+                class="hidden items-center gap-3 text-sm text-slate-400 sm:flex"
+                role="status"
+                aria-live="polite"
+              >
+                <span class="flex h-2.5 w-2.5 items-center justify-center">
+                  <span class="h-2.5 w-2.5 animate-ping rounded-full bg-aura-primary/70"></span>
+                </span>
+                <span>Syncing tasks&hellip;</span>
+              </div>
+              <div
+                id="kanbanEmpty"
+                class="hidden rounded-3xl border border-dashed border-white/10 bg-slate-900/60 p-10 text-center"
+              >
+                <div class="mx-auto flex max-w-md flex-col gap-3">
+                  <h4 class="text-lg font-semibold text-white">No tasks yet</h4>
+                  <p class="text-sm text-slate-400">
+                    When tasks are created they will appear here, ready to be triaged across the workflow.
+                  </p>
+                </div>
+              </div>
+              <div
+                id="kanbanBoard"
+                class="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory xl:grid xl:grid-cols-5 xl:gap-6 xl:overflow-visible"
+              >
+                <div
+                  class="kanban-column relative flex min-w-[230px] snap-center flex-col rounded-3xl border border-white/10 bg-slate-950/60 p-5 transition-all duration-200 hover:border-white/20"
+                  data-kanban-column="Planned"
+                  aria-label="Planned column"
+                >
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div>
+                      <h4 class="text-base font-semibold text-white">Planned</h4>
+                      <p class="text-xs text-slate-500">Upcoming scope and queued initiatives.</p>
+                    </div>
+                    <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-slate-300" data-kanban-count>0</span>
+                  </div>
+                  <div class="mt-4 flex flex-col gap-3" data-kanban-list role="list" aria-label="Planned tasks"></div>
+                </div>
+                <div
+                  class="kanban-column relative flex min-w-[230px] snap-center flex-col rounded-3xl border border-white/10 bg-slate-950/60 p-5 transition-all duration-200 hover:border-white/20"
+                  data-kanban-column="In-Progress"
+                  aria-label="In-Progress column"
+                >
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div>
+                      <h4 class="text-base font-semibold text-white">In-Progress</h4>
+                      <p class="text-xs text-slate-500">Active execution and collaboration.</p>
+                    </div>
+                    <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-slate-300" data-kanban-count>0</span>
+                  </div>
+                  <div class="mt-4 flex flex-col gap-3" data-kanban-list role="list" aria-label="In-Progress tasks"></div>
+                </div>
+                <div
+                  class="kanban-column relative flex min-w-[230px] snap-center flex-col rounded-3xl border border-white/10 bg-slate-950/60 p-5 transition-all duration-200 hover:border-white/20"
+                  data-kanban-column="Completed"
+                  aria-label="Completed column"
+                >
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div>
+                      <h4 class="text-base font-semibold text-white">Completed</h4>
+                      <p class="text-xs text-slate-500">Validated deliverables and wins.</p>
+                    </div>
+                    <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-slate-300" data-kanban-count>0</span>
+                  </div>
+                  <div class="mt-4 flex flex-col gap-3" data-kanban-list role="list" aria-label="Completed tasks"></div>
+                </div>
+                <div
+                  class="kanban-column relative flex min-w-[230px] snap-center flex-col rounded-3xl border border-white/10 bg-slate-950/60 p-5 transition-all duration-200 hover:border-white/20"
+                  data-kanban-column="Shifted"
+                  aria-label="Shifted column"
+                >
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div>
+                      <h4 class="text-base font-semibold text-white">Shifted</h4>
+                      <p class="text-xs text-slate-500">Rescheduled or deferred scope.</p>
+                    </div>
+                    <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-slate-300" data-kanban-count>0</span>
+                  </div>
+                  <div class="mt-4 flex flex-col gap-3" data-kanban-list role="list" aria-label="Shifted tasks"></div>
+                </div>
+                <div
+                  class="kanban-column relative flex min-w-[230px] snap-center flex-col rounded-3xl border border-white/10 bg-slate-950/60 p-5 transition-all duration-200 hover:border-white/20"
+                  data-kanban-column="Cancelled"
+                  aria-label="Cancelled column"
+                >
+                  <div class="flex items-baseline justify-between gap-3">
+                    <div>
+                      <h4 class="text-base font-semibold text-white">Cancelled</h4>
+                      <p class="text-xs text-slate-500">Stopped, rejected, or void work.</p>
+                    </div>
+                    <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-slate-300" data-kanban-count>0</span>
+                  </div>
+                  <div class="mt-4 flex flex-col gap-3" data-kanban-list role="list" aria-label="Cancelled tasks"></div>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -337,11 +464,29 @@
 
       (function () {
         const STORAGE_KEY = 'aura-flow-v2.session';
+        const KANBAN_STATUSES = [
+          { id: 'Planned', label: 'Planned' },
+          { id: 'In-Progress', label: 'In-Progress' },
+          { id: 'Completed', label: 'Completed' },
+          { id: 'Shifted', label: 'Shifted' },
+          { id: 'Cancelled', label: 'Cancelled' },
+        ];
+        const COLUMN_HIGHLIGHT_CLASSES = [
+          'ring-2',
+          'ring-aura-primary/60',
+          'ring-offset-2',
+          'ring-offset-slate-950'
+        ];
         const state = {
           token: null,
           user: null,
           activeTab: 'dashboard',
+          tasks: [],
+          kanbanLoaded: false,
+          kanbanLoading: false,
         };
+        const pendingTaskMoves = new Set();
+        const dragState = { taskId: null };
         const elements = {};
         const tabs = ['dashboard', 'kanban', 'analytics', 'focus', 'admin'];
         let isInitialized = false;
@@ -353,6 +498,7 @@
           isInitialized = true;
           cacheElements();
           enhanceTabButtons();
+          setupKanbanBoard();
           bindEvents();
           updateShell();
           restoreSession();
@@ -368,6 +514,28 @@
           elements.logoutButton = document.getElementById('logoutButton');
           elements.tabButtons = document.querySelectorAll('[data-tab-button]');
           elements.tabPanels = document.querySelectorAll('[data-tab-panel]');
+          elements.kanbanBoard = document.getElementById('kanbanBoard');
+          elements.kanbanLoading = document.getElementById('kanbanLoading');
+          elements.kanbanEmpty = document.getElementById('kanbanEmpty');
+          elements.kanbanColumns = {};
+          elements.kanbanColumnLists = {};
+          elements.kanbanColumnCounts = {};
+          const kanbanColumns = document.querySelectorAll('[data-kanban-column]');
+          kanbanColumns.forEach((column) => {
+            const statusId = column.getAttribute('data-kanban-column');
+            if (!statusId) {
+              return;
+            }
+            elements.kanbanColumns[statusId] = column;
+            const listEl = column.querySelector('[data-kanban-list]');
+            if (listEl) {
+              elements.kanbanColumnLists[statusId] = listEl;
+            }
+            const countEl = column.querySelector('[data-kanban-count]');
+            if (countEl) {
+              elements.kanbanColumnCounts[statusId] = countEl;
+            }
+          });
         }
 
         function enhanceTabButtons() {
@@ -395,6 +563,23 @@
             panel.setAttribute('role', 'tabpanel');
 
           });
+        }
+
+        function setupKanbanBoard() {
+          if (!elements.kanbanBoard) {
+            return;
+          }
+          KANBAN_STATUSES.forEach((status) => {
+            const column = elements.kanbanColumns[status.id];
+            if (!column) {
+              return;
+            }
+            column.addEventListener('dragenter', (event) => handleKanbanDragEnter(event, status.id));
+            column.addEventListener('dragover', (event) => handleKanbanDragOver(event, status.id));
+            column.addEventListener('dragleave', (event) => handleKanbanDragLeave(event, status.id));
+            column.addEventListener('drop', (event) => handleKanbanDrop(event, status.id));
+          });
+          renderKanbanBoard();
         }
 
         function bindEvents() {
@@ -480,12 +665,22 @@
             panel.classList.toggle('hidden', !isActive);
 
           });
+          if (state.activeTab === 'kanban') {
+            if (state.token) {
+              loadKanbanTasks();
+            }
+          } else {
+            clearColumnHighlights();
+          }
         }
 
         function applySession(token, user) {
           state.token = token;
           state.user = user || null;
           updateShell();
+          if (state.token) {
+            loadKanbanTasks(true);
+          }
         }
 
         function updateShell() {
@@ -502,6 +697,7 @@
           if (elements.roleBadge) {
             elements.roleBadge.textContent = isAuthenticated && state.user.Role ? state.user.Role : '';
           }
+          renderKanbanBoard();
           setActiveTab(state.activeTab);
         }
 
@@ -522,6 +718,7 @@
           } catch (err) {
             console.warn('Failed to clear session storage', err);
           }
+          resetKanbanState();
         }
 
         async function restoreSession() {
@@ -552,6 +749,468 @@
             clearSession();
             updateShell();
           }
+        }
+
+        function resetKanbanState() {
+          state.tasks = [];
+          state.kanbanLoaded = false;
+          state.kanbanLoading = false;
+          pendingTaskMoves.clear();
+          renderKanbanBoard();
+        }
+
+        async function loadKanbanTasks(forceRefresh = false) {
+          if (!elements.kanbanBoard) {
+            return;
+          }
+          if (!state.token) {
+            resetKanbanState();
+            return;
+          }
+          if (state.kanbanLoading) {
+            return;
+          }
+          if (state.kanbanLoaded && !forceRefresh) {
+            renderKanbanBoard();
+            return;
+          }
+          state.kanbanLoading = true;
+          renderKanbanBoard();
+          try {
+            const tasks = await server.listTasks(state.token, {});
+            if (Array.isArray(tasks)) {
+              state.tasks = tasks;
+              state.kanbanLoaded = true;
+            } else {
+              state.tasks = [];
+              state.kanbanLoaded = true;
+            }
+          } catch (err) {
+            console.error('Failed to load tasks:', err);
+            const message = err && err.message ? err.message : String(err || 'Unknown error');
+            showToast(`Failed to load tasks. ${message}`, 'error');
+            state.kanbanLoaded = false;
+          } finally {
+            state.kanbanLoading = false;
+            renderKanbanBoard();
+          }
+        }
+
+        function renderKanbanBoard() {
+          if (!elements.kanbanBoard) {
+            return;
+          }
+          const isLoading = state.kanbanLoading;
+          const hasTasks = Array.isArray(state.tasks) && state.tasks.length > 0;
+          if (elements.kanbanLoading) {
+            elements.kanbanLoading.classList.toggle('hidden', !isLoading);
+          }
+          const shouldShowEmpty = !isLoading && state.kanbanLoaded && !hasTasks;
+          if (elements.kanbanEmpty) {
+            elements.kanbanEmpty.classList.toggle('hidden', !shouldShowEmpty);
+          }
+          const shouldShowBoard = Boolean(state.token && (isLoading || hasTasks));
+          elements.kanbanBoard.classList.toggle('hidden', !shouldShowBoard);
+          elements.kanbanBoard.classList.toggle('opacity-60', isLoading && hasTasks);
+          elements.kanbanBoard.classList.toggle('pointer-events-none', isLoading && !hasTasks);
+          KANBAN_STATUSES.forEach((status) => {
+            const listEl = elements.kanbanColumnLists[status.id];
+            const countEl = elements.kanbanColumnCounts[status.id];
+            const tasksForStatus = getTasksForStatus(status.id);
+            if (countEl) {
+              countEl.textContent = String(tasksForStatus.length);
+            }
+            if (!listEl) {
+              return;
+            }
+            listEl.innerHTML = '';
+            if (!tasksForStatus.length) {
+              if (isLoading) {
+                const skeleton = document.createElement('div');
+                skeleton.className = 'rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-xs text-slate-500 animate-pulse';
+                skeleton.textContent = 'Loading tasks…';
+                listEl.appendChild(skeleton);
+              } else {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'rounded-2xl border border-dashed border-white/10 bg-slate-950/50 px-3 py-6 text-center text-xs text-slate-500';
+                placeholder.textContent = state.token ? 'No tasks in this lane yet.' : 'Sign in to manage tasks.';
+                listEl.appendChild(placeholder);
+              }
+              return;
+            }
+            for (let i = 0; i < tasksForStatus.length; i++) {
+              listEl.appendChild(createTaskCard(tasksForStatus[i]));
+            }
+          });
+        }
+
+        function getTasksForStatus(statusId) {
+          const results = [];
+          if (!Array.isArray(state.tasks)) {
+            return results;
+          }
+          const targetId = String(statusId);
+          for (let i = 0; i < state.tasks.length; i++) {
+            const task = state.tasks[i];
+            if (task && String(task.Status) === targetId) {
+              results.push(task);
+            }
+          }
+          results.sort((a, b) => {
+            const aKey = getTaskSortKey(a);
+            const bKey = getTaskSortKey(b);
+            if (aKey === bKey) {
+              return 0;
+            }
+            return aKey > bKey ? -1 : 1;
+          });
+          return results;
+        }
+
+        function getTaskSortKey(task) {
+          if (!task) {
+            return '';
+          }
+          return task.UpdatedAt || task.Timestamp || task.DueAt || '';
+        }
+
+        function createTaskCard(task) {
+          const card = document.createElement('article');
+          card.className =
+            'group relative rounded-2xl border border-white/10 bg-slate-900/80 p-4 text-left shadow-sm transition hover:border-aura-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aura-primary/40 cursor-grab';
+          const taskId = task && task.TaskID ? String(task.TaskID) : '';
+          card.dataset.taskId = taskId;
+          const isPending = pendingTaskMoves.has(taskId);
+          card.setAttribute('draggable', isPending ? 'false' : 'true');
+          card.setAttribute('role', 'listitem');
+          if (isPending) {
+            card.classList.add('opacity-60', 'pointer-events-none');
+            card.setAttribute('aria-busy', 'true');
+          }
+          card.addEventListener('dragstart', (event) => handleTaskDragStart(event, taskId));
+          card.addEventListener('dragend', handleTaskDragEnd);
+
+          const title = document.createElement('p');
+          title.className = 'text-sm font-semibold leading-snug text-white';
+          title.textContent = task && task.Name ? task.Name : 'Untitled task';
+          card.appendChild(title);
+
+          const detailRow = document.createElement('div');
+          detailRow.className = 'mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400';
+          if (task && task.Category) {
+            const categorySpan = document.createElement('span');
+            categorySpan.className = 'rounded-full bg-white/5 px-2 py-0.5 text-[0.65rem] text-slate-300';
+            categorySpan.textContent = task.Category;
+            detailRow.appendChild(categorySpan);
+          }
+          if (task && task.Priority) {
+            const prioritySpan = document.createElement('span');
+            prioritySpan.className = 'rounded-full bg-aura-primary/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-aura-primary';
+            prioritySpan.textContent = task.Priority;
+            detailRow.appendChild(prioritySpan);
+          }
+          const dueLabel = formatDueDate(task && task.DueAt ? task.DueAt : '');
+          if (dueLabel) {
+            const dueSpan = document.createElement('span');
+            dueSpan.className = 'text-[0.65rem] text-slate-400';
+            dueSpan.textContent = dueLabel;
+            detailRow.appendChild(dueSpan);
+          }
+          const labelText = getPrimaryLabel(task && task.Labels ? task.Labels : null);
+          if (labelText) {
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'max-w-[8rem] truncate text-[0.65rem] text-slate-400';
+            labelSpan.textContent = `#${labelText}`;
+            detailRow.appendChild(labelSpan);
+          }
+          if (detailRow.childNodes.length > 0) {
+            card.appendChild(detailRow);
+          }
+
+          const footer = document.createElement('div');
+          footer.className = 'mt-3 flex items-center justify-between text-xs text-slate-500';
+          const assigneeSpan = document.createElement('span');
+          assigneeSpan.className = 'max-w-[10rem] truncate';
+          assigneeSpan.textContent = formatAssignee(task && task.Assignee ? task.Assignee : '');
+          footer.appendChild(assigneeSpan);
+          const updatedSpan = document.createElement('span');
+          updatedSpan.className = 'text-right';
+          updatedSpan.textContent = formatUpdatedAt(task && (task.UpdatedAt || task.Timestamp) ? task.UpdatedAt || task.Timestamp : '');
+          footer.appendChild(updatedSpan);
+          card.appendChild(footer);
+
+          if (isPending) {
+            const syncingBadge = document.createElement('span');
+            syncingBadge.className = 'absolute right-4 top-4 text-[0.65rem] font-medium text-aura-primary';
+            syncingBadge.textContent = 'Syncing…';
+            card.appendChild(syncingBadge);
+          }
+
+          return card;
+        }
+
+        function handleTaskDragStart(event, taskId) {
+          dragState.taskId = taskId;
+          if (event && event.dataTransfer) {
+            try {
+              event.dataTransfer.effectAllowed = 'move';
+              event.dataTransfer.setData('text/plain', taskId);
+            } catch (err) {
+              console.warn('Drag start warning:', err);
+            }
+          }
+          const target = event && event.currentTarget ? event.currentTarget : null;
+          if (target && target.classList) {
+            target.classList.add('opacity-70', 'ring-2', 'ring-aura-primary/50', 'ring-offset-2', 'ring-offset-slate-950', 'cursor-grabbing');
+          }
+        }
+
+        function handleTaskDragEnd(event) {
+          dragState.taskId = null;
+          const target = event && event.currentTarget ? event.currentTarget : null;
+          if (target && target.classList) {
+            target.classList.remove('opacity-70', 'ring-2', 'ring-aura-primary/50', 'ring-offset-2', 'ring-offset-slate-950', 'cursor-grabbing');
+          }
+          clearColumnHighlights();
+        }
+
+        function handleKanbanDragEnter(event, statusId) {
+          if (!dragState.taskId) {
+            return;
+          }
+          if (event) {
+            event.preventDefault();
+          }
+          highlightColumn(statusId);
+        }
+
+        function handleKanbanDragOver(event, statusId) {
+          if (!dragState.taskId) {
+            return;
+          }
+          if (event) {
+            event.preventDefault();
+            if (event.dataTransfer) {
+              event.dataTransfer.dropEffect = 'move';
+            }
+          }
+          highlightColumn(statusId);
+        }
+
+        function handleKanbanDragLeave(event, statusId) {
+          if (!dragState.taskId) {
+            return;
+          }
+          const currentTarget = event && event.currentTarget ? event.currentTarget : null;
+          const related = event ? event.relatedTarget : null;
+          if (currentTarget && related && currentTarget.contains(related)) {
+            return;
+          }
+          unhighlightColumn(statusId);
+        }
+
+        async function handleKanbanDrop(event, statusId) {
+          if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          clearColumnHighlights();
+          const taskId = getDraggedTaskId(event);
+          dragState.taskId = null;
+          if (!taskId || !state.token) {
+            if (!state.token) {
+              showToast('Sign in to update task status.', 'error');
+            }
+            renderKanbanBoard();
+            return;
+          }
+          if (pendingTaskMoves.has(taskId)) {
+            return;
+          }
+          const existingTask = findTask(taskId);
+          if (!existingTask) {
+            return;
+          }
+          if (String(existingTask.Status) === String(statusId)) {
+            renderKanbanBoard();
+            return;
+          }
+          const previousStatus = existingTask.Status;
+          pendingTaskMoves.add(taskId);
+          updateTaskStatusLocal(taskId, statusId);
+          renderKanbanBoard();
+          try {
+            const updated = await server.setTaskStatus(state.token, taskId, statusId);
+            if (updated && typeof updated === 'object') {
+              upsertTask(updated);
+            }
+            showToast(`Task moved to ${statusId}.`, 'success');
+          } catch (err) {
+            updateTaskStatusLocal(taskId, previousStatus);
+            const message = err && err.message ? err.message : 'Failed to update task status.';
+            showToast(message, 'error');
+          } finally {
+            pendingTaskMoves.delete(taskId);
+            renderKanbanBoard();
+          }
+        }
+
+        function highlightColumn(statusId) {
+          const column = elements.kanbanColumns[statusId];
+          if (!column) {
+            return;
+          }
+          for (let i = 0; i < COLUMN_HIGHLIGHT_CLASSES.length; i++) {
+            column.classList.add(COLUMN_HIGHLIGHT_CLASSES[i]);
+          }
+        }
+
+        function unhighlightColumn(statusId) {
+          const column = elements.kanbanColumns[statusId];
+          if (!column) {
+            return;
+          }
+          for (let i = 0; i < COLUMN_HIGHLIGHT_CLASSES.length; i++) {
+            column.classList.remove(COLUMN_HIGHLIGHT_CLASSES[i]);
+          }
+        }
+
+        function clearColumnHighlights() {
+          KANBAN_STATUSES.forEach((status) => {
+            unhighlightColumn(status.id);
+          });
+        }
+
+        function updateTaskStatusLocal(taskId, statusId) {
+          if (!Array.isArray(state.tasks)) {
+            return;
+          }
+          const targetId = String(taskId);
+          for (let i = 0; i < state.tasks.length; i++) {
+            const task = state.tasks[i];
+            if (task && String(task.TaskID) === targetId) {
+              state.tasks[i] = Object.assign({}, task, { Status: statusId });
+              return;
+            }
+          }
+        }
+
+        function upsertTask(task) {
+          if (!task || !task.TaskID) {
+            return;
+          }
+          const targetId = String(task.TaskID);
+          if (!Array.isArray(state.tasks)) {
+            state.tasks = [task];
+            return;
+          }
+          let found = false;
+          for (let i = 0; i < state.tasks.length; i++) {
+            if (state.tasks[i] && String(state.tasks[i].TaskID) === targetId) {
+              state.tasks[i] = Object.assign({}, state.tasks[i], task);
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            state.tasks.push(task);
+          }
+        }
+
+        function findTask(taskId) {
+          if (!Array.isArray(state.tasks)) {
+            return null;
+          }
+          const targetId = String(taskId);
+          for (let i = 0; i < state.tasks.length; i++) {
+            const task = state.tasks[i];
+            if (task && String(task.TaskID) === targetId) {
+              return task;
+            }
+          }
+          return null;
+        }
+
+        function getDraggedTaskId(event) {
+          if (event && event.dataTransfer) {
+            try {
+              const data = event.dataTransfer.getData('text/plain');
+              if (data) {
+                return data;
+              }
+            } catch (err) {
+              console.warn('Drag data unavailable:', err);
+            }
+          }
+          return dragState.taskId;
+        }
+
+        function formatAssignee(email) {
+          if (!email) {
+            return 'Unassigned';
+          }
+          const trimmed = String(email).trim();
+          if (!trimmed) {
+            return 'Unassigned';
+          }
+          const parts = trimmed.split('@');
+          const name = parts.length > 0 && parts[0] ? parts[0] : trimmed;
+          return `@${name}`;
+        }
+
+        function formatDueDate(isoString) {
+          if (!isoString) {
+            return '';
+          }
+          const date = new Date(isoString);
+          if (isNaN(date.getTime())) {
+            return '';
+          }
+          return `Due ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+        }
+
+        function formatUpdatedAt(isoString) {
+          if (!isoString) {
+            return 'Updated —';
+          }
+          const date = new Date(isoString);
+          if (isNaN(date.getTime())) {
+            return 'Updated —';
+          }
+          const now = Date.now();
+          const diffMs = now - date.getTime();
+          if (diffMs <= 0) {
+            return 'Updated just now';
+          }
+          const minute = 60000;
+          const hour = minute * 60;
+          const day = hour * 24;
+          if (diffMs < minute) {
+            return 'Updated just now';
+          }
+          if (diffMs < hour) {
+            const mins = Math.max(1, Math.round(diffMs / minute));
+            return `Updated ${mins}m ago`;
+          }
+          if (diffMs < day) {
+            const hours = Math.max(1, Math.round(diffMs / hour));
+            return `Updated ${hours}h ago`;
+          }
+          const days = Math.round(diffMs / day);
+          if (days < 7) {
+            return `Updated ${days}d ago`;
+          }
+          return `Updated ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+        }
+
+        function getPrimaryLabel(labels) {
+          if (!labels) {
+            return '';
+          }
+          if (Array.isArray(labels) && labels.length > 0) {
+            return String(labels[0]);
+          }
+          return String(labels);
         }
       })();
 
